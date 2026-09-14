@@ -9,5 +9,13 @@ export type AppStackParamList = {
    */
   GroupDashboard: { groupId: string };
   GroupSettings: { groupId: string };
+  CreateGameTemplate: { groupId: string };
+  StartSession: { groupId: string; templateId: string };
+  /**
+   * Only the id travels in params, same reasoning as GroupDashboard: the live session screen reads
+   * everything else — game, participants, scores — from its own queries so it stays correct as the
+   * session progresses.
+   */
+  Session: { sessionId: string };
   Profile: undefined;
 };

@@ -23,6 +23,9 @@ export interface GroupMember {
 export function useGroupMembers(groupId: string) {
   return useQuery({
     queryKey: groupKeys.members(groupId),
+    // Empty when the caller doesn't have a groupId yet — SessionScreen reads it off a session
+    // that's still loading — rather than firing a query that can only come back empty anyway.
+    enabled: groupId.length > 0,
     queryFn: async (): Promise<GroupMember[]> => {
       const { data, error } = await supabase
         .from('group_members')

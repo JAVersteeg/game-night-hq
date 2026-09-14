@@ -314,6 +314,53 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      create_game_template: {
+        Args: {
+          p_bonus_rules?: Json;
+          p_fields: Json;
+          p_group_id: string;
+          p_name: string;
+          p_scoring_direction: Database['public']['Enums']['scoring_direction'];
+        };
+        Returns: {
+          created_at: string;
+          created_by: string | null;
+          group_id: string;
+          id: string;
+          name: string;
+          scoring_direction: Database['public']['Enums']['scoring_direction'];
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'game_templates';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      create_session: {
+        Args: {
+          p_group_id: string;
+          p_participant_ids: string[];
+          p_scorekeeper_id: string;
+          p_template_id: string;
+        };
+        Returns: {
+          completed_at: string | null;
+          created_at: string;
+          group_id: string;
+          id: string;
+          played_at: string;
+          scorekeeper_id: string;
+          status: Database['public']['Enums']['session_status'];
+          template_id: string;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'sessions';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       create_group: {
         Args: { p_name: string };
         Returns: {

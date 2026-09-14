@@ -42,7 +42,7 @@ export function Button({
   return (
     <Pressable
       onPress={isDisabled ? undefined : onPress}
-      className={`items-center rounded-2xl px-6 py-3.5 ${CONTAINER_BY_VARIANT[variant]} ${
+      className={`min-h-11 items-center justify-center rounded-2xl px-6 py-3.5 ${CONTAINER_BY_VARIANT[variant]} ${
         isDisabled ? 'opacity-50' : ''
       }`}
       testID={testID}

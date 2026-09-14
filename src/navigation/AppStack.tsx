@@ -1,11 +1,14 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
+import { CreateGameTemplateScreen } from '@/features/games/screens/CreateGameTemplateScreen';
 import { CreateGroupScreen } from '@/features/groups/screens/CreateGroupScreen';
 import { GroupDashboardScreen } from '@/features/groups/screens/GroupDashboardScreen';
 import { GroupListScreen } from '@/features/groups/screens/GroupListScreen';
 import { GroupSettingsScreen } from '@/features/groups/screens/GroupSettingsScreen';
 import { JoinGroupScreen } from '@/features/groups/screens/JoinGroupScreen';
 import { ProfileScreen } from '@/features/profile/screens/ProfileScreen';
+import { SessionScreen } from '@/features/sessions/screens/SessionScreen';
+import { StartSessionScreen } from '@/features/sessions/screens/StartSessionScreen';
 import { theme } from '@/lib/theme';
 import type { AppStackParamList } from '@/navigation/types';
 
@@ -51,6 +54,18 @@ export function AppStack() {
         component={GroupSettingsScreen}
         options={{ ...HEADER_OPTIONS, title: 'Instellingen' }}
       />
+      <Stack.Screen
+        name="CreateGameTemplate"
+        component={CreateGameTemplateScreen}
+        options={{ ...HEADER_OPTIONS, title: 'Nieuw spel' }}
+      />
+      <Stack.Screen
+        name="StartSession"
+        component={StartSessionScreen}
+        options={{ ...HEADER_OPTIONS, title: 'Potje starten' }}
+      />
+      {/* Title is set by the screen itself once it knows the game's name. */}
+      <Stack.Screen name="Session" component={SessionScreen} options={HEADER_OPTIONS} />
       <Stack.Screen
         name="Profile"
         component={ProfileScreen}
