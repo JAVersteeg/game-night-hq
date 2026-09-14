@@ -58,6 +58,7 @@ export type Database = {
       game_template_fields: {
         Row: {
           default_value: number;
+          exclusive: boolean;
           id: string;
           key: string;
           label: string;
@@ -67,6 +68,7 @@ export type Database = {
         };
         Insert: {
           default_value?: number;
+          exclusive?: boolean;
           id?: string;
           key: string;
           label: string;
@@ -76,6 +78,7 @@ export type Database = {
         };
         Update: {
           default_value?: number;
+          exclusive?: boolean;
           id?: string;
           key?: string;
           label?: string;

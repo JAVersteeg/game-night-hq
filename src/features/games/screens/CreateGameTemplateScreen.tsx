@@ -114,11 +114,15 @@ function FieldRow({ field, onToggleSign }: { field: DraftField; onToggleSign: ()
       <Text className="min-w-0 flex-1 text-base font-semibold text-ink" numberOfLines={1}>
         {field.label}
       </Text>
-      <Pressable onPress={onToggleSign} accessibilityRole="button">
-        <Badge tone={field.sign === 1 ? 'success' : 'danger'}>
-          {field.sign === 1 ? 'Telt op' : 'Telt af'}
-        </Badge>
-      </Pressable>
+      {field.exclusive ? (
+        <Badge tone="accent">Max 1 speler · {field.default ?? 0} punten</Badge>
+      ) : (
+        <Pressable onPress={onToggleSign} accessibilityRole="button">
+          <Badge tone={field.sign === 1 ? 'success' : 'danger'}>
+            {field.sign === 1 ? 'Telt op' : 'Telt af'}
+          </Badge>
+        </Pressable>
+      )}
     </Card>
   );
 }
@@ -192,7 +196,15 @@ export function CreateGameTemplateScreen() {
       {
         name: trimmedName,
         scoringDirection,
-        fields: isRanked ? [] : fields.map(({ key, label, sign }) => ({ key, label, sign })),
+        fields: isRanked
+          ? []
+          : fields.map(({ key, label, sign, exclusive, default: defaultValue }) => ({
+              key,
+              label,
+              sign,
+              exclusive,
+              default: defaultValue,
+            })),
         coverKey,
       },
       { onSuccess: () => navigation.goBack() },

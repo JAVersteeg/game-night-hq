@@ -31,13 +31,50 @@ type Navigation = NativeStackNavigationProp<AppStackParamList>;
 interface PlayerCardProps {
   member: GroupMember;
   isScorekeeper: boolean;
-  fields: { key: string; label: string; sign: number; defaultValue: number }[];
+  fields: { key: string; label: string; sign: number; defaultValue: number; exclusive: boolean }[];
   values: Record<string, number>;
   total: number;
   canEdit: boolean;
   isOpen: boolean;
   onToggleOpen: () => void;
   onChangeField: (fieldKey: string, value: number) => void;
+}
+
+/** A field at most one participant may hold per session — Catan's longest trade route, largest
+ *  army. Rendered as an on/off toggle worth its fixed point value rather than a free-entry
+ *  stepper; turning it on for this participant is what triggers clearing every other participant,
+ *  handled by the caller's `onChangeField` (see SessionScreen's handleFieldChange). */
+function ExclusiveFieldToggle({
+  label,
+  pointValue,
+  isHeld,
+  onToggle,
+  testID,
+}: {
+  label: string;
+  pointValue: number;
+  isHeld: boolean;
+  onToggle: (isHeld: boolean) => void;
+  testID?: string;
+}) {
+  return (
+    <Pressable
+      onPress={() => onToggle(!isHeld)}
+      accessibilityRole="switch"
+      accessibilityState={{ checked: isHeld }}
+      testID={testID}
+      className="flex-row items-center gap-3"
+    >
+      <View className="min-w-0 flex-1">
+        <Text className="text-base font-medium text-ink" numberOfLines={1}>
+          {label}
+        </Text>
+      </View>
+      <Badge tone={isHeld ? 'success' : 'neutral'}>
+        {isHeld ? `Behaald (+${pointValue})` : 'Niet behaald'}
+      </Badge>
+    </Pressable>
+  );
 }
 
 function PlayerCard({
@@ -70,16 +107,27 @@ function PlayerCard({
 
       {canEdit && isOpen ? (
         <View className="gap-3 border-t border-line px-4 py-3">
-          {fields.map((field) => (
-            <NumberStepper
-              key={field.key}
-              label={field.label}
-              sign={field.sign === -1 ? -1 : 1}
-              value={values[field.key] ?? field.defaultValue}
-              onChange={(value) => onChangeField(field.key, value)}
-              testID={`score-input-${member.userId}-${field.key}`}
-            />
-          ))}
+          {fields.map((field) =>
+            field.exclusive ? (
+              <ExclusiveFieldToggle
+                key={field.key}
+                label={field.label}
+                pointValue={field.defaultValue}
+                isHeld={(values[field.key] ?? 0) !== 0}
+                onToggle={(isHeld) => onChangeField(field.key, isHeld ? field.defaultValue : 0)}
+                testID={`score-input-${member.userId}-${field.key}`}
+              />
+            ) : (
+              <NumberStepper
+                key={field.key}
+                label={field.label}
+                sign={field.sign === -1 ? -1 : 1}
+                value={values[field.key] ?? field.defaultValue}
+                onChange={(value) => onChangeField(field.key, value)}
+                testID={`score-input-${member.userId}-${field.key}`}
+              />
+            ),
+          )}
         </View>
       ) : null}
     </View>
@@ -327,7 +375,23 @@ export function SessionScreen() {
     label: field.label,
     sign: field.sign,
     defaultValue: field.default_value,
+    exclusive: field.exclusive,
   }));
+
+  /** Writes one participant's field value and, for an exclusive field, clears it for every other
+   *  participant that currently holds it — enforcing the at-most-one-holder rule client-side. */
+  function handleFieldChange(userId: string, fieldKey: string, value: number) {
+    const field = fields.find((candidate) => candidate.key === fieldKey);
+    if (field?.exclusive && value !== 0) {
+      for (const member of participants) {
+        if (member.userId === userId) continue;
+        if (((scoresByUser ?? {})[member.userId]?.[fieldKey] ?? 0) !== 0) {
+          setScore.mutate({ userId: member.userId, fieldKey, value: 0 });
+        }
+      }
+    }
+    setScore.mutate({ userId, fieldKey, value });
+  }
 
   const isScorekeeper = currentUserId === sessionData.scorekeeper_id;
   const isInProgress = sessionData.status === 'in_progress';
@@ -462,7 +526,7 @@ export function SessionScreen() {
                     setOpenParticipantId((current) => (current === member.userId ? null : member.userId))
                   }
                   onChangeField={(fieldKey, value) =>
-                    setScore.mutate({ userId: member.userId, fieldKey, value })
+                    handleFieldChange(member.userId, fieldKey, value)
                   }
                 />
               ))}

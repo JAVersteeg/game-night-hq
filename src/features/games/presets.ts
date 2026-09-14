@@ -18,10 +18,10 @@ export interface GameTemplatePreset {
  * `GAME_COVERS` (see covers.ts) just renders without one; add art there when it becomes available.
  *
  * Catan's longest road and largest army are each worth two points and can only be held by one
- * player at a time. Neither part fits the v1 model — a field contributes its raw value rather than
- * a per-unit score, and bonus rules are evaluated per player in isolation, so nothing can express
- * "at most one player may hold this". Both are therefore plain 0-or-2 fields whose label carries
- * the points, and the scorekeeper is trusted not to award them to two people.
+ * player at a time. Both are `exclusive` fields: the live entry screen renders them as a toggle
+ * per participant (not a stepper) and clears every other participant's toggle the moment one is
+ * turned on, so the one-holder rule is enforced rather than left to the scorekeeper's judgment.
+ * `default` is the point value awarded while held.
  */
 export const GAME_TEMPLATE_PRESETS: GameTemplatePreset[] = [
   {
@@ -31,8 +31,20 @@ export const GAME_TEMPLATE_PRESETS: GameTemplatePreset[] = [
     fields: [
       { key: 'nederzettingen', label: 'Nederzettingen', sign: 1 },
       { key: 'ontwikkelingskaarten', label: 'Punten uit ontwikkelingskaarten', sign: 1 },
-      { key: 'langste_handelsroute', label: 'Langste handelsroute (2 punten)', sign: 1 },
-      { key: 'grootste_riddermacht', label: 'Grootste riddermacht (2 punten)', sign: 1 },
+      {
+        key: 'langste_handelsroute',
+        label: 'Langste handelsroute',
+        sign: 1,
+        exclusive: true,
+        default: 2,
+      },
+      {
+        key: 'grootste_riddermacht',
+        label: 'Grootste riddermacht',
+        sign: 1,
+        exclusive: true,
+        default: 2,
+      },
     ],
   },
 ];

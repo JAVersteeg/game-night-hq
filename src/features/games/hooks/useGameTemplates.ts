@@ -20,6 +20,10 @@ export interface NewGameTemplateField {
   key: string;
   label: string;
   sign: 1 | -1;
+  /** At most one participant may hold this field per session; `default` doubles as the fixed
+   *  point value awarded to whoever holds it (see game_template_fields.exclusive). */
+  exclusive?: boolean;
+  default?: number;
 }
 
 export const gameKeys = {
@@ -98,7 +102,14 @@ export function useCreateGameTemplate(groupId: string) {
         p_group_id: groupId,
         p_name: input.name.trim(),
         p_scoring_direction: input.scoringDirection,
-        p_fields: input.fields.map((field, index) => ({ ...field, position: index })),
+        p_fields: input.fields.map((field, index) => ({
+          key: field.key,
+          label: field.label,
+          sign: field.sign,
+          exclusive: field.exclusive ?? false,
+          default_value: field.default ?? 0,
+          position: index,
+        })),
         p_cover_key: input.coverKey ?? null,
       });
 
