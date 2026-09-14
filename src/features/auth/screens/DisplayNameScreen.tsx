@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { useSetDisplayName } from '@/features/auth/hooks/useProfile';
+import { theme } from '@/lib/theme';
 
 const MAX_DISPLAY_NAME_LENGTH = 40;
 
@@ -41,7 +42,7 @@ export function DisplayNameScreen() {
           value={name}
           onChangeText={setName}
           placeholder="Je naam"
-          placeholderTextColor="#a1a1aa"
+          placeholderTextColor={theme.inkSubtle}
           autoCapitalize="words"
           autoCorrect={false}
           autoFocus

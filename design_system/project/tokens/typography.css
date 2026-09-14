@@ -1,0 +1,33 @@
+:root {
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+
+  /* Sizes are the Tailwind steps the app actually uses, in px, with their line heights. */
+  --text-sm: 14px;
+  --text-sm-lh: 20px;
+  --text-base: 16px;
+  --text-base-lh: 24px;
+  --text-lg: 18px;
+  --text-lg-lh: 28px;
+  --text-xl: 20px;
+  --text-xl-lh: 28px;
+  --text-2xl: 24px;
+  --text-2xl-lh: 32px;
+  --text-3xl: 30px;
+  --text-3xl-lh: 36px;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  --tracking-tight: -0.025em;
+  --tracking-normal: 0em;
+  --tracking-wide: 0.025em;
+
+  /* Roles */
+  --type-screen-title: var(--weight-bold) var(--text-3xl) / var(--text-3xl-lh) var(--font-sans);
+  --type-heading: var(--weight-semibold) var(--text-xl) / var(--text-xl-lh) var(--font-sans);
+  --type-row-title: var(--weight-semibold) var(--text-lg) / var(--text-lg-lh) var(--font-sans);
+  --type-body: var(--weight-medium) var(--text-base) / var(--text-base-lh) var(--font-sans);
+  --type-label: var(--weight-semibold) var(--text-sm) / var(--text-sm-lh) var(--font-sans);
+}

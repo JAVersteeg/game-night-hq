@@ -1,11 +1,8 @@
 import type { Config } from 'tailwindcss';
-import colors from 'tailwindcss/colors';
 
-// Theme switch: change `accent.DEFAULT` (and `accent.fg` when needed) to retint the app.
-//   violet  → accent.DEFAULT = colors.violet[500],  accent.fg = colors.white
-//   orange  → accent.DEFAULT = colors.orange[500],  accent.fg = colors.white
-//   lime    → accent.DEFAULT = colors.lime[500],    accent.fg = colors.zinc[950]
-//   emerald → accent.DEFAULT = colors.emerald[500], accent.fg = colors.white
+// Theme: clay on night. Fired-terracotta accent (Catan hex tile) over a warm brown-black neutral
+// ramp — a deliberate departure from the scaffold's white-on-zinc, set by the design system.
+// See design_system/project/tokens/colors.css for the full ramp this is lifted from.
 
 const config: Config = {
   content: ['./App.{js,ts,jsx,tsx}', './src/**/*.{js,ts,jsx,tsx}'],
@@ -17,43 +14,56 @@ const config: Config = {
       },
       colors: {
         accent: {
-          DEFAULT: colors.violet[500],
-          fg: colors.white,
-          soft: colors.violet[100],
-          softFg: colors.violet[800],
-          strong: colors.violet[600],
+          DEFAULT: '#d4753f',
+          fg: '#16120e', // near-black text on clay — white fails contrast at button size
+          soft: '#3b2117',
+          softFg: '#e2a07c',
+          strong: '#c25a2b',
+          line: '#7c4426',
         },
         surface: {
-          DEFAULT: colors.white,
-          muted: colors.zinc[50],
-          sunken: colors.zinc[100],
+          DEFAULT: '#1c1813',
+          muted: '#221d17',
+          sunken: '#2a241d',
+          deep: '#16120e', // page behind the app, modal scrims
         },
         line: {
-          DEFAULT: colors.zinc[200],
-          strong: colors.zinc[300],
+          DEFAULT: '#3a322a',
+          strong: '#4d433a',
         },
         ink: {
-          DEFAULT: colors.zinc[950],
-          muted: colors.zinc[600],
-          subtle: colors.zinc[400],
-          faint: colors.zinc[300],
+          DEFAULT: '#f2ebe2',
+          muted: '#b6aa9c',
+          subtle: '#8a7e71',
+          faint: '#5f5549',
         },
         success: {
-          DEFAULT: colors.emerald[500],
-          soft: colors.emerald[100],
-          softFg: colors.emerald[800],
-          line: colors.emerald[200],
+          DEFAULT: '#5fa878',
+          soft: '#1d2c22',
+          softFg: '#a9d5b8',
+          line: '#2e4636',
         },
         warning: {
-          DEFAULT: colors.amber[500],
-          soft: colors.amber[100],
-          softFg: colors.amber[800],
+          DEFAULT: '#e0a736',
+          soft: '#322610',
+          softFg: '#efd18f',
         },
         danger: {
-          DEFAULT: colors.rose[500],
-          soft: colors.rose[50],
-          softFg: colors.rose[700],
-          line: colors.rose[400],
+          DEFAULT: '#e2685a',
+          soft: '#351b18',
+          softFg: '#f0aaa0',
+          line: '#8c3a30',
+        },
+        // Fixed per-player chart series, in assignment order — a player keeps the same colour
+        // across every chart. Not consumed by any screen yet (no stats UI is built), kept here so
+        // future chart components inherit it from the same source of truth as everything else.
+        series: {
+          1: '#d4753f',
+          2: '#5fa878',
+          3: '#e0a736',
+          4: '#93a7b5',
+          5: '#aabd74',
+          6: '#7fa8b8',
         },
       },
       borderRadius: {

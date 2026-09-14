@@ -1,5 +1,7 @@
 import { ActivityIndicator, Pressable, Text } from 'react-native';
 
+import { theme } from '@/lib/theme';
+
 interface ButtonProps {
   label: string;
   onPress: () => void;
@@ -21,6 +23,12 @@ const TEXT_BY_VARIANT = {
   ghost: 'text-ink',
 } as const;
 
+const SPINNER_COLOR_BY_VARIANT = {
+  primary: theme.accentFg,
+  secondary: theme.ink,
+  ghost: theme.ink,
+} as const;
+
 export function Button({
   label,
   onPress,
@@ -40,7 +48,7 @@ export function Button({
       testID={testID}
     >
       {isLoading ? (
-        <ActivityIndicator color="#18181b" />
+        <ActivityIndicator color={SPINNER_COLOR_BY_VARIANT[variant]} />
       ) : (
         <Text className={`text-base font-semibold tracking-tight ${TEXT_BY_VARIANT[variant]}`}>
           {label}

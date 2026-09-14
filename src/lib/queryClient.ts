@@ -9,8 +9,11 @@ import { QueryClient } from '@tanstack/react-query';
 function shouldRetry(failureCount: number, error: unknown): boolean {
   const code = (error as { code?: string } | null)?.code;
   // PostgREST surfaces Postgres SQLSTATEs; 42501 is insufficient_privilege (an RLS refusal),
-  // 23xxx are integrity violations. None of these become true on a second attempt.
-  if (typeof code === 'string' && (code === '42501' || code.startsWith('23'))) return false;
+  // 23xxx are integrity violations, and P0002 (no_data_found) is what our RPCs raise for a lookup
+  // that matched nothing — a wrong invite code, say. None of these become true on a second attempt.
+  if (typeof code === 'string' && (code === '42501' || code === 'P0002' || code.startsWith('23'))) {
+    return false;
+  }
   return failureCount < 2;
 }
 

@@ -4,15 +4,28 @@ import { ActivityIndicator, FlatList, Pressable, Text, View } from 'react-native
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/Avatar';
+import { Button } from '@/components/Button';
 import { useProfile } from '@/features/auth/hooks/useProfile';
 import { useGroups, type Group } from '@/features/groups/hooks/useGroups';
 import type { AppStackParamList } from '@/navigation/types';
 
-function GroupRow({ group }: { group: Group }) {
+type Navigation = NativeStackNavigationProp<AppStackParamList>;
+
+function GroupRow({ group, onPress }: { group: Group; onPress: () => void }) {
   return (
-    <View className="rounded-2xl border border-line bg-surface px-4 py-4">
-      <Text className="text-lg font-semibold text-ink">{group.name}</Text>
-    </View>
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`Open groep ${group.name}`}
+      className="flex-row items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-4 active:opacity-70"
+    >
+      <Text className="shrink text-lg font-semibold text-ink" numberOfLines={1}>
+        {group.name}
+      </Text>
+      {/* A chevron drawn as text: nothing in the app pulls in an icon set yet, and one glyph is not
+          reason enough to add one. */}
+      <Text className="ml-auto text-xl text-ink-subtle">›</Text>
+    </Pressable>
   );
 }
 
@@ -29,14 +42,14 @@ function EmptyState() {
 }
 
 export function GroupListScreen() {
-  const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
+  const navigation = useNavigation<Navigation>();
   const { data: profile } = useProfile();
   const { data: groups, isPending, isError, refetch, isRefetching } = useGroups();
 
   return (
-    <SafeAreaView className="flex-1 bg-surface" edges={['top']}>
-      <View className="flex-row items-start justify-between gap-4 px-6 pb-2 pt-2">
-        <View className="shrink">
+    <SafeAreaView className="flex-1 bg-surface" edges={['top', 'bottom']}>
+      <View className="flex-row items-center justify-between gap-4 px-6 pb-2 pt-2">
+        <View >
           <Text className="text-3xl font-bold tracking-tight text-ink">Jouw groepen</Text>
         </View>
 
@@ -68,13 +81,34 @@ export function GroupListScreen() {
         <FlatList
           data={groups}
           keyExtractor={(group) => group.id}
-          renderItem={({ item }) => <GroupRow group={item} />}
+          renderItem={({ item }) => (
+            <GroupRow
+              group={item}
+              onPress={() => navigation.navigate('GroupDashboard', { groupId: item.id })}
+            />
+          )}
           contentContainerClassName="grow gap-3 px-6 pb-8 pt-2"
           ListEmptyComponent={EmptyState}
           onRefresh={refetch}
           refreshing={isRefetching}
         />
       )}
+
+      {/* Pinned rather than appended to the list: these are the only two ways into the app's
+          content, so they stay reachable whether the list is empty, long, or still loading. */}
+      <View className="gap-3 border-t border-line px-6 pb-2 pt-4">
+        <Button
+          label="Groep aanmaken"
+          onPress={() => navigation.navigate('CreateGroup')}
+          testID="create-group-button"
+        />
+        <Button
+          label="Code invoeren"
+          variant="ghost"
+          onPress={() => navigation.navigate('JoinGroup')}
+          testID="join-group-button"
+        />
+      </View>
     </SafeAreaView>
   );
 }

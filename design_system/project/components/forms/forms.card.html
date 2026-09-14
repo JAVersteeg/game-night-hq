@@ -1,0 +1,43 @@
+<!-- @dsCard group="Components" viewport="700x420" name="Forms & status" subtitle="SegmentedControl, ChoiceRow, NumberStepper, Badge" -->
+<!DOCTYPE html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../../styles.css">
+<style>body{margin:0;padding:20px;background:var(--surface);font-family:var(--font-sans);color:var(--ink)}*{box-sizing:border-box}.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}.lbl{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-subtle);margin-bottom:8px}.col{display:flex;flex-direction:column;gap:10px}a{color:var(--accent)}a:hover{color:var(--accent-strong)}</style>
+</head><body><div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<script type="text/babel">
+const { SegmentedControl, ChoiceRow, NumberStepper, Badge, Avatar, Card } = window.GameNightHQDesignSystem_d57d33;
+function Demo(){
+  const [tab,setTab]=React.useState('Spellen');
+  const [dir,setDir]=React.useState('Hoogste totaal wint');
+  const [who,setWho]=React.useState(['Mara de Wit']);
+  const [n,setN]=React.useState(3);
+  const [p,setP]=React.useState(2);
+  const toggle=(x)=>setWho(who.includes(x)?who.filter(w=>w!==x):[...who,x]);
+  return (
+  <div className="grid">
+    <div><div className="lbl">SegmentedControl</div>
+      <SegmentedControl options={['Spellen','Geschiedenis','Statistieken']} value={tab} onChange={setTab} />
+      <div className="lbl" style={{marginTop:20}}>Badge</div>
+      <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+        <Badge tone="warning">Bezig</Badge><Badge>Afgerond</Badge><Badge tone="success">Winnaar</Badge><Badge tone="accent">Scoreteller</Badge><Badge tone="danger">Telt af</Badge>
+      </div>
+      <div className="lbl" style={{marginTop:20}}>NumberStepper</div>
+      <Card><div className="col">
+        <NumberStepper label="Nederzettingen" value={n} onChange={setN} />
+        <NumberStepper label="Strafkaarten" value={p} sign={-1} onChange={setP} />
+      </div></Card>
+    </div>
+    <div><div className="lbl">ChoiceRow — radio</div><div className="col">
+      {['Hoogste totaal wint','Laagste totaal wint'].map(o=>
+        <ChoiceRow key={o} title={o} selected={dir===o} onSelect={()=>setDir(o)} />)}
+      </div>
+      <div className="lbl" style={{marginTop:20}}>ChoiceRow — check</div><div className="col">
+      {['Mara de Wit','Tim Boskamp'].map(o=>
+        <ChoiceRow key={o} mode="check" title={o} meta="lid sinds mei" left={<Avatar displayName={o} size={32} />} selected={who.includes(o)} onSelect={()=>toggle(o)} />)}
+      </div>
+    </div>
+  </div>);}
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo />);
+</script></body></html>

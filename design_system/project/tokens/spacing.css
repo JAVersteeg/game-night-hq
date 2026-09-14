@@ -1,0 +1,22 @@
+:root {
+  /* 4px base grid; these are the steps the screens use. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-3\.5: 14px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Layout roles */
+  --screen-gutter: var(--space-6);   /* px-6 on every screen */
+  --list-gap: var(--space-3);        /* gap-3 between list rows */
+  --section-gap: var(--space-8);     /* mt-8 between profile sections */
+  --card-pad-x: var(--space-4);
+  --card-pad-y: var(--space-4);
+  --control-pad-x: var(--space-6);
+  --control-pad-y: 14px;             /* py-3.5 — buttons and inputs */
+  --tap-min: 44px;
+}

@@ -1,0 +1,53 @@
+<!-- @dsCard group="Components" viewport="700x560" name="Stats & charts" subtitle="StatTile, Leaderboard, TrendChart, ScoreBars, HeadToHead" -->
+<!DOCTYPE html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../../styles.css">
+<style>body{margin:0;padding:20px;background:var(--surface);font-family:var(--font-sans);color:var(--ink)}*{box-sizing:border-box}.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}.lbl{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-subtle);margin-bottom:8px}a{color:var(--accent)}a:hover{color:var(--accent-strong)}</style>
+</head><body><div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<script type="text/babel">
+const { StatTile, Leaderboard, TrendChart, ScoreBars, HeadToHead, Avatar, Card, SectionLabel } = window.GameNightHQDesignSystem_d57d33;
+function Demo(){return (
+  <div className="grid">
+    <div style={{gridColumn:'1 / -1'}}><div className="lbl">StatTile</div>
+      <div style={{display:'flex',gap:12}}>
+        <StatTile value="12" label="avonden" />
+        <StatTile value="42" unit="%" label="winst" />
+        <StatTile value="8.4" label="gem. score" />
+        <StatTile value="3" label="spellen" meta="in deze groep" />
+      </div>
+    </div>
+    <div><div className="lbl">Leaderboard</div>
+      <Leaderboard
+        columns={['Gespeeld','Winst','Gem.']}
+        renderAvatar={(r)=><Avatar displayName={r.name} size={24} />}
+        rows={[
+          {name:'Mara de Wit',values:[12,'42%',8.4]},
+          {name:'Jasper Versteeg',values:[12,'25%',7.1],highlight:true},
+          {name:'Tim Boskamp',values:[9,'22%',6.8]},
+          {name:'Lotte Prins',values:[7,'14%',6.2]},
+        ]} />
+    </div>
+    <div><div className="lbl">TrendChart</div>
+      <Card padding="12px">
+        <TrendChart
+          labels={['5/8','19/8','2/9','12/9','26/9']}
+          series={[
+            {name:'Mara',color:'var(--series-2)',points:[8,10,7,11,9]},
+            {name:'Jasper',color:'var(--series-1)',points:[6,9,9,8,12]},
+            {name:'Tim',color:'var(--series-3)',points:[5,6,8,7,7]},
+          ]} width={300} height={150} />
+      </Card>
+    </div>
+    <div><div className="lbl">ScoreBars</div>
+      <Card>
+        <ScoreBars rows={[{name:'Mara de Wit',total:11},{name:'Jasper Versteeg',total:9},{name:'Tim Boskamp',total:7}]} />
+      </Card>
+    </div>
+    <div><div className="lbl">HeadToHead</div>
+      <Card><HeadToHead left="Jasper" right="Mara" leftWins={4} rightWins={7} draws={1} /></Card>
+    </div>
+  </div>);}
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo />);
+</script></body></html>

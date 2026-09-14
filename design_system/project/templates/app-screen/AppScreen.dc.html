@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<!-- @template name="App screen" description="Game Night HQ mobile screen: 390px column, 24px gutter, title row with avatar, list rows and a primary action." -->
+<helmet><script src="./ds-base.js"></script><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""><style>body{margin:0;background:#16120e}</style></helmet>
+<div style="min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:32px 16px;font-family:Inter, system-ui, sans-serif">
+<div style="width:390px;background:#1c1813;border:1px solid #3a322a;border-radius:44px;overflow:hidden;padding-bottom:32px">
+<div style="height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-weight:600;font-size:14px;color:#f2ebe2"><span>21:40</span><span>100%</span></div>
+<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:8px 24px">
+<h1 style="margin:0;font-weight:700;font-size:30px;line-height:36px;letter-spacing:-0.025em;color:#f2ebe2">Jouw groepen</h1>
+<div style="margin-top:4px"><x-import component-from-global-scope="GameNightHQDesignSystem_d57d33.Avatar" display-name="Jasper Versteeg" size="40" hint-size="40px,40px"></x-import></div>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px;padding:8px 24px 0">
+<x-import component-from-global-scope="GameNightHQDesignSystem_d57d33.ListRow" title="Donderdagclub" meta="6 leden · 12 avonden" hint-size="100%,66px"></x-import>
+<x-import component-from-global-scope="GameNightHQDesignSystem_d57d33.ListRow" title="Kolonisten" meta="4 leden · 7 avonden" hint-size="100%,66px"></x-import>
+<x-import component-from-global-scope="GameNightHQDesignSystem_d57d33.ListRow" title="Weekendtafel" meta="5 leden · 3 avonden" hint-size="100%,66px"></x-import>
+</div>
+<div style="padding:24px 24px 0">
+<x-import component-from-global-scope="GameNightHQDesignSystem_d57d33.Button" label="Groep aanmaken" hint-size="100%,52px"></x-import>
+</div>
+</div>
+</div>
+
+</x-dc>
+</body>
+</html>

@@ -1,0 +1,96 @@
+<!-- @dsCard group="Mobile app" viewport="1180x880" name="Game Night HQ app" subtitle="Built screens plus proposed session, game and stats flows" -->
+<!-- @startingPoint section="Mobile app" subtitle="Click-through of the Game Night HQ app" viewport="1180x880" -->
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>Game Night HQ — app</title><link rel="stylesheet" href="../../styles.css">
+<style>body{margin:0;background:var(--surface-deep);font-family:var(--font-sans);color:var(--ink);-webkit-font-smoothing:antialiased}*{box-sizing:border-box}@keyframes gnhq-spin{to{transform:rotate(360deg)}}a{color:var(--accent)}a:hover{color:var(--accent-strong)}
+.bar{display:flex;gap:8px;align-items:center;padding:16px 24px 8px;flex-wrap:wrap}
+.grp{font:600 11px/1 var(--font-sans);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-subtle);margin-right:2px}
+.chip{flex:0 0 auto;font:500 12px/1 var(--font-sans);white-space:nowrap;color:var(--ink-muted);background:var(--surface);border:var(--border);border-radius:9999px;padding:7px 12px;cursor:pointer}
+.chip[data-on="true"]{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent-soft-fg)}
+.note{font:500 12px/1.55 var(--font-sans);color:var(--ink-subtle);padding:4px 24px 24px;max-width:760px}
+.stage{display:flex;gap:24px;padding:8px 24px 0;flex-wrap:wrap}</style>
+</head><body><div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<script type="text/babel" src="data.jsx"></script>
+<script type="text/babel" src="PhoneFrame.jsx"></script>
+<script type="text/babel" src="DisplayNameScreen.jsx"></script>
+<script type="text/babel" src="GroupListScreen.jsx"></script>
+<script type="text/babel" src="ProfileScreen.jsx"></script>
+<script type="text/babel" src="GroupDetailScreen.jsx"></script>
+<script type="text/babel" src="GameSetupScreens.jsx"></script>
+<script type="text/babel" src="SessionScreens.jsx"></script>
+<script type="text/babel">
+const DEMO_GROUPS = [
+  { id: 'g1', name: 'Donderdagclub' },
+  { id: 'g2', name: 'Kolonisten' },
+  { id: 'g3', name: 'Weekendtafel' },
+];
+const PROFILE = { display_name: 'Jasper Versteeg', avatar_url: null };
+
+const BUILT = [['DisplayName','name'],['GroupList','groups'],['Profile','profile']];
+const PROPOSED = [['Groep','group'],['Nieuw spel','template'],['Avond starten','setup'],['Live','live'],['Meekijken','live-ro'],['Uitslag','result']];
+
+function App() {
+  const [route, setRoute] = React.useState('group');
+  const [profile, setProfile] = React.useState(PROFILE);
+  const [hasGroups, setHasGroups] = React.useState(true);
+
+  const header = {
+    profile: 'Profiel', template: 'Nieuw spel', setup: 'Avond starten',
+    live: 'Kolonisten', 'live-ro': 'Kolonisten', result: 'Uitslag', group: 'Donderdagclub',
+  }[route];
+
+  const body = () => {
+    switch (route) {
+      case 'name': return <DisplayNameScreen onSubmit={(n) => { setProfile({ display_name: n, avatar_url: null }); setRoute('groups'); }} />;
+      case 'groups': return <GroupListScreen profile={profile} groups={hasGroups ? DEMO_GROUPS : []} onProfile={() => setRoute('profile')} />;
+      case 'profile': return <ProfileScreen profile={profile} />;
+      case 'group': return <GroupDetailScreen group="Donderdagclub" onNewGame={() => setRoute('template')} onStart={() => setRoute('setup')} onOpenSession={(s) => setRoute(s.status === 'in_progress' ? 'live' : 'result')} />;
+      case 'template': return <GameTemplateScreen onSave={() => setRoute('group')} />;
+      case 'setup': return <SessionSetupScreen onStart={() => setRoute('live')} />;
+      case 'live': return <LiveSessionScreen onFinish={() => setRoute('result')} />;
+      case 'live-ro': return <LiveSessionScreen readOnly />;
+      case 'result': return <SessionResultScreen onDone={() => setRoute('group')} />;
+      default: return null;
+    }
+  };
+
+  const needsHeader = ['profile','template','setup','result'].includes(route);
+
+  return (
+    <div>
+      <div className="bar">
+        <span className="grp">In de app</span>
+        {BUILT.map(([l, r]) => <span key={r} className="chip" data-on={route === r} onClick={() => setRoute(r)}>{l}</span>)}
+        <span className="chip" data-on={!hasGroups} onClick={() => { setHasGroups(!hasGroups); setRoute('groups'); }}>Lege lijst</span>
+      </div>
+      <div className="bar" style={{paddingTop:0}}>
+        <span className="grp">Voorstel</span>
+        {PROPOSED.map(([l, r]) => <span key={r} className="chip" data-on={route === r} onClick={() => setRoute(r)}>{l}</span>)}
+      </div>
+
+      <div className="stage">
+        <PhoneFrame label={route}>
+          <StatusBar />
+          {needsHeader ? <NativeHeader title={header} onBack={() => setRoute(route === 'profile' ? 'groups' : 'group')} /> : null}
+          {body()}
+        </PhoneFrame>
+
+        <PhoneFrame label="statistieken">
+          <StatusBar />
+          <GroupDetailScreen group="Donderdagclub" initialTab="Statistieken" onNewGame={() => {}} onStart={() => {}} onOpenSession={() => {}} />
+        </PhoneFrame>
+      </div>
+
+      <p className="note">
+        <strong>In de app</strong> — recreated from src/features/* at JAVersteeg/game-night-hq@master.
+        <br /><strong>Voorstel</strong> — proposed screens for the parts CLAUDE.md specifies but the codebase has not built: game templates, session setup, live entry (scorekeeper and read-only), the locked result, history and stats. Nothing here is agreed product yet; the Dutch copy is new and needs a read-through.
+        <br />The second phone starts on the group's stats tab. Switch tabs on either phone.
+      </p>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script></body></html>
