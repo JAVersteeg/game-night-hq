@@ -13,7 +13,7 @@ export function SegmentedControl<T extends string>({
   onChange,
 }: SegmentedControlProps<T>) {
   return (
-    <View className="flex-row gap-1 rounded-2xl bg-surface-sunken p-0.5">
+    <View className="flex-row gap-1 overflow-hidden rounded-2xl bg-surface-sunken p-0.5">
       {options.map((option) => {
         const selected = option === value;
         return (
@@ -22,7 +22,7 @@ export function SegmentedControl<T extends string>({
           // edge all the way around the selected pill, while the whole slot stays tappable.
           <Pressable key={option} onPress={() => onChange(option)} className="min-h-14 flex-1 p-1">
             <View
-              className={`flex-1 items-center justify-center rounded-xl px-2 py-1 ${
+              className={`flex-1 items-center justify-center overflow-hidden rounded-xl px-2 py-1 ${
                 selected ? 'bg-surface' : ''
               }`}
             >

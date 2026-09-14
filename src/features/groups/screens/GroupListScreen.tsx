@@ -96,7 +96,7 @@ export function GroupListScreen() {
 
       {/* Pinned rather than appended to the list: these are the only two ways into the app's
           content, so they stay reachable whether the list is empty, long, or still loading. */}
-      <View className="gap-3 border-t border-line px-6 pb-2 pt-4">
+      <View className="gap-3 border-t border-line px-6 py-4">
         <Button
           label="Groep aanmaken"
           onPress={() => navigation.navigate('CreateGroup')}
