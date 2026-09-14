@@ -28,7 +28,14 @@ export const gameKeys = {
 };
 
 export function scoringDirectionLabel(direction: ScoringDirection): string {
-  return direction === 'highest_total_wins' ? 'Hoogste totaal wint' : 'Laagste totaal wint';
+  switch (direction) {
+    case 'highest_total_wins':
+      return 'Hoogste totaal wint';
+    case 'lowest_total_wins':
+      return 'Laagste totaal wint';
+    case 'ranked':
+      return 'Ranglijst';
+  }
 }
 
 /**
@@ -85,12 +92,14 @@ export function useCreateGameTemplate(groupId: string) {
       name: string;
       scoringDirection: ScoringDirection;
       fields: NewGameTemplateField[];
+      coverKey?: string | null;
     }) => {
       const { data, error } = await supabase.rpc('create_game_template', {
         p_group_id: groupId,
         p_name: input.name.trim(),
         p_scoring_direction: input.scoringDirection,
         p_fields: input.fields.map((field, index) => ({ ...field, position: index })),
+        p_cover_key: input.coverKey ?? null,
       });
 
       if (error) throw error;

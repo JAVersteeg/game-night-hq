@@ -3,6 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import DraggableFlatList, { type RenderItemParams } from 'react-native-draggable-flatlist';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/Avatar';
@@ -15,7 +16,7 @@ import { SectionLabel } from '@/components/SectionLabel';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { useGroupMembers, type GroupMember } from '@/features/groups/hooks/useGroupMembers';
 import { scoringDirectionLabel, useGameTemplate } from '@/features/games/hooks/useGameTemplates';
-import { computeTotals } from '@/features/sessions/scoring';
+import { RANK_FIELD_KEY, computeTotals } from '@/features/sessions/scoring';
 import { useSessionParticipants } from '@/features/sessions/hooks/useSessionParticipants';
 import { useSetScore, useSessionScores } from '@/features/sessions/hooks/useSessionScores';
 import {
@@ -82,6 +83,128 @@ function PlayerCard({
         </View>
       ) : null}
     </View>
+  );
+}
+
+function RankBadge({ position }: { position: number }) {
+  return (
+    <View className="h-7 w-7 items-center justify-center rounded-full bg-surface-sunken">
+      <Text className="text-sm font-bold text-ink">{position}</Text>
+    </View>
+  );
+}
+
+/** Read-only finish order: the completed-session results, or the live view spectators see while
+ *  the scorekeeper is still dragging. */
+function RankedOrderList({ members }: { members: GroupMember[] }) {
+  return (
+    <View className="overflow-hidden rounded-2xl border border-line bg-surface">
+      {members.map((member, index) => (
+        <View
+          key={member.userId}
+          className={`flex-row items-center gap-3 px-4 py-3 ${index === 0 ? '' : 'border-t border-line'}`}
+        >
+          <RankBadge position={index + 1} />
+          <Avatar displayName={member.displayName} avatarUrl={member.avatarUrl} size={32} />
+          <Text className="min-w-0 flex-1 text-base font-semibold text-ink" numberOfLines={1}>
+            {member.displayName}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function RankedEntryRow({
+  position,
+  member,
+  drag,
+  isActive,
+}: {
+  position: number;
+  member: GroupMember;
+  drag: () => void;
+  isActive: boolean;
+}) {
+  return (
+    <Pressable
+      onLongPress={drag}
+      disabled={isActive}
+      accessibilityRole="button"
+      accessibilityLabel={`Sleep ${member.displayName} naar een andere plek`}
+      className={`flex-row items-center gap-3 rounded-2xl border px-4 py-3 ${
+        isActive ? 'border-accent-line bg-accent-soft' : 'border-line bg-surface'
+      }`}
+    >
+      <RankBadge position={position} />
+      <Avatar displayName={member.displayName} avatarUrl={member.avatarUrl} size={32} />
+      <Text className="min-w-0 flex-1 text-base font-semibold text-ink" numberOfLines={1}>
+        {member.displayName}
+      </Text>
+      <Text className="text-lg text-ink-subtle">≡</Text>
+    </Pressable>
+  );
+}
+
+/** Drag-to-reorder finish order for a ranked template — there are no fields to enter, only who
+ *  finished where. Local `order` is the source of truth while dragging: it starts from whatever
+ *  rank values already exist (or participant order, for a session nobody has ordered yet) and only
+ *  resyncs from props if the participant set itself changes, so the scorekeeper's own writes
+ *  echoing back through realtime don't yank the list out from under an in-progress drag. */
+function RankedEntryList({
+  participants,
+  scoresByUser,
+  onReorder,
+}: {
+  participants: GroupMember[];
+  scoresByUser: Record<string, Record<string, number>>;
+  onReorder: (userIds: string[]) => void;
+}) {
+  const [order, setOrder] = useState<GroupMember[]>([]);
+
+  useEffect(() => {
+    if (participants.length === 0) return;
+    setOrder((current) => {
+      const currentIds = new Set(current.map((member) => member.userId));
+      const sameMembership =
+        current.length === participants.length &&
+        participants.every((member) => currentIds.has(member.userId));
+      if (sameMembership) return current;
+
+      const next = [...participants].sort(
+        (a, b) =>
+          (scoresByUser[a.userId]?.[RANK_FIELD_KEY] ?? participants.length) -
+          (scoresByUser[b.userId]?.[RANK_FIELD_KEY] ?? participants.length),
+      );
+      // Persists the order shown on first render too, not just after a drag — otherwise
+      // finalising a session nobody ever dragged would leave every participant tied for last
+      // (no rank rows written at all) instead of matching what's on screen.
+      onReorder(next.map((member) => member.userId));
+      return next;
+    });
+    // Only participant membership should trigger a resync — see the comment above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [participants]);
+
+  return (
+    <DraggableFlatList
+      data={order}
+      keyExtractor={(member) => member.userId}
+      scrollEnabled={false}
+      ItemSeparatorComponent={() => <View className="h-2" />}
+      renderItem={({ item, getIndex, drag, isActive }: RenderItemParams<GroupMember>) => (
+        <RankedEntryRow
+          position={(getIndex() ?? 0) + 1}
+          member={item}
+          drag={drag}
+          isActive={isActive}
+        />
+      )}
+      onDragEnd={({ data }) => {
+        setOrder(data);
+        onReorder(data.map((member) => member.userId));
+      }}
+    />
   );
 }
 
@@ -209,6 +332,7 @@ export function SessionScreen() {
   const isScorekeeper = currentUserId === sessionData.scorekeeper_id;
   const isInProgress = sessionData.status === 'in_progress';
   const canEdit = isScorekeeper && isInProgress;
+  const isRanked = sessionData.game_templates.scoring_direction === 'ranked';
 
   const totals = computeTotals(
     participants.map((member) => member.userId),
@@ -229,6 +353,9 @@ export function SessionScreen() {
       .sort((a, b) => (scoringDirection === 'highest_total_wins' ? b.total - a.total : a.total - b.total));
 
     const winners = participants.filter((member) => totalByUserId.get(member.userId)?.isWinner);
+    const orderedMembers = [...participants].sort(
+      (a, b) => (totalByUserId.get(a.userId)?.total ?? 0) - (totalByUserId.get(b.userId)?.total ?? 0),
+    );
 
     return (
       <View className="flex-1 bg-surface">
@@ -267,9 +394,15 @@ export function SessionScreen() {
 
           <View>
             <SectionLabel>Eindstand</SectionLabel>
-            <Card className="mt-2">
-              <ScoreBars rows={orderedRows} />
-            </Card>
+            {isRanked ? (
+              <View className="mt-2">
+                <RankedOrderList members={orderedMembers} />
+              </View>
+            ) : (
+              <Card className="mt-2">
+                <ScoreBars rows={orderedRows} />
+              </Card>
+            )}
           </View>
 
           <Button label="Terug naar groep" onPress={() => navigation.goBack()} />
@@ -289,26 +422,52 @@ export function SessionScreen() {
       >
         <View>
           <SectionLabel>Deelnemers</SectionLabel>
-          <View className="mt-2 gap-2">
-            {participants.map((member) => (
-              <PlayerCard
-                key={member.userId}
-                member={member}
-                isScorekeeper={member.userId === sessionData.scorekeeper_id}
-                fields={fields}
-                values={(scoresByUser ?? {})[member.userId] ?? {}}
-                total={totalByUserId.get(member.userId)?.total ?? 0}
-                canEdit={canEdit}
-                isOpen={openParticipantId === member.userId}
-                onToggleOpen={() =>
-                  setOpenParticipantId((current) => (current === member.userId ? null : member.userId))
-                }
-                onChangeField={(fieldKey, value) =>
-                  setScore.mutate({ userId: member.userId, fieldKey, value })
-                }
-              />
-            ))}
-          </View>
+          {isRanked ? (
+            canEdit ? (
+              <View className="mt-2">
+                <RankedEntryList
+                  participants={participants}
+                  scoresByUser={scoresByUser ?? {}}
+                  onReorder={(userIds) =>
+                    userIds.forEach((userId, index) =>
+                      setScore.mutate({ userId, fieldKey: RANK_FIELD_KEY, value: index + 1 }),
+                    )
+                  }
+                />
+              </View>
+            ) : (
+              <View className="mt-2">
+                <RankedOrderList
+                  members={[...participants].sort(
+                    (a, b) =>
+                      (totalByUserId.get(a.userId)?.total ?? 0) -
+                      (totalByUserId.get(b.userId)?.total ?? 0),
+                  )}
+                />
+              </View>
+            )
+          ) : (
+            <View className="mt-2 gap-2">
+              {participants.map((member) => (
+                <PlayerCard
+                  key={member.userId}
+                  member={member}
+                  isScorekeeper={member.userId === sessionData.scorekeeper_id}
+                  fields={fields}
+                  values={(scoresByUser ?? {})[member.userId] ?? {}}
+                  total={totalByUserId.get(member.userId)?.total ?? 0}
+                  canEdit={canEdit}
+                  isOpen={openParticipantId === member.userId}
+                  onToggleOpen={() =>
+                    setOpenParticipantId((current) => (current === member.userId ? null : member.userId))
+                  }
+                  onChangeField={(fieldKey, value) =>
+                    setScore.mutate({ userId: member.userId, fieldKey, value })
+                  }
+                />
+              ))}
+            </View>
+          )}
         </View>
       </ScrollView>
 

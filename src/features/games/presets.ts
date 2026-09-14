@@ -13,7 +13,9 @@ export interface GameTemplatePreset {
 /**
  * Starter templates offered on the create-game screen. A preset only prefills the form: what gets
  * saved is an ordinary per-group template, so a group can rename or reshape it afterwards without
- * the preset being involved again.
+ * the preset being involved again — except its cover art, which is remembered by storing the
+ * preset's `id` as the new template's `cover_key`. A preset with no matching entry in
+ * `GAME_COVERS` (see covers.ts) just renders without one; add art there when it becomes available.
  *
  * Catan's longest road and largest army are each worth two points and can only be held by one
  * player at a time. Neither part fits the v1 model — a field contributes its raw value rather than

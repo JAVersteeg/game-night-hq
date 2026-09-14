@@ -31,14 +31,16 @@ export function Card({ children, tone = 'plain', onPress, className = '' }: Card
 interface ListRowProps {
   title: string;
   meta?: string;
+  left?: ReactNode;
   right?: ReactNode;
   onPress?: () => void;
 }
 
-/** A single row inside a list: title, optional meta line, optional right slot. */
-export function ListRow({ title, meta, right, onPress }: ListRowProps) {
+/** A single row inside a list: optional left slot, title, optional meta line, optional right slot. */
+export function ListRow({ title, meta, left, right, onPress }: ListRowProps) {
   return (
     <Card onPress={onPress} className="flex-row items-center gap-4">
+      {left}
       <View className="min-w-0 flex-1">
         <Text className="text-lg font-semibold text-ink" numberOfLines={1}>
           {title}

@@ -4,7 +4,10 @@ import { SectionLabel } from '@/components/SectionLabel';
 import { theme } from '@/lib/theme';
 
 interface TextFieldProps
-  extends Pick<TextInputProps, 'onSubmitEditing' | 'returnKeyType' | 'keyboardType' | 'onBlur'> {
+  extends Pick<
+    TextInputProps,
+    'onSubmitEditing' | 'returnKeyType' | 'keyboardType' | 'onBlur' | 'onFocus'
+  > {
   value: string;
   onChangeText: (value: string) => void;
   placeholder?: string;

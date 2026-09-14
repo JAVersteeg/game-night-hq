@@ -10,6 +10,11 @@ export interface PlayerTotal {
   isWinner: boolean;
 }
 
+/** The synthetic `session_scores.field_key` a ranked template's finish order is stored under —
+ *  ranked templates have no real fields, so there's nothing else to key it by. Value is the
+ *  finish position, 1 = first place. */
+export const RANK_FIELD_KEY = 'rank';
+
 function bonusDelta(rule: BonusRule, fieldValue: number): number {
   switch (rule.operator) {
     case '==':
@@ -39,7 +44,9 @@ export function computeTotal(
   return fieldTotal + bonusTotal;
 }
 
-/** A total per participant plus which of them won — ties all win, since nothing breaks them. */
+/** A total per participant plus which of them won — ties all win, since nothing breaks them.
+ *  Ranked templates have no fields to sum: "total" is the finish position instead (1 = best),
+ *  which is also why the "lowest wins" branch below doubles as "lowest rank wins" for them. */
 export function computeTotals(
   participantIds: string[],
   fields: Pick<GameTemplateField, 'key' | 'sign'>[],
@@ -49,7 +56,10 @@ export function computeTotals(
 ): PlayerTotal[] {
   const totals = participantIds.map((userId) => ({
     userId,
-    total: computeTotal(fields, bonusRules, scoresByUser[userId] ?? {}),
+    total:
+      scoringDirection === 'ranked'
+        ? (scoresByUser[userId]?.[RANK_FIELD_KEY] ?? participantIds.length)
+        : computeTotal(fields, bonusRules, scoresByUser[userId] ?? {}),
   }));
 
   if (totals.length === 0) return [];

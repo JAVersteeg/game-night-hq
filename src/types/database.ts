@@ -95,6 +95,7 @@ export type Database = {
       };
       game_templates: {
         Row: {
+          cover_key: string | null;
           created_at: string;
           created_by: string | null;
           group_id: string;
@@ -103,6 +104,7 @@ export type Database = {
           scoring_direction: Database['public']['Enums']['scoring_direction'];
         };
         Insert: {
+          cover_key?: string | null;
           created_at?: string;
           created_by?: string | null;
           group_id: string;
@@ -111,6 +113,7 @@ export type Database = {
           scoring_direction: Database['public']['Enums']['scoring_direction'];
         };
         Update: {
+          cover_key?: string | null;
           created_at?: string;
           created_by?: string | null;
           group_id?: string;
@@ -317,12 +320,14 @@ export type Database = {
       create_game_template: {
         Args: {
           p_bonus_rules?: Json;
+          p_cover_key?: string | null;
           p_fields: Json;
           p_group_id: string;
           p_name: string;
           p_scoring_direction: Database['public']['Enums']['scoring_direction'];
         };
         Returns: {
+          cover_key: string | null;
           created_at: string;
           created_by: string | null;
           group_id: string;
@@ -333,6 +338,22 @@ export type Database = {
         SetofOptions: {
           from: '*';
           to: 'game_templates';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      create_group: {
+        Args: { p_name: string };
+        Returns: {
+          created_at: string;
+          created_by: string | null;
+          id: string;
+          invite_code: string;
+          name: string;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'groups';
           isOneToOne: true;
           isSetofReturn: false;
         };
@@ -361,22 +382,6 @@ export type Database = {
           isSetofReturn: false;
         };
       };
-      create_group: {
-        Args: { p_name: string };
-        Returns: {
-          created_at: string;
-          created_by: string | null;
-          id: string;
-          invite_code: string;
-          name: string;
-        };
-        SetofOptions: {
-          from: '*';
-          to: 'groups';
-          isOneToOne: true;
-          isSetofReturn: false;
-        };
-      };
       join_group_by_code: {
         Args: { p_code: string };
         Returns: {
@@ -396,7 +401,7 @@ export type Database = {
     };
     Enums: {
       bonus_operator: '==' | '>' | '<' | '>=' | '<=';
-      scoring_direction: 'highest_total_wins' | 'lowest_total_wins';
+      scoring_direction: 'highest_total_wins' | 'lowest_total_wins' | 'ranked';
       session_status: 'in_progress' | 'completed';
     };
     CompositeTypes: {
@@ -428,8 +433,10 @@ export type Tables<
     }
     ? R
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])
-    ? (DefaultSchema['Tables'] & DefaultSchema['Views'])[DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema['Tables'] &
+        DefaultSchema['Views'])
+    ? (DefaultSchema['Tables'] &
+        DefaultSchema['Views'])[DefaultSchemaTableNameOrOptions] extends {
         Row: infer R;
       }
       ? R
@@ -438,7 +445,8 @@ export type Tables<
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-    keyof DefaultSchema['Tables'] | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema['Tables']
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
   }
@@ -462,7 +470,8 @@ export type TablesInsert<
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-    keyof DefaultSchema['Tables'] | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema['Tables']
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
   }
@@ -486,7 +495,8 @@ export type TablesUpdate<
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-    keyof DefaultSchema['Enums'] | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema['Enums']
+    | { schema: keyof DatabaseWithoutInternals },
   EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
   }
@@ -502,7 +512,8 @@ export type Enums<
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-    keyof DefaultSchema['CompositeTypes'] | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema['CompositeTypes']
+    | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
   }
@@ -520,7 +531,7 @@ export const Constants = {
   public: {
     Enums: {
       bonus_operator: ['==', '>', '<', '>=', '<='],
-      scoring_direction: ['highest_total_wins', 'lowest_total_wins'],
+      scoring_direction: ['highest_total_wins', 'lowest_total_wins', 'ranked'],
       session_status: ['in_progress', 'completed'],
     },
   },

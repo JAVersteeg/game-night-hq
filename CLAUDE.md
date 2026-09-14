@@ -36,8 +36,8 @@ If a library decision isn't covered here, pick the smallest dependency that solv
 - Defined per group, by any member (not just a group "admin" — no admin role planned for v1).
 - Has a name, a list of custom fields, a scoring direction, and optional bonus rules.
 - **Field:** `{ key, label, type: "number", sign: 1 | -1, default: number }`. The sign lets a field count against the total (e.g. "penalty cards" as sign -1) without needing a formula language.
-- **Scoring direction:** `highest_total_wins` | `lowest_total_wins`, computed as the signed sum of a player's fields for that session, plus any bonus rule deltas.
-- **Bonus rule (optional, list):** `{ condition: { field_key, operator: "==" | ">" | "<" | ">=" | "<=", value }, points_delta }`. Evaluated per player at session end. This covers "bonus/penalty conditions" without a full expression engine — see Open Decisions if this turns out to be insufficient.
+- **Scoring direction:** `highest_total_wins` | `lowest_total_wins` | `ranked`. The first two are computed as the signed sum of a player's fields for that session, plus any bonus rule deltas. `ranked` is different: the template has no fields and no bonus rules at all — there's nothing to sum. Instead, the scorekeeper drags participants into finish order during live play, and that position (1 = first place) is the only thing recorded, stored as a session score under the synthetic field key `rank`.
+- **Bonus rule (optional, list):** `{ condition: { field_key, operator: "==" | ">" | "<" | ">=" | "<=", value }, points_delta }`. Evaluated per player at session end. This covers "bonus/penalty conditions" without a full expression engine — see Open Decisions if this turns out to be insufficient. Not applicable to `ranked` templates, which have no fields for a condition to reference.
 
 **Session**
 - One instance of playing a game, within a group, on a given date.

@@ -9,10 +9,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
+import { CoverThumbnail } from '@/components/CoverThumbnail';
 import { EmptyState } from '@/components/EmptyState';
 import { GearIcon } from '@/components/GearIcon';
 import { SegmentedControl } from '@/components/SegmentedControl';
-import { useGameTemplates } from '@/features/games/hooks/useGameTemplates';
+import { coverImageForKey } from '@/features/games/covers';
+import type { LeaderboardEntry } from '@/features/games/hooks/useGameLeaderboard';
+import { useGameLeaderboard } from '@/features/games/hooks/useGameLeaderboard';
+import { useGameTemplate, useGameTemplates } from '@/features/games/hooks/useGameTemplates';
 import {
   useGroupDashboardStats,
   type PopularGame,
@@ -43,29 +47,18 @@ function SettingsButton({ onPress }: { onPress: () => void }) {
   );
 }
 
-/** Placeholder for the box cover art — nothing uploads one yet. Sized down for the history row so
- *  it reads as a smaller thumbnail next to the bigger one on the games list. */
-function CoverPlaceholder({ size }: { size: number }) {
-  return (
-    <View
-      className="rounded-xl border border-line bg-surface-sunken"
-      style={{ width: size, height: size }}
-    />
-  );
-}
-
 function GameRow({
   name,
-  fieldCount,
+  coverKey,
   onPress,
 }: {
   name: string;
-  fieldCount: number;
+  coverKey: string | null;
   onPress: () => void;
 }) {
   return (
     <Card onPress={onPress} className="flex-row items-center gap-4">
-      <CoverPlaceholder size={56} />
+      <CoverThumbnail source={coverImageForKey(coverKey)} size={56} />
       <View className="min-w-0 flex-1">
         <Text className="text-lg font-semibold text-ink" numberOfLines={1}>
           {name}
@@ -77,16 +70,18 @@ function GameRow({
 
 function HistoryRow({
   gameName,
+  coverKey,
   meta,
   onPress,
 }: {
   gameName: string;
+  coverKey: string | null;
   meta: string;
   onPress: () => void;
 }) {
   return (
     <Card onPress={onPress} className="flex-row items-center gap-4">
-      <CoverPlaceholder size={40} />
+      <CoverThumbnail source={coverImageForKey(coverKey)} size={40} />
       <View className="min-w-0 flex-1">
         <Text className="text-lg font-semibold text-ink" numberOfLines={1}>
           {gameName}
@@ -125,7 +120,7 @@ function GamesTab({ groupId }: { groupId: string }) {
             <GameRow
               key={template.id}
               name={template.name}
-              fieldCount={template.game_template_fields.length}
+              coverKey={template.cover_key}
               onPress={() =>
                 navigation.navigate('StartSession', { groupId, templateId: template.id })
               }
@@ -187,6 +182,7 @@ function HistoryTab({ groupId }: { groupId: string }) {
             <HistoryRow
               key={session.id}
               gameName={session.gameName}
+              coverKey={session.coverKey}
               meta={meta}
               onPress={() => navigation.navigate('Session', { sessionId: session.id })}
             />
@@ -219,11 +215,147 @@ function PopularGameRow({ game, isFirst }: { game: PopularGame; isFirst: boolean
   );
 }
 
-/**
- * Every number here comes from a real query against `game_templates` / `sessions` — there is no
- * flow yet to play a session, so today this legitimately renders its empty popular-games state for
- * every group. That's expected, not a bug.
- */
+function GameChip({
+  label,
+  selected,
+  onPress,
+}: {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      className={`rounded-full border px-3.5 py-2 ${
+        selected ? 'border-accent-line bg-accent-soft' : 'border-line bg-surface'
+      }`}
+    >
+      <Text
+        className={`text-sm font-semibold ${selected ? 'text-accent-softFg' : 'text-ink-muted'}`}
+        numberOfLines={1}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+function LeaderboardRow({
+  rank,
+  name,
+  entry,
+  isFirst,
+}: {
+  rank: number;
+  name: string;
+  entry: LeaderboardEntry;
+  isFirst: boolean;
+}) {
+  return (
+    <View
+      className={`flex-row items-center gap-3 px-4 py-3 ${isFirst ? '' : 'border-t border-line'}`}
+    >
+      <Text className="w-5 text-sm font-semibold text-ink-subtle">{rank}</Text>
+      <View className="min-w-0 flex-1">
+        <Text className="text-base font-semibold text-ink" numberOfLines={1}>
+          {name}
+        </Text>
+        <Text className="mt-0.5 text-sm text-ink-muted" numberOfLines={1}>
+          {entry.wins}/{entry.gamesPlayed} gewonnen · gem. {entry.avgTotal}
+        </Text>
+      </View>
+      <Text className="text-lg font-bold text-ink">{entry.winPct}%</Text>
+    </View>
+  );
+}
+
+/** Leaderboard for one game template: chips to pick which of the group's played games to show,
+ *  then wins / win % / average total per player, most wins first. Only offers templates that have
+ *  actually been played — `popularGames` is already filtered and capped that way. */
+function LeaderboardSection({
+  groupId,
+  popularGames,
+}: {
+  groupId: string;
+  popularGames: PopularGame[];
+}) {
+  const [selectedTemplateId, setSelectedTemplateId] = useState(popularGames[0]?.templateId ?? '');
+  const templateId = popularGames.some((game) => game.templateId === selectedTemplateId)
+    ? selectedTemplateId
+    : (popularGames[0]?.templateId ?? '');
+
+  const { data: template } = useGameTemplate(templateId);
+  const { data: members } = useGroupMembers(groupId);
+  const {
+    data: leaderboard,
+    isPending,
+    isError,
+  } = useGameLeaderboard(
+    templateId,
+    template?.game_template_fields ?? [],
+    template?.bonus_rules ?? [],
+    template?.scoring_direction ?? 'highest_total_wins',
+  );
+
+  const displayNameById = new Map((members ?? []).map((member) => [member.userId, member.displayName]));
+
+  if (popularGames.length === 0) return null;
+
+  return (
+    <View className="mt-8">
+      <Text className="text-sm font-semibold uppercase tracking-wide text-ink-subtle">
+        Ranglijst
+      </Text>
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        className="mt-3"
+        contentContainerClassName="gap-2"
+      >
+        {popularGames.map((game) => (
+          <GameChip
+            key={game.templateId}
+            label={game.name}
+            selected={game.templateId === templateId}
+            onPress={() => setSelectedTemplateId(game.templateId)}
+          />
+        ))}
+      </ScrollView>
+
+      <View className="mt-3 overflow-hidden rounded-2xl border border-line bg-surface">
+        {isPending || !template ? (
+          <View className="items-center py-6">
+            <ActivityIndicator />
+          </View>
+        ) : isError ? (
+          <Text className="px-4 py-6 text-base text-ink-muted">
+            De ranglijst kon niet worden geladen.
+          </Text>
+        ) : !leaderboard || leaderboard.length === 0 ? (
+          <View className="bg-surface-muted px-4 py-6">
+            <Text className="text-base text-ink-muted">
+              Nog geen potjes van dit spel om een ranglijst van te maken.
+            </Text>
+          </View>
+        ) : (
+          leaderboard.map((entry, index) => (
+            <LeaderboardRow
+              key={entry.userId}
+              rank={index + 1}
+              name={displayNameById.get(entry.userId) ?? '?'}
+              entry={entry}
+              isFirst={index === 0}
+            />
+          ))
+        )}
+      </View>
+    </View>
+  );
+}
+
 function StatsTab({ groupId }: { groupId: string }) {
   const { data: stats, isPending, isError } = useGroupDashboardStats(groupId);
 
@@ -261,6 +393,8 @@ function StatsTab({ groupId }: { groupId: string }) {
           ))
         )}
       </View>
+
+      {stats ? <LeaderboardSection groupId={groupId} popularGames={stats.popularGames} /> : null}
     </ScrollView>
   );
 }

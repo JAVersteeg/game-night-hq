@@ -8,6 +8,7 @@ export interface SessionHistoryEntry {
   id: string;
   playedAt: string;
   gameName: string;
+  coverKey: string | null;
   /** All of them, in case of a tie — nothing breaks ties, same as the session's own result screen.
    *  Ids only: `session_participants.user_id` has no foreign key to `profiles` (unlike
    *  `group_members`), so display names have to be resolved by the caller against the group's
@@ -24,6 +25,7 @@ interface SessionRow {
   played_at: string;
   game_templates: {
     name: string;
+    cover_key: string | null;
     scoring_direction: ScoringDirection;
     game_template_fields: { key: string; sign: number }[];
     bonus_rules: BonusRule[];
@@ -47,7 +49,7 @@ export function useSessionHistory(groupId: string) {
         .from('sessions')
         .select(
           `id, played_at,
-           game_templates(name, scoring_direction, game_template_fields(key, sign), bonus_rules(*)),
+           game_templates(name, cover_key, scoring_direction, game_template_fields(key, sign), bonus_rules(*)),
            session_participants(user_id)`,
         )
         .eq('group_id', groupId)
@@ -89,6 +91,7 @@ export function useSessionHistory(groupId: string) {
           id: session.id,
           playedAt: session.played_at,
           gameName: session.game_templates.name,
+          coverKey: session.game_templates.cover_key,
           winnerIds: totals.filter((total) => total.isWinner).map((total) => total.userId),
         };
       });
