@@ -18,7 +18,11 @@ import { scoringDirectionLabel, useGameTemplate } from '@/features/games/hooks/u
 import { computeTotals } from '@/features/sessions/scoring';
 import { useSessionParticipants } from '@/features/sessions/hooks/useSessionParticipants';
 import { useSetScore, useSessionScores } from '@/features/sessions/hooks/useSessionScores';
-import { useFinalizeSession, useSession } from '@/features/sessions/hooks/useSessions';
+import {
+  useDeleteSession,
+  useFinalizeSession,
+  useSession,
+} from '@/features/sessions/hooks/useSessions';
 import type { AppStackParamList } from '@/navigation/types';
 
 type Navigation = NativeStackNavigationProp<AppStackParamList>;
@@ -87,8 +91,10 @@ interface LeaveConfirmModalProps {
   onConfirm: () => void;
 }
 
-/** Guards against leaving a live session by accident — the back gesture, the header back button,
- *  and Android's hardware back button all funnel through the same `beforeRemove` event. */
+/** Guards the scorekeeper against abandoning a live session by accident — the back gesture, the
+ *  header back button, and Android's hardware back button all funnel through the same
+ *  `beforeRemove` event. Confirming deletes the session: there's no "in progress but nobody's
+ *  keeping score" state to leave it in, so backing out has to mean throwing it away. */
 function LeaveConfirmModal({ visible, onCancel, onConfirm }: LeaveConfirmModalProps) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
@@ -99,12 +105,12 @@ function LeaveConfirmModal({ visible, onCancel, onConfirm }: LeaveConfirmModalPr
       >
         <Pressable className="w-full max-w-sm gap-4 rounded-3xl border border-line bg-surface p-6">
           <View>
-            <Text className="text-xl font-bold text-ink">Potje afsluiten?</Text>
+            <Text className="text-xl font-bold text-ink">Potje verwijderen?</Text>
             <Text className="mt-1 text-sm text-ink-muted">
-              Weet je zeker dat je een lopend potje wil afsluiten?
+              Als je nu teruggaat, wordt dit lopende potje verwijderd. Alle scores gaan verloren.
             </Text>
           </View>
-          <Button label="Afsluiten" variant="secondary" onPress={onConfirm} />
+          <Button label="Verwijderen" variant="secondary" onPress={onConfirm} />
           <Button label="Terug naar potje" onPress={onCancel} />
         </Pressable>
       </Pressable>
@@ -132,6 +138,7 @@ export function SessionScreen() {
   const { data: scoresByUser } = useSessionScores(sessionId);
   const setScore = useSetScore(sessionId);
   const finalizeSession = useFinalizeSession(sessionId, sessionData?.group_id ?? '');
+  const deleteSession = useDeleteSession(sessionId, sessionData?.group_id ?? '');
 
   const [openParticipantId, setOpenParticipantId] = useState<string | null>(currentUserId ?? null);
 
@@ -144,20 +151,24 @@ export function SessionScreen() {
 
   // Covers the header back button, the swipe gesture, and Android's hardware back button alike —
   // all of them dispatch a GO_BACK action that fires this event before the screen is removed.
+  // Only the scorekeeper backing out is destructive (it deletes the session), so that's the only
+  // case this intercepts — a spectator leaving the live view has nothing to lose.
   useEffect(() => {
     return navigation.addListener('beforeRemove', (event) => {
-      if (sessionData?.status !== 'in_progress') return;
+      const isScorekeeper = currentUserId === sessionData?.scorekeeper_id;
+      if (sessionData?.status !== 'in_progress' || !isScorekeeper) return;
 
       event.preventDefault();
       pendingLeaveActionRef.current = event.data.action;
       setIsLeaveConfirmVisible(true);
     });
-  }, [navigation, sessionData?.status]);
+  }, [navigation, sessionData?.status, sessionData?.scorekeeper_id, currentUserId]);
 
   function confirmLeave() {
     setIsLeaveConfirmVisible(false);
     const action = pendingLeaveActionRef.current;
     pendingLeaveActionRef.current = null;
+    deleteSession.mutate();
     if (action) navigation.dispatch(action);
   }
 

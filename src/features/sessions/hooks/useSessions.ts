@@ -108,3 +108,22 @@ export function useFinalizeSession(sessionId: string, groupId: string) {
     },
   });
 }
+
+/**
+ * Abandoning a session the scorekeeper never actually played out — `sessions_delete` restricts
+ * this to the scorekeeper and only while `in_progress`, so a finished session can never be erased
+ * this way. The cascade on `session_participants`/`session_scores` handles the rest.
+ */
+export function useDeleteSession(sessionId: string, groupId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from('sessions').delete().eq('id', sessionId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: groupKeys.dashboard(groupId) });
+    },
+  });
+}
