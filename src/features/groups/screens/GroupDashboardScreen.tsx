@@ -20,7 +20,13 @@ import { InfoIcon } from '@/components/InfoIcon';
 import { SectionLabel } from '@/components/SectionLabel';
 import { SegmentedControl } from '@/components/SegmentedControl';
 import { StatTile } from '@/components/StatTile';
-import { coverImageForKey } from '@/features/games/covers';
+import {
+  gameColorForTemplate,
+  gamePaletteForTemplate,
+  type GamePalette,
+} from '@/features/games/colors';
+import { coverImageForTemplate } from '@/features/games/covers';
+
 import type { GameStats, LeaderboardEntry } from '@/features/games/hooks/useGameStats';
 import { useGameStats } from '@/features/games/hooks/useGameStats';
 import type { ScoringDirection } from '@/features/games/hooks/useGameTemplates';
@@ -67,7 +73,11 @@ function GameRow({
 }) {
   return (
     <Card onPress={onPress} className="flex-row items-center gap-4">
-      <CoverThumbnail source={coverImageForKey(coverKey)} size={56} />
+      <CoverThumbnail
+        source={coverImageForTemplate(coverKey, name)}
+        color={gameColorForTemplate(coverKey, name)}
+        size={56}
+      />
       <View className="min-w-0 flex-1">
         <Text className="text-lg font-semibold text-ink" numberOfLines={1}>
           {name}
@@ -90,7 +100,11 @@ function HistoryRow({
 }) {
   return (
     <Card onPress={onPress} className="flex-row items-center gap-4">
-      <CoverThumbnail source={coverImageForKey(coverKey)} size={40} />
+      <CoverThumbnail
+        source={coverImageForTemplate(coverKey, gameName)}
+        color={gameColorForTemplate(coverKey, gameName)}
+        size={40}
+      />
       <View className="min-w-0 flex-1">
         <Text className="text-lg font-semibold text-ink" numberOfLines={1}>
           {gameName}
@@ -204,26 +218,41 @@ function HistoryTab({ groupId }: { groupId: string }) {
   );
 }
 
+/** `palette` is the game's own colour ramp (`gamePaletteForTemplate`) — left off for the metric
+ *  chips, which aren't games and keep the generic accent tint. Selected fills with the muted
+ *  `soft` step and edges in the brighter `line`, so fill and border never collapse into one flat
+ *  block; unselected keeps the line and labels in `swatch` so a game stays identifiable in the row
+ *  before you tap it. A game with no assigned colour falls back to the same generic accent look as
+ *  the metric chips. */
 function Chip({
   label,
   selected,
   onPress,
+  palette,
 }: {
   label: string;
   selected: boolean;
   onPress: () => void;
+  palette?: GamePalette;
 }) {
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityState={{ selected }}
-      className={`rounded-full border px-3.5 py-2 ${
-        selected ? 'border-accent-line bg-accent-soft' : 'border-line bg-surface'
-      }`}
+      className={`rounded-full border px-3.5 py-2 ${palette ? '' : selected ? 'border-accent-line bg-accent-soft' : 'border-line bg-surface'}`}
+      style={
+        palette
+          ? {
+              borderColor: palette.line,
+              backgroundColor: selected ? palette.soft : 'transparent',
+            }
+          : undefined
+      }
     >
       <Text
-        className={`text-sm font-semibold ${selected ? 'text-accent-softFg' : 'text-ink-muted'}`}
+        className={`text-sm font-semibold ${palette ? '' : selected ? 'text-accent-softFg' : 'text-ink-muted'}`}
+        style={palette ? { color: selected ? palette.softFg : palette.swatch } : undefined}
         numberOfLines={1}
       >
         {label}
@@ -427,6 +456,10 @@ function LeaderboardSection({
   const [infoOpen, setInfoOpen] = useState(false);
 
   const isRanked = scoringDirection === 'ranked';
+  // A rounds game's totals are normalised to points per round by `useGameStats`, so a saldo against
+  // the table average still means something — but an average of those per-round points next to the
+  // win count would read as a score, which it isn't, so the meta line leaves it out.
+  const isRounds = scoringDirection === 'dalmuti_rounds';
   const context: MetricContext = { lowerIsBetter: scoringDirection === 'lowest_total_wins' };
 
   // Ranked games record a finish position, not points, so there is no table average to have a
@@ -481,9 +514,15 @@ function LeaderboardSection({
             key={entry.userId}
             rank={index + 1}
             name={displayNameById.get(entry.userId) ?? '?'}
-            meta={`${entry.wins}/${entry.gamesPlayed} gewonnen · ${
-              isRanked ? `gem. plek ${decimal(entry.avgTotal)}` : `gem. ${decimal(entry.avgTotal)}`
-            }`}
+            meta={
+              isRounds
+                ? `${entry.wins}/${entry.gamesPlayed} gewonnen`
+                : `${entry.wins}/${entry.gamesPlayed} gewonnen · ${
+                    isRanked
+                      ? `gem. plek ${decimal(entry.avgTotal)}`
+                      : `gem. ${decimal(entry.avgTotal)}`
+                  }`
+            }
             value={metric.format(entry)}
             isWeak={metric.isWeak?.(entry) ?? false}
             bar={metric.bar(entry, scale)}
@@ -524,6 +563,7 @@ function GameStatsSection({
   // Ranked games plot finish position, not points: 1 is the best score there, so the axis is
   // flipped and pinned to the real range of places instead of a padded one.
   const isRanked = template?.scoring_direction === 'ranked';
+  const isRounds = template?.scoring_direction === 'dalmuti_rounds';
   // Each player's own chosen colour (group settings → Leden), not an arbitrary per-chart ramp —
   // so a player is the same colour here as their avatar everywhere else, and a colour change shows
   // up the moment `members` refetches. Falls back to the old index-based ramp for a userId this
@@ -545,6 +585,7 @@ function GameStatsSection({
             label={game.name}
             selected={game.templateId === templateId}
             onPress={() => setSelectedTemplateId(game.templateId)}
+            palette={gamePaletteForTemplate(game.coverKey, game.name)}
           />
         ))}
       </ScrollView>
@@ -568,7 +609,9 @@ function GameStatsSection({
       ) : (
         <>
           <View className="mt-6">
-            <SectionLabel>{isRanked ? 'Plek per potje' : 'Scoreverloop'}</SectionLabel>
+            <SectionLabel>
+              {isRanked ? 'Plek per potje' : isRounds ? 'Punten per ronde' : 'Scoreverloop'}
+            </SectionLabel>
             <Card className="mt-3">
               <TrendChart
                 labels={stats.trend.labels}
@@ -638,6 +681,7 @@ function StatsTab({ groupId }: { groupId: string }) {
                 label: game.name,
                 value: game.playCount,
                 valueLabel: `${game.playCount}x`,
+                color: gameColorForTemplate(game.coverKey, game.name),
               }))}
             />
           </Card>

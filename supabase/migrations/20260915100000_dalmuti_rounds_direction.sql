@@ -1,0 +1,11 @@
+-- Dalmuti is played in rounds, not in one sitting: every round ends in a finish order, the player
+-- who finished last scores 0, and every place above them is worth one point more. Those per-round
+-- points accumulate into a session total, and the highest total wins — so it is neither a signed
+-- sum of fields nor a bare finish position, and needs its own scoring direction.
+--
+-- Named after the game on purpose: the N-minus-rank payout is Dalmuti's, not a general ranked-points
+-- scheme, and the template picker says so out loud.
+--
+-- ADD VALUE can't run inside the same transaction as a statement that uses the new value, so the
+-- columns and functions that reference it live in the next migration.
+alter type public.scoring_direction add value 'dalmuti_rounds';

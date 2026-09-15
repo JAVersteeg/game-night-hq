@@ -12,6 +12,7 @@ import { ChoiceRow } from '@/components/ChoiceRow';
 import { CoverThumbnail } from '@/components/CoverThumbnail';
 import { SectionLabel } from '@/components/SectionLabel';
 import { TextField } from '@/components/TextField';
+import { gameColorForKey } from '@/features/games/colors';
 import { coverImageForKey } from '@/features/games/covers';
 import type {
   NewGameTemplateField,
@@ -101,7 +102,11 @@ function TemplatesModal({ visible, onClose, onSelect }: TemplatesModalProps) {
                 key={preset.id}
                 title={preset.name}
                 meta={`${scoringDirectionLabel(preset.scoringDirection)} · ${preset.fields.length} velden`}
-                left={<CoverThumbnail source={coverImageForKey(preset.id)} size={40} />}
+                left={<CoverThumbnail
+                    source={coverImageForKey(preset.id)}
+                    color={gameColorForKey(preset.id)}
+                    size={40}
+                  />}
                 onPress={() => onSelect(preset)}
               />
             ))}
@@ -198,10 +203,12 @@ export function CreateGameTemplateScreen() {
     );
   }
 
-  const isRanked = scoringDirection === 'ranked';
+  // Both fieldless directions score on finish order rather than on entered values, so the field
+  // editor drops out and an empty field list is what gets saved.
+  const isFieldless = scoringDirection === 'ranked' || scoringDirection === 'dalmuti_rounds';
   const trimmedName = name.trim();
   const canSubmit =
-    trimmedName.length > 0 && (isRanked || fields.length > 0) && !createGameTemplate.isPending;
+    trimmedName.length > 0 && (isFieldless || fields.length > 0) && !createGameTemplate.isPending;
 
   const nameSuggestions =
     areNameSuggestionsDismissed || trimmedName.length === 0
@@ -216,7 +223,7 @@ export function CreateGameTemplateScreen() {
       {
         name: trimmedName,
         scoringDirection,
-        fields: isRanked
+        fields: isFieldless
           ? []
           : fields.map(({ key, label, sign, exclusive, default: defaultValue }) => ({
               key,
@@ -267,10 +274,19 @@ export function CreateGameTemplateScreen() {
                     title={entry.name}
                     meta={
                       preset
-                        ? `${scoringDirectionLabel(preset.scoringDirection)} · ${preset.fields.length} velden`
+                        ? [
+                            scoringDirectionLabel(preset.scoringDirection),
+                            preset.fields.length > 0 ? `${preset.fields.length} velden` : null,
+                          ]
+                            .filter(Boolean)
+                            .join(' · ')
                         : undefined
                     }
-                    left={<CoverThumbnail source={coverImageForKey(entry.id)} size={40} />}
+                    left={<CoverThumbnail
+                        source={coverImageForKey(entry.id)}
+                        color={gameColorForKey(entry.id)}
+                        size={40}
+                      />}
                     onPress={() => applyLibraryEntry(entry)}
                   />
                 );
@@ -295,14 +311,21 @@ export function CreateGameTemplateScreen() {
             <ChoiceRow
               title="Ranglijst"
               meta="Geen punten — spelers slepen naar hun eindplek"
-              selected={isRanked}
+              selected={scoringDirection === 'ranked'}
               onSelect={() => setScoringDirection('ranked')}
               testID="scoring-direction-ranked"
+            />
+            <ChoiceRow
+              title="Dalmuti (rondes)"
+              meta="Per ronde punten voor je eindplek — hoogste totaal wint"
+              selected={scoringDirection === 'dalmuti_rounds'}
+              onSelect={() => setScoringDirection('dalmuti_rounds')}
+              testID="scoring-direction-dalmuti-rounds"
             />
           </View>
         </View>
 
-        {isRanked ? null : (
+        {isFieldless ? null : (
           <View>
             <SectionLabel>Velden</SectionLabel>
             <View className="mt-2 gap-2">

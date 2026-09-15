@@ -7,6 +7,7 @@ export interface PopularGame {
   templateId: string;
   name: string;
   playCount: number;
+  coverKey: string | null;
 }
 
 export interface GroupDashboardStats {
@@ -33,7 +34,7 @@ export function useGroupDashboardStats(groupId: string) {
     queryKey: groupKeys.dashboard(groupId),
     queryFn: async (): Promise<GroupDashboardStats> => {
       const [templatesResult, sessionsResult] = await Promise.all([
-        supabase.from('game_templates').select('id, name').eq('group_id', groupId),
+        supabase.from('game_templates').select('id, name, cover_key').eq('group_id', groupId),
         supabase
           .from('sessions')
           .select('id, template_id, played_at')
@@ -64,6 +65,7 @@ export function useGroupDashboardStats(groupId: string) {
           templateId: template.id,
           name: template.name,
           playCount: playCountByTemplateId.get(template.id) ?? 0,
+          coverKey: template.cover_key,
         }))
         .filter((game) => game.playCount > 0)
         .sort((a, b) => b.playCount - a.playCount)

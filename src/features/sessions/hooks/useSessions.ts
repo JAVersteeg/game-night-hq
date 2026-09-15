@@ -5,6 +5,7 @@ import { profileKeys } from '@/features/auth/hooks/useProfile';
 import { gameKeys } from '@/features/games/hooks/useGameTemplates';
 import { groupKeys } from '@/features/groups/hooks/useGroups';
 import { sessionHistoryKeys } from '@/features/sessions/hooks/useSessionHistory';
+import { sessionScoreKeys } from '@/features/sessions/hooks/useSessionScores';
 import { supabase } from '@/lib/supabase';
 import type { Tables } from '@/types/database';
 
@@ -112,6 +113,56 @@ export function useFinalizeSession(sessionId: string, groupId: string) {
       // so neither one can be named precisely — and both are cheap to refetch at this scale.
       void queryClient.invalidateQueries({ queryKey: gameKeys.all });
       void queryClient.invalidateQueries({ queryKey: profileKeys.all });
+    },
+  });
+}
+
+/**
+ * Banks one Dalmuti round: the finish order goes in, the server adds `participants - rank` to every
+ * player's running total and bumps `rounds_played`. An RPC rather than a batch of score upserts
+ * because a partially applied round can't be spotted afterwards — only the totals are stored, so
+ * there's nothing to compare a half-written round against.
+ */
+export function useCommitRound(sessionId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (userIdsInFinishOrder: string[]) => {
+      const { error } = await supabase.rpc('commit_dalmuti_round', {
+        p_session_id: sessionId,
+        p_order: userIdsInFinishOrder,
+      });
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) });
+      void queryClient.invalidateQueries({ queryKey: sessionScoreKeys.detail(sessionId) });
+    },
+  });
+}
+
+/**
+ * Takes back the round `sessions.last_round_order` describes and returns that order, so the screen
+ * can drop the scorekeeper back into it to correct. Only the most recent round is recoverable:
+ * committing clears nothing, but undoing clears `last_round_order`, which is what makes a second
+ * undo in a row impossible.
+ */
+export function useUndoRound(sessionId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (): Promise<string[]> => {
+      const { data, error } = await supabase.rpc('undo_dalmuti_round', {
+        p_session_id: sessionId,
+      });
+
+      if (error) throw error;
+      return data ?? [];
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) });
+      void queryClient.invalidateQueries({ queryKey: sessionScoreKeys.detail(sessionId) });
     },
   });
 }

@@ -10,19 +10,27 @@ import { Avatar } from '@/components/Avatar';
 import { Badge } from '@/components/Badge';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
+import { ChoiceRow } from '@/components/ChoiceRow';
 import { NumberStepper } from '@/components/NumberStepper';
 import { ScoreBars } from '@/components/ScoreBars';
 import { SectionLabel } from '@/components/SectionLabel';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { useGroupMembers, type GroupMember } from '@/features/groups/hooks/useGroupMembers';
 import { scoringDirectionLabel, useGameTemplate } from '@/features/games/hooks/useGameTemplates';
-import { RANK_FIELD_KEY, computeTotals } from '@/features/sessions/scoring';
+import {
+  RANK_FIELD_KEY,
+  computeTotals,
+  dalmutiRoundPoints,
+  higherTotalIsBetter,
+} from '@/features/sessions/scoring';
 import { useSessionParticipants } from '@/features/sessions/hooks/useSessionParticipants';
 import { useSetScore, useSessionScores } from '@/features/sessions/hooks/useSessionScores';
 import {
+  useCommitRound,
   useDeleteSession,
   useFinalizeSession,
   useSession,
+  useUndoRound,
 } from '@/features/sessions/hooks/useSessions';
 import type { AppStackParamList } from '@/navigation/types';
 
@@ -166,11 +174,15 @@ function RankedOrderList({ members }: { members: GroupMember[] }) {
 function RankedEntryRow({
   position,
   member,
+  score,
   drag,
   isActive,
 }: {
   position: number;
   member: GroupMember;
+  /** Only rounds games have anything to show here: the points banked so far and what this place
+   *  would add. A plain ranked game has no running score at all. */
+  score?: { total: number; delta: number };
   drag: () => void;
   isActive: boolean;
 }) {
@@ -189,6 +201,12 @@ function RankedEntryRow({
       <Text className="min-w-0 flex-1 text-base font-semibold text-ink" numberOfLines={1}>
         {member.displayName}
       </Text>
+      {score ? (
+        <View className="items-end">
+          <Text className="text-base font-bold text-ink">{score.total}</Text>
+          <Text className="text-xs font-medium text-ink-muted">+{score.delta}</Text>
+        </View>
+      ) : null}
       <Text className="text-lg text-ink-subtle">≡</Text>
     </Pressable>
   );
@@ -256,6 +274,135 @@ function RankedEntryList({
   );
 }
 
+/** The scorekeeper's view of the round being played: the same drag-to-reorder list a ranked game
+ *  uses, but the order isn't a result on its own — it's the input to "Volgende ronde", which is what
+ *  turns it into points. The order therefore lives in the parent (which owns the commit) rather
+ *  than here, and nothing is written until a round is banked. */
+function RoundsEntryList({
+  order,
+  totalByUserId,
+  onOrderChange,
+}: {
+  order: GroupMember[];
+  totalByUserId: Map<string, number>;
+  onOrderChange: (userIds: string[]) => void;
+}) {
+  return (
+    <DraggableFlatList
+      data={order}
+      keyExtractor={(member) => member.userId}
+      scrollEnabled={false}
+      ItemSeparatorComponent={() => <View className="h-2" />}
+      renderItem={({ item, getIndex, drag, isActive }: RenderItemParams<GroupMember>) => {
+        const position = (getIndex() ?? 0) + 1;
+        return (
+          <RankedEntryRow
+            position={position}
+            member={item}
+            score={{
+              total: totalByUserId.get(item.userId) ?? 0,
+              delta: dalmutiRoundPoints(position, order.length),
+            }}
+            drag={drag}
+            isActive={isActive}
+          />
+        );
+      }}
+      onDragEnd={({ data }) => onOrderChange(data.map((member) => member.userId))}
+    />
+  );
+}
+
+/** Standings of a rounds game: what a spectator sees, and what the scorekeeper's undo works back
+ *  from. Totals only update when a round is banked, so this is the live view in full — the order
+ *  being dragged right now is local to the scorekeeper's device until they commit it. */
+function RoundsStandingsList({
+  members,
+  totalByUserId,
+}: {
+  members: GroupMember[];
+  totalByUserId: Map<string, number>;
+}) {
+  return (
+    <View className="overflow-hidden rounded-2xl border border-line bg-surface">
+      {members.map((member, index) => (
+        <View
+          key={member.userId}
+          className={`flex-row items-center gap-3 px-4 py-3 ${index === 0 ? '' : 'border-t border-line'}`}
+        >
+          <RankBadge position={index + 1} />
+          <Avatar displayName={member.displayName} avatarUrl={member.avatarUrl} size={32} />
+          <Text className="min-w-0 flex-1 text-base font-semibold text-ink" numberOfLines={1}>
+            {member.displayName}
+          </Text>
+          <Text className="text-xl font-bold text-ink">{totalByUserId.get(member.userId) ?? 0}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/** Ending a rounds game has one question a normal session doesn't: the order on screen is a round
+ *  in progress that was never banked, so finishing has to say whether it still counts. Counting it
+ *  is the default — the usual reason to finish is that the last round just ended. */
+function FinishRoundsModal({
+  visible,
+  roundNumber,
+  countsCurrentRound,
+  onToggleCurrentRound,
+  onCancel,
+  onConfirm,
+  isPending,
+}: {
+  visible: boolean;
+  roundNumber: number;
+  countsCurrentRound: boolean;
+  onToggleCurrentRound: () => void;
+  onCancel: () => void;
+  onConfirm: () => void;
+  isPending: boolean;
+}) {
+  // Without a single banked round there is nothing to keep, so confirming throws the session away
+  // rather than filing an all-zero result in the history.
+  const willDiscardSession = roundNumber === 1 && !countsCurrentRound;
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
+      <Pressable
+        className="flex-1 items-center justify-center bg-surface-deep/70 px-6"
+        onPress={onCancel}
+        accessibilityLabel="Sluit"
+      >
+        <Pressable className="w-full max-w-sm gap-4 rounded-3xl border border-line bg-surface p-6">
+          <View>
+            <Text className="text-xl font-bold text-ink">Weet je het zeker?</Text>
+            <Text className="mt-1 text-sm text-ink-muted">
+              {willDiscardSession
+                ? 'Er is nog geen ronde gespeeld, dus dit potje wordt verwijderd.'
+                : 'Hierna staat de eindstand vast en kun je geen rondes meer spelen.'}
+            </Text>
+          </View>
+          <ChoiceRow
+            title={`Ronde ${roundNumber} meetellen`}
+            meta="De volgorde zoals die nu op je scherm staat"
+            mode="check"
+            selected={countsCurrentRound}
+            onSelect={onToggleCurrentRound}
+            testID="finish-count-current-round"
+          />
+          <Button
+            label={willDiscardSession ? 'Potje verwijderen' : 'Afronden'}
+            onPress={onConfirm}
+            isLoading={isPending}
+            testID="finish-rounds-confirm"
+          />
+          <Button label="Annuleren" variant="secondary" onPress={onCancel} />
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
 interface LeaveConfirmModalProps {
   visible: boolean;
   onCancel: () => void;
@@ -310,11 +457,23 @@ export function SessionScreen() {
   const setScore = useSetScore(sessionId);
   const finalizeSession = useFinalizeSession(sessionId, sessionData?.group_id ?? '');
   const deleteSession = useDeleteSession(sessionId, sessionData?.group_id ?? '');
+  const commitRound = useCommitRound(sessionId);
+  const undoRound = useUndoRound(sessionId);
 
   const [openParticipantId, setOpenParticipantId] = useState<string | null>(currentUserId ?? null);
 
   const [isLeaveConfirmVisible, setIsLeaveConfirmVisible] = useState(false);
   const pendingLeaveActionRef = useRef<NavigationAction | null>(null);
+  // Leaving is normally a destructive accident worth guarding, but the finish flow deletes a
+  // roundless session on purpose and then navigates away — this lets that one case through.
+  const skipLeaveGuardRef = useRef(false);
+
+  // The finish order of the round being played, as ids. Local until "Volgende ronde" banks it:
+  // nothing about an unfinished round is written to the server, which is also why a spectator sees
+  // standings rather than a live order.
+  const [roundOrder, setRoundOrder] = useState<string[] | null>(null);
+  const [isFinishRoundsVisible, setIsFinishRoundsVisible] = useState(false);
+  const [countsCurrentRound, setCountsCurrentRound] = useState(true);
 
   useLayoutEffect(() => {
     navigation.setOptions({ title: sessionData?.game_templates.name ?? 'Potje' });
@@ -328,12 +487,34 @@ export function SessionScreen() {
     return navigation.addListener('beforeRemove', (event) => {
       const isScorekeeper = currentUserId === sessionData?.scorekeeper_id;
       if (sessionData?.status !== 'in_progress' || !isScorekeeper) return;
+      if (skipLeaveGuardRef.current) return;
 
       event.preventDefault();
       pendingLeaveActionRef.current = event.data.action;
       setIsLeaveConfirmVisible(true);
     });
   }, [navigation, sessionData?.status, sessionData?.scorekeeper_id, currentUserId]);
+
+  // A new round starts in the order the previous one finished in — that's how the game actually
+  // plays, and it saves re-dragging the whole table when only two players swapped. Round one has no
+  // predecessor, so it falls back to the participant order chosen when the session was created.
+  // Only a change in who's playing reseeds; `last_round_order` moving (a commit, an undo) must not
+  // yank the list out from under an in-progress drag.
+  const lastRoundOrder = sessionData?.last_round_order;
+  useEffect(() => {
+    const ids = participantIds ?? [];
+    if (ids.length === 0) return;
+    setRoundOrder((current) => {
+      const isSameMembership =
+        current !== null &&
+        current.length === ids.length &&
+        current.every((userId) => ids.includes(userId));
+      if (isSameMembership) return current;
+
+      const seed = (lastRoundOrder ?? []).filter((userId) => ids.includes(userId));
+      return [...seed, ...ids.filter((userId) => !seed.includes(userId))];
+    });
+  }, [participantIds, lastRoundOrder]);
 
   function confirmLeave() {
     setIsLeaveConfirmVisible(false);
@@ -397,6 +578,12 @@ export function SessionScreen() {
   const isInProgress = sessionData.status === 'in_progress';
   const canEdit = isScorekeeper && isInProgress;
   const isRanked = sessionData.game_templates.scoring_direction === 'ranked';
+  const isRounds = sessionData.game_templates.scoring_direction === 'dalmuti_rounds';
+  const roundsPlayed = sessionData.rounds_played;
+  const roundNumber = roundsPlayed + 1;
+  // Only the round that `last_round_order` describes can be taken back, and undoing clears it — so
+  // the button disappears until another round is banked.
+  const canUndoRound = sessionData.last_round_order !== null;
 
   const totals = computeTotals(
     participants.map((member) => member.userId),
@@ -406,6 +593,47 @@ export function SessionScreen() {
     sessionData.game_templates.scoring_direction,
   );
   const totalByUserId = new Map(totals.map((entry) => [entry.userId, entry]));
+  const pointsByUserId = new Map(totals.map((entry) => [entry.userId, entry.total]));
+  const memberById = new Map(participants.map((member) => [member.userId, member]));
+  const roundMembers = (roundOrder ?? [])
+    .map((userId) => memberById.get(userId))
+    .filter((member): member is GroupMember => member !== undefined);
+  // Standings, best first — the same order the result screen will end up showing.
+  const standingsMembers = [...participants].sort(
+    (a, b) => (pointsByUserId.get(b.userId) ?? 0) - (pointsByUserId.get(a.userId) ?? 0),
+  );
+
+  function handleNextRound() {
+    if (!roundOrder || roundOrder.length === 0) return;
+    commitRound.mutate(roundOrder);
+  }
+
+  /** Reverses the last banked round and drops the scorekeeper back into its order, since correcting
+   *  that order is the only reason to undo. */
+  function handleUndoRound() {
+    undoRound.mutate(undefined, { onSuccess: (order) => setRoundOrder(order) });
+  }
+
+  function confirmFinishRounds() {
+    const bankedRounds = roundsPlayed + (countsCurrentRound ? 1 : 0);
+
+    // Nothing was ever played, so there's no result worth filing — the session is thrown away
+    // instead of landing in the history as a table of zeroes.
+    if (bankedRounds === 0) {
+      skipLeaveGuardRef.current = true;
+      deleteSession.mutate(undefined, { onSuccess: () => navigation.goBack() });
+      return;
+    }
+
+    const finalize = () =>
+      finalizeSession.mutate(undefined, { onSuccess: () => setIsFinishRoundsVisible(false) });
+
+    if (countsCurrentRound && roundOrder) {
+      commitRound.mutate(roundOrder, { onSuccess: finalize });
+      return;
+    }
+    finalize();
+  }
 
   if (sessionData.status === 'completed') {
     const scoringDirection = sessionData.game_templates.scoring_direction;
@@ -414,7 +642,7 @@ export function SessionScreen() {
         const entry = totalByUserId.get(member.userId);
         return { name: member.displayName, total: entry?.total ?? 0, isWinner: entry?.isWinner ?? false };
       })
-      .sort((a, b) => (scoringDirection === 'highest_total_wins' ? b.total - a.total : a.total - b.total));
+      .sort((a, b) => (higherTotalIsBetter(scoringDirection) ? b.total - a.total : a.total - b.total));
 
     const winners = participants.filter((member) => totalByUserId.get(member.userId)?.isWinner);
     const orderedMembers = [...participants].sort(
@@ -452,7 +680,10 @@ export function SessionScreen() {
               </>
             )}
             <Text className="mt-1 text-base text-ink-muted">
-              {sessionData.game_templates.name} · {scoringDirectionLabel(scoringDirection)}
+              {sessionData.game_templates.name} ·{' '}
+              {isRounds
+                ? `${sessionData.rounds_played} ${sessionData.rounds_played === 1 ? 'ronde' : 'rondes'}`
+                : scoringDirectionLabel(scoringDirection)}
             </Text>
           </View>
 
@@ -484,6 +715,44 @@ export function SessionScreen() {
         // thing above the bottom of the screen and needs the inset added directly.
         contentContainerStyle={{ paddingBottom: canEdit ? 24 : 24 + insets.bottom }}
       >
+        {isRounds ? (
+          <View>
+            <View className="flex-row items-center justify-between">
+              <SectionLabel>{`Ronde ${roundNumber}`}</SectionLabel>
+              {canEdit && canUndoRound ? (
+                <Pressable
+                  onPress={handleUndoRound}
+                  disabled={undoRound.isPending}
+                  accessibilityRole="button"
+                  className="active:opacity-70"
+                  testID="undo-round-button"
+                >
+                  <Text className="text-sm font-semibold text-accent">Ronde terugdraaien</Text>
+                </Pressable>
+              ) : null}
+            </View>
+            <View className="mt-2">
+              {canEdit ? (
+                <RoundsEntryList
+                  order={roundMembers}
+                  totalByUserId={pointsByUserId}
+                  onOrderChange={setRoundOrder}
+                />
+              ) : (
+                <RoundsStandingsList
+                  members={standingsMembers}
+                  totalByUserId={pointsByUserId}
+                />
+              )}
+            </View>
+            {canEdit ? (
+              <Text className="mt-3 text-sm text-ink-muted">
+                Sleep de spelers in de volgorde waarin ze deze ronde klaar waren. De laatste krijgt
+                0 punten, elke plek hoger levert 1 punt extra op.
+              </Text>
+            ) : null}
+          </View>
+        ) : (
         <View>
           <SectionLabel>Deelnemers</SectionLabel>
           {isRanked ? (
@@ -533,6 +802,7 @@ export function SessionScreen() {
             </View>
           )}
         </View>
+        )}
       </ScrollView>
 
       {canEdit ? (
@@ -543,14 +813,46 @@ export function SessionScreen() {
           className="border-t border-line px-6 pt-4"
           style={{ paddingBottom: 16 + insets.bottom }}
         >
-          <Button
-            label="Potje afronden"
-            onPress={() => finalizeSession.mutate()}
-            isLoading={finalizeSession.isPending}
-            testID="finalize-session-submit"
-          />
+          {isRounds ? (
+            <View className="gap-2">
+              <Button
+                label="Volgende ronde"
+                onPress={handleNextRound}
+                isLoading={commitRound.isPending}
+                testID="next-round-submit"
+              />
+              <Button
+                label="Potje afronden"
+                variant="secondary"
+                onPress={() => {
+                  setCountsCurrentRound(true);
+                  setIsFinishRoundsVisible(true);
+                }}
+                testID="finalize-session-submit"
+              />
+            </View>
+          ) : (
+            <Button
+              label="Potje afronden"
+              onPress={() => finalizeSession.mutate()}
+              isLoading={finalizeSession.isPending}
+              testID="finalize-session-submit"
+            />
+          )}
         </View>
       ) : null}
+
+      <FinishRoundsModal
+        visible={isFinishRoundsVisible}
+        roundNumber={roundNumber}
+        countsCurrentRound={countsCurrentRound}
+        onToggleCurrentRound={() => setCountsCurrentRound((current) => !current)}
+        onCancel={() => setIsFinishRoundsVisible(false)}
+        onConfirm={confirmFinishRounds}
+        isPending={
+          commitRound.isPending || finalizeSession.isPending || deleteSession.isPending
+        }
+      />
 
       <LeaveConfirmModal
         visible={isLeaveConfirmVisible}

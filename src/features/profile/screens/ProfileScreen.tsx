@@ -4,6 +4,7 @@ import { Avatar } from '@/components/Avatar';
 import { Card } from '@/components/Card';
 import { BarList } from '@/components/charts/BarList';
 import { seriesColor } from '@/components/charts/series';
+import { gameColorForTemplate } from '@/features/games/colors';
 import { TrendChart } from '@/components/charts/TrendChart';
 import { SectionLabel } from '@/components/SectionLabel';
 import { StatTile } from '@/components/StatTile';
@@ -69,7 +70,7 @@ function PersonalStatsSection({ stats }: { stats: PersonalStats }) {
                 label: `${game.name} · ${game.wins}/${game.gamesPlayed}`,
                 value: game.winPct,
                 valueLabel: `${game.winPct}%`,
-                color: seriesColor(index),
+                color: gameColorForTemplate(game.coverKey, game.name) ?? seriesColor(index),
               }))}
             />
           </Card>

@@ -41,6 +41,8 @@ export function scoringDirectionLabel(direction: ScoringDirection): string {
       return 'Laagste totaal wint';
     case 'ranked':
       return 'Ranglijst';
+    case 'dalmuti_rounds':
+      return 'Dalmuti (rondes)';
   }
 }
 
@@ -112,7 +114,9 @@ export function useCreateGameTemplate(groupId: string) {
           default_value: field.default ?? 0,
           position: index,
         })),
-        p_cover_key: input.coverKey ?? null,
+        // Omitted rather than passed as null: the RPC's own default is null, and the generated
+        // Args type doesn't accept one.
+        p_cover_key: input.coverKey ?? undefined,
       });
 
       if (error) throw error;

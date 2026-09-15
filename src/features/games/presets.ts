@@ -20,7 +20,27 @@ export const GAME_LIBRARY: GameLibraryEntry[] = [
   { id: 'catan', name: 'Catan' },
   { id: 'heat', name: 'Heat' },
   { id: 'arschmallows', name: 'Arschmallows' },
+  { id: 'dalmuti', name: 'De Grote Dalmuti' },
 ];
+
+const BY_NORMALIZED_NAME = new Map(
+  GAME_LIBRARY.map((entry) => [entry.name.trim().toLowerCase(), entry.id]),
+);
+
+/**
+ * The library key a saved template belongs to. `cover_key` is authoritative, but templates created
+ * before covers existed (or typed in by hand rather than picked from the search) have none, so an
+ * exact name match against the library stands in — that's what makes an older "Catan" row still
+ * render Catan's art and colour. Deliberately exact: a variant like "Catan - Steden en Ridders" is
+ * its own game and keeps the neutral fallback rather than borrowing Catan's identity.
+ */
+export function gameKeyForTemplate(
+  coverKey: string | null | undefined,
+  name: string | null | undefined,
+): string | undefined {
+  if (coverKey) return coverKey;
+  return name ? BY_NORMALIZED_NAME.get(name.trim().toLowerCase()) : undefined;
+}
 
 export interface GameTemplatePreset {
   id: string;
@@ -43,6 +63,14 @@ export interface GameTemplatePreset {
  * `default` is the point value awarded while held.
  */
 export const GAME_TEMPLATE_PRESETS: GameTemplatePreset[] = [
+  {
+    // Scored per round on finish order alone, so it has no fields — the rounds direction is the
+    // whole template.
+    id: 'dalmuti',
+    name: 'De Grote Dalmuti',
+    scoringDirection: 'dalmuti_rounds',
+    fields: [],
+  },
   {
     id: 'catan',
     name: 'Catan',

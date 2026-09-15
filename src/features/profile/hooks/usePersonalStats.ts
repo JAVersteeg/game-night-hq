@@ -10,6 +10,7 @@ import { supabase } from '@/lib/supabase';
 export interface PersonalGameRecord {
   templateId: string;
   name: string;
+  coverKey: string | null;
   gamesPlayed: number;
   wins: number;
   /** 0-100, rounded. */
@@ -43,6 +44,7 @@ interface SessionRow {
   template_id: string;
   game_templates: {
     name: string;
+    cover_key: string | null;
     scoring_direction: ScoringDirection;
     game_template_fields: { key: string; sign: number }[];
     bonus_rules: BonusRule[];
@@ -91,7 +93,7 @@ export function usePersonalStats() {
         .from('sessions')
         .select(
           `id, played_at, template_id,
-           game_templates(name, scoring_direction, game_template_fields(key, sign), bonus_rules(*)),
+           game_templates(name, cover_key, scoring_direction, game_template_fields(key, sign), bonus_rules(*)),
            session_participants(user_id)`,
         )
         .in(
@@ -123,7 +125,10 @@ export function usePersonalStats() {
         scoresBySession.set(row.session_id, scoresByUser);
       }
 
-      const byGame = new Map<string, { name: string; gamesPlayed: number; wins: number }>();
+      const byGame = new Map<
+        string,
+        { name: string; coverKey: string | null; gamesPlayed: number; wins: number }
+      >();
       const formLabels: string[] = [];
       const formPoints: number[] = [];
       let wins = 0;
@@ -142,6 +147,7 @@ export function usePersonalStats() {
 
         const game = byGame.get(entry.template_id) ?? {
           name: entry.game_templates.name,
+          coverKey: entry.game_templates.cover_key,
           gamesPlayed: 0,
           wins: 0,
         };
@@ -157,6 +163,7 @@ export function usePersonalStats() {
         .map(([templateId, game]) => ({
           templateId,
           name: game.name,
+          coverKey: game.coverKey,
           gamesPlayed: game.gamesPlayed,
           wins: game.wins,
           winPct: Math.round((game.wins / game.gamesPlayed) * 100),

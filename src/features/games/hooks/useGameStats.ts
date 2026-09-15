@@ -7,7 +7,7 @@ import type {
   ScoringDirection,
 } from '@/features/games/hooks/useGameTemplates';
 import { gameKeys } from '@/features/games/hooks/useGameTemplates';
-import { computeTotals } from '@/features/sessions/scoring';
+import { computeTotals, higherTotalIsBetter } from '@/features/sessions/scoring';
 import { supabase } from '@/lib/supabase';
 
 export interface LeaderboardEntry {
@@ -65,6 +65,7 @@ const TREND_SERIES = 6;
 interface SessionRow {
   id: string;
   played_at: string;
+  rounds_played: number;
   session_participants: { user_id: string }[];
 }
 
@@ -103,7 +104,7 @@ export function useGameStats(template: GameTemplateWithBonusRules | null | undef
     queryFn: async (): Promise<GameStats> => {
       const { data: sessions, error: sessionsError } = await supabase
         .from('sessions')
-        .select('id, played_at, session_participants(user_id)')
+        .select('id, played_at, rounds_played, session_participants(user_id)')
         .eq('template_id', templateId)
         .eq('status', 'completed')
         .order('played_at', { ascending: true })
@@ -130,16 +131,29 @@ export function useGameStats(template: GameTemplateWithBonusRules | null | undef
         scoresBySession.set(row.session_id, scoresByUser);
       }
 
-      const totalsBySession: SessionTotals[] = sessions.map((session) => ({
-        playedAt: session.played_at,
-        totals: computeTotals(
+      // A rounds game's session total grows with however many rounds were played, so a long evening
+      // and a short one aren't comparable as raw numbers — every total is divided by its round count
+      // and the whole stats surface works in points per round instead. Dividing by a positive
+      // constant can't reorder a session, so the winner flags `computeTotals` set still hold.
+      const totalsBySession: SessionTotals[] = sessions.map((session) => {
+        const totals = computeTotals(
           session.session_participants.map((participant) => participant.user_id),
           fields,
           bonusRules,
           scoresBySession.get(session.id) ?? {},
           scoringDirection,
-        ),
-      }));
+        );
+        const divisor =
+          scoringDirection === 'dalmuti_rounds' ? Math.max(1, session.rounds_played) : 1;
+
+        return {
+          playedAt: session.played_at,
+          totals:
+            divisor === 1
+              ? totals
+              : totals.map((entry) => ({ ...entry, total: entry.total / divisor })),
+        };
+      });
 
       return {
         leaderboard: buildLeaderboard(totalsBySession, scoringDirection),
@@ -197,12 +211,9 @@ function buildLeaderboard(
         const beaten = session.totals.reduce((count, other) => {
           if (other.userId === entry.userId) return count;
           if (other.total === entry.total) return count + 0.5;
-          // 'ranked' stores finish position, so lower is better there too — the same branch as
-          // lowest_total_wins, exactly the way `computeTotals` treats it.
-          const isBetter =
-            scoringDirection === 'highest_total_wins'
-              ? entry.total > other.total
-              : entry.total < other.total;
+          const isBetter = higherTotalIsBetter(scoringDirection)
+            ? entry.total > other.total
+            : entry.total < other.total;
           return isBetter ? count + 1 : count;
         }, 0);
 

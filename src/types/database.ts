@@ -276,7 +276,9 @@ export type Database = {
           created_at: string;
           group_id: string;
           id: string;
+          last_round_order: string[] | null;
           played_at: string;
+          rounds_played: number;
           scorekeeper_id: string;
           status: Database['public']['Enums']['session_status'];
           template_id: string;
@@ -286,7 +288,9 @@ export type Database = {
           created_at?: string;
           group_id: string;
           id?: string;
+          last_round_order?: string[] | null;
           played_at?: string;
+          rounds_played?: number;
           scorekeeper_id: string;
           status?: Database['public']['Enums']['session_status'];
           template_id: string;
@@ -296,7 +300,9 @@ export type Database = {
           created_at?: string;
           group_id?: string;
           id?: string;
+          last_round_order?: string[] | null;
           played_at?: string;
+          rounds_played?: number;
           scorekeeper_id?: string;
           status?: Database['public']['Enums']['session_status'];
           template_id?: string;
@@ -323,6 +329,27 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      commit_dalmuti_round: {
+        Args: { p_order: string[]; p_session_id: string };
+        Returns: {
+          completed_at: string | null;
+          created_at: string;
+          group_id: string;
+          id: string;
+          last_round_order: string[] | null;
+          played_at: string;
+          rounds_played: number;
+          scorekeeper_id: string;
+          status: Database['public']['Enums']['session_status'];
+          template_id: string;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'sessions';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       create_game_template: {
         Args: {
           p_bonus_rules?: Json;
@@ -376,7 +403,9 @@ export type Database = {
           created_at: string;
           group_id: string;
           id: string;
+          last_round_order: string[] | null;
           played_at: string;
+          rounds_played: number;
           scorekeeper_id: string;
           status: Database['public']['Enums']['session_status'];
           template_id: string;
@@ -422,6 +451,10 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      undo_dalmuti_round: {
+        Args: { p_session_id: string };
+        Returns: string[];
+      };
     };
     Enums: {
       bonus_operator: '==' | '>' | '<' | '>=' | '<=';
@@ -438,7 +471,7 @@ export type Database = {
         | 'grey'
         | 'black'
         | 'lime';
-      scoring_direction: 'highest_total_wins' | 'lowest_total_wins' | 'ranked';
+      scoring_direction: 'dalmuti_rounds' | 'highest_total_wins' | 'lowest_total_wins' | 'ranked';
       session_status: 'in_progress' | 'completed';
     };
     CompositeTypes: {
@@ -576,7 +609,7 @@ export const Constants = {
         'black',
         'lime',
       ],
-      scoring_direction: ['highest_total_wins', 'lowest_total_wins', 'ranked'],
+      scoring_direction: ['highest_total_wins', 'lowest_total_wins', 'ranked', 'dalmuti_rounds'],
       session_status: ['in_progress', 'completed'],
     },
   },
