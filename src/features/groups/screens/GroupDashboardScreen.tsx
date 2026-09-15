@@ -9,13 +9,19 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
+import { BarList } from '@/components/charts/BarList';
+import { HeadToHead } from '@/components/charts/HeadToHead';
+import { seriesColor, seriesColorByUser } from '@/components/charts/series';
+import { TrendChart } from '@/components/charts/TrendChart';
 import { CoverThumbnail } from '@/components/CoverThumbnail';
 import { EmptyState } from '@/components/EmptyState';
 import { GearIcon } from '@/components/GearIcon';
+import { SectionLabel } from '@/components/SectionLabel';
 import { SegmentedControl } from '@/components/SegmentedControl';
+import { StatTile } from '@/components/StatTile';
 import { coverImageForKey } from '@/features/games/covers';
-import type { LeaderboardEntry } from '@/features/games/hooks/useGameLeaderboard';
-import { useGameLeaderboard } from '@/features/games/hooks/useGameLeaderboard';
+import type { GameStats, LeaderboardEntry } from '@/features/games/hooks/useGameStats';
+import { useGameStats } from '@/features/games/hooks/useGameStats';
 import { useGameTemplate, useGameTemplates } from '@/features/games/hooks/useGameTemplates';
 import {
   useGroupDashboardStats,
@@ -151,7 +157,9 @@ function HistoryTab({ groupId }: { groupId: string }) {
   const { data: sessions, isPending, isError } = useSessionHistory(groupId);
   const { data: members } = useGroupMembers(groupId);
 
-  const displayNameById = new Map((members ?? []).map((member) => [member.userId, member.displayName]));
+  const displayNameById = new Map(
+    (members ?? []).map((member) => [member.userId, member.displayName]),
+  );
 
   return (
     <ScrollView className="flex-1" contentContainerClassName="grow gap-3 px-6 pb-4 pt-4">
@@ -193,29 +201,7 @@ function HistoryTab({ groupId }: { groupId: string }) {
   );
 }
 
-function StatTile({ value, label }: { value: number; label: string }) {
-  return (
-    <View className="flex-1 items-center gap-1 rounded-2xl border border-line bg-surface py-4">
-      <Text className="text-2xl font-bold text-ink">{value}</Text>
-      <Text className="text-center text-xs font-medium text-ink-subtle">{label}</Text>
-    </View>
-  );
-}
-
-function PopularGameRow({ game, isFirst }: { game: PopularGame; isFirst: boolean }) {
-  return (
-    <View
-      className={`flex-row items-center justify-between px-4 py-3 ${isFirst ? '' : 'border-t border-line'}`}
-    >
-      <Text className="shrink text-base text-ink" numberOfLines={1}>
-        {game.name}
-      </Text>
-      <Text className="text-sm text-ink-subtle">{game.playCount}x gespeeld</Text>
-    </View>
-  );
-}
-
-function GameChip({
+function Chip({
   label,
   selected,
   onPress,
@@ -228,6 +214,7 @@ function GameChip({
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
+      accessibilityState={{ selected }}
       className={`rounded-full border px-3.5 py-2 ${
         selected ? 'border-accent-line bg-accent-soft' : 'border-line bg-surface'
       }`}
@@ -246,35 +233,105 @@ function LeaderboardRow({
   rank,
   name,
   entry,
+  meta,
+  color,
   isFirst,
 }: {
   rank: number;
   name: string;
   entry: LeaderboardEntry;
+  meta: string;
+  color: string;
   isFirst: boolean;
 }) {
   return (
-    <View
-      className={`flex-row items-center gap-3 px-4 py-3 ${isFirst ? '' : 'border-t border-line'}`}
-    >
-      <Text className="w-5 text-sm font-semibold text-ink-subtle">{rank}</Text>
-      <View className="min-w-0 flex-1">
-        <Text className="text-base font-semibold text-ink" numberOfLines={1}>
-          {name}
-        </Text>
-        <Text className="mt-0.5 text-sm text-ink-muted" numberOfLines={1}>
-          {entry.wins}/{entry.gamesPlayed} gewonnen · gem. {entry.avgTotal}
-        </Text>
+    <View className={`gap-2 px-4 py-3 ${isFirst ? '' : 'border-t border-line'}`}>
+      <View className="flex-row items-center gap-3">
+        <Text className="w-5 text-sm font-semibold text-ink-subtle">{rank}</Text>
+        <View className="min-w-0 flex-1">
+          <Text className="text-base font-semibold text-ink" numberOfLines={1}>
+            {name}
+          </Text>
+          <Text className="mt-0.5 text-sm text-ink-muted" numberOfLines={1}>
+            {meta}
+          </Text>
+        </View>
+        <Text className="text-lg font-bold text-ink">{entry.winPct}%</Text>
       </View>
-      <Text className="text-lg font-bold text-ink">{entry.winPct}%</Text>
+      {/* The bar repeats the percentage rather than adding a number: it's there so the gap between
+          first and fifth is visible without reading five figures. */}
+      <View className="h-1.5 overflow-hidden rounded-full bg-surface-sunken">
+        <View
+          className="h-full rounded-full"
+          style={{ width: `${entry.winPct}%`, backgroundColor: color }}
+        />
+      </View>
     </View>
   );
 }
 
-/** Leaderboard for one game template: chips to pick which of the group's played games to show,
- *  then wins / win % / average total per player, most wins first. Only offers templates that have
- *  actually been played — `popularGames` is already filtered and capped that way. */
-function LeaderboardSection({
+/** Two players' record against each other, over the sessions of this game they both played. The
+ *  chips append rather than toggle — tapping a third player pushes out the one picked longest ago,
+ *  so there are always exactly two and no way to end up with an empty comparison. */
+function HeadToHeadSection({
+  stats,
+  displayNameById,
+}: {
+  stats: GameStats;
+  displayNameById: Map<string, string>;
+}) {
+  const [picked, setPicked] = useState<string[]>([]);
+
+  const candidates = stats.leaderboard.map((entry) => entry.userId);
+  const selection =
+    picked.length === 2 && picked.every((userId) => candidates.includes(userId))
+      ? picked
+      : candidates.slice(0, 2);
+
+  if (candidates.length < 2) return null;
+
+  const [left, right] = selection;
+  const record = stats.headToHead[left]?.[right] ?? { wins: 0, losses: 0, draws: 0 };
+
+  return (
+    <View className="mt-8">
+      <SectionLabel>Onderling</SectionLabel>
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        className="mt-3"
+        contentContainerClassName="gap-2"
+      >
+        {candidates.map((userId) => (
+          <Chip
+            key={userId}
+            label={displayNameById.get(userId) ?? '?'}
+            selected={selection.includes(userId)}
+            onPress={() =>
+              setPicked((current) => [...current.filter((id) => id !== userId), userId].slice(-2))
+            }
+          />
+        ))}
+      </ScrollView>
+
+      <Card className="mt-3">
+        <HeadToHead
+          left={displayNameById.get(left) ?? '?'}
+          right={displayNameById.get(right) ?? '?'}
+          leftWins={record.wins}
+          rightWins={record.losses}
+          draws={record.draws}
+        />
+      </Card>
+    </View>
+  );
+}
+
+/** Score trend, leaderboard and head-to-head for one game template, with chips to pick which of
+ *  the group's played games they all describe. Only offers templates that have actually been
+ *  played — `popularGames` is already filtered and capped that way. */
+function GameStatsSection({
   groupId,
   popularGames,
 }: {
@@ -288,35 +345,30 @@ function LeaderboardSection({
 
   const { data: template } = useGameTemplate(templateId);
   const { data: members } = useGroupMembers(groupId);
-  const {
-    data: leaderboard,
-    isPending,
-    isError,
-  } = useGameLeaderboard(
-    templateId,
-    template?.game_template_fields ?? [],
-    template?.bonus_rules ?? [],
-    template?.scoring_direction ?? 'highest_total_wins',
-  );
+  const { data: stats, isPending, isError } = useGameStats(template);
 
-  const displayNameById = new Map((members ?? []).map((member) => [member.userId, member.displayName]));
+  const displayNameById = new Map(
+    (members ?? []).map((member) => [member.userId, member.displayName]),
+  );
 
   if (popularGames.length === 0) return null;
 
+  // Ranked games plot finish position, not points: 1 is the best score there, so the axis is
+  // flipped and pinned to the real range of places instead of a padded one.
+  const isRanked = template?.scoring_direction === 'ranked';
+  const colorByUser = stats
+    ? seriesColorByUser(stats.trend.series.map((entry) => entry.userId))
+    : new Map<string, string>();
+
   return (
     <View className="mt-8">
-      <Text className="text-sm font-semibold uppercase tracking-wide text-ink-subtle">
-        Ranglijst
-      </Text>
-
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        className="mt-3"
         contentContainerClassName="gap-2"
       >
         {popularGames.map((game) => (
-          <GameChip
+          <Chip
             key={game.templateId}
             label={game.name}
             selected={game.templateId === templateId}
@@ -325,33 +377,62 @@ function LeaderboardSection({
         ))}
       </ScrollView>
 
-      <View className="mt-3 overflow-hidden rounded-2xl border border-line bg-surface">
-        {isPending || !template ? (
-          <View className="items-center py-6">
-            <ActivityIndicator />
-          </View>
-        ) : isError ? (
-          <Text className="px-4 py-6 text-base text-ink-muted">
-            De ranglijst kon niet worden geladen.
+      {isPending || !template ? (
+        <View className="items-center py-10">
+          <ActivityIndicator />
+        </View>
+      ) : isError || !stats ? (
+        <Card tone="muted" className="mt-4">
+          <Text className="text-base text-ink-muted">
+            De statistieken van dit spel konden niet worden geladen.
           </Text>
-        ) : !leaderboard || leaderboard.length === 0 ? (
-          <View className="bg-surface-muted px-4 py-6">
-            <Text className="text-base text-ink-muted">
-              Nog geen potjes van dit spel om een ranglijst van te maken.
-            </Text>
+        </Card>
+      ) : stats.leaderboard.length === 0 ? (
+        <Card tone="muted" className="mt-4">
+          <Text className="text-base text-ink-muted">
+            Nog geen potjes van dit spel om statistieken van te maken.
+          </Text>
+        </Card>
+      ) : (
+        <>
+          <View className="mt-6">
+            <SectionLabel>{isRanked ? 'Plek per potje' : 'Scoreverloop'}</SectionLabel>
+            <Card className="mt-3">
+              <TrendChart
+                labels={stats.trend.labels}
+                inverted={isRanked}
+                domain={isRanked ? [1, Math.max(2, stats.maxParticipants)] : undefined}
+                series={stats.trend.series.map((entry) => ({
+                  name: displayNameById.get(entry.userId) ?? '?',
+                  color: colorByUser.get(entry.userId) ?? seriesColor(0),
+                  points: entry.points,
+                }))}
+              />
+            </Card>
           </View>
-        ) : (
-          leaderboard.map((entry, index) => (
-            <LeaderboardRow
-              key={entry.userId}
-              rank={index + 1}
-              name={displayNameById.get(entry.userId) ?? '?'}
-              entry={entry}
-              isFirst={index === 0}
-            />
-          ))
-        )}
-      </View>
+
+          <View className="mt-8">
+            <SectionLabel>Ranglijst</SectionLabel>
+            <View className="mt-3 overflow-hidden rounded-2xl border border-line bg-surface">
+              {stats.leaderboard.map((entry, index) => (
+                <LeaderboardRow
+                  key={entry.userId}
+                  rank={index + 1}
+                  name={displayNameById.get(entry.userId) ?? '?'}
+                  entry={entry}
+                  meta={`${entry.wins}/${entry.gamesPlayed} gewonnen · ${
+                    isRanked ? `gem. plek ${entry.avgTotal}` : `gem. ${entry.avgTotal}`
+                  }`}
+                  color={colorByUser.get(entry.userId) ?? seriesColor(index)}
+                  isFirst={index === 0}
+                />
+              ))}
+            </View>
+          </View>
+
+          <HeadToHeadSection stats={stats} displayNameById={displayNameById} />
+        </>
+      )}
     </View>
   );
 }
@@ -368,33 +449,44 @@ function StatsTab({ groupId }: { groupId: string }) {
 
       {stats?.lastPlayedAt ? (
         <Text className="mt-3 text-center text-sm text-ink-subtle">
-          Voor het laatst gespeeld op {format(new Date(stats.lastPlayedAt), 'd MMMM yyyy', { locale: nl })}
+          Voor het laatst gespeeld op{' '}
+          {format(new Date(stats.lastPlayedAt), 'd MMMM yyyy', { locale: nl })}
         </Text>
       ) : null}
 
-      <View className="mt-8 overflow-hidden rounded-2xl border border-line bg-surface">
+      <View className="mt-8">
+        <SectionLabel>Meest gespeeld</SectionLabel>
         {isPending ? (
           <View className="items-center py-6">
             <ActivityIndicator />
           </View>
         ) : isError || !stats ? (
-          <Text className="px-4 py-6 text-base text-ink-muted">
-            De statistieken konden niet worden geladen.
-          </Text>
+          <Card tone="muted" className="mt-3">
+            <Text className="text-base text-ink-muted">
+              De statistieken konden niet worden geladen.
+            </Text>
+          </Card>
         ) : stats.popularGames.length === 0 ? (
-          <View className="bg-surface-muted px-4 py-6">
+          <Card tone="muted" className="mt-3">
             <Text className="text-base text-ink-muted">
               Zodra jullie potjes hebben gespeeld, zie je hier de populairste spellen van de groep.
             </Text>
-          </View>
+          </Card>
         ) : (
-          stats.popularGames.map((game, index) => (
-            <PopularGameRow key={game.templateId} game={game} isFirst={index === 0} />
-          ))
+          <Card className="mt-3 py-4">
+            <BarList
+              rows={stats.popularGames.map((game) => ({
+                key: game.templateId,
+                label: game.name,
+                value: game.playCount,
+                valueLabel: `${game.playCount}x`,
+              }))}
+            />
+          </Card>
         )}
       </View>
 
-      {stats ? <LeaderboardSection groupId={groupId} popularGames={stats.popularGames} /> : null}
+      {stats ? <GameStatsSection groupId={groupId} popularGames={stats.popularGames} /> : null}
     </ScrollView>
   );
 }

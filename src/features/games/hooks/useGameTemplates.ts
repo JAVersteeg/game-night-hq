@@ -27,6 +27,8 @@ export interface NewGameTemplateField {
 }
 
 export const gameKeys = {
+  /** Prefix for every game-scoped query — lists, details and the stats derived from them. */
+  all: ['games'] as const,
   list: (groupId: string) => ['games', 'list', groupId] as const,
   detail: (templateId: string) => ['games', 'detail', templateId] as const,
 };

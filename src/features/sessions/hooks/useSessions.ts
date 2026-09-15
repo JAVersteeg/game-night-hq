@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 
+import { profileKeys } from '@/features/auth/hooks/useProfile';
+import { gameKeys } from '@/features/games/hooks/useGameTemplates';
 import { groupKeys } from '@/features/groups/hooks/useGroups';
 import { sessionHistoryKeys } from '@/features/sessions/hooks/useSessionHistory';
 import { supabase } from '@/lib/supabase';
@@ -105,6 +107,11 @@ export function useFinalizeSession(sessionId: string, groupId: string) {
       void queryClient.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) });
       void queryClient.invalidateQueries({ queryKey: groupKeys.dashboard(groupId) });
       void queryClient.invalidateQueries({ queryKey: sessionHistoryKeys.list(groupId) });
+      // Every stats surface counts this session from now on. Invalidated by prefix rather than by
+      // exact key: the template id isn't in scope here, and the profile's stats span all groups,
+      // so neither one can be named precisely — and both are cheap to refetch at this scale.
+      void queryClient.invalidateQueries({ queryKey: gameKeys.all });
+      void queryClient.invalidateQueries({ queryKey: profileKeys.all });
     },
   });
 }

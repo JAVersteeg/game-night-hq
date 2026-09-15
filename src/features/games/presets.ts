@@ -3,6 +3,25 @@ import type {
   ScoringDirection,
 } from '@/features/games/hooks/useGameTemplates';
 
+export interface GameLibraryEntry {
+  id: string;
+  name: string;
+}
+
+/**
+ * Every game offered in the create-game screen's name search, whether or not it also has a full
+ * scoring template below. Picking one always fills in the name and cover (via `id`, the same key
+ * `GAME_COVERS` and a created template's `cover_key` use); only entries whose `id` also appears in
+ * `GAME_TEMPLATE_PRESETS` prefill scoring direction and fields too. Adding a game here with no
+ * matching preset is expected — it's how a game can be searchable without anyone having done the
+ * work of defining its scoring yet.
+ */
+export const GAME_LIBRARY: GameLibraryEntry[] = [
+  { id: 'catan', name: 'Catan' },
+  { id: 'heat', name: 'Heat' },
+  { id: 'arschmallows', name: 'Arschmallows' },
+];
+
 export interface GameTemplatePreset {
   id: string;
   name: string;

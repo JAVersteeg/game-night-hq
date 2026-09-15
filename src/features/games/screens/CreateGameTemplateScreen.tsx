@@ -21,7 +21,12 @@ import {
   scoringDirectionLabel,
   useCreateGameTemplate,
 } from '@/features/games/hooks/useGameTemplates';
-import { GAME_TEMPLATE_PRESETS, type GameTemplatePreset } from '@/features/games/presets';
+import {
+  GAME_LIBRARY,
+  GAME_TEMPLATE_PRESETS,
+  type GameLibraryEntry,
+  type GameTemplatePreset,
+} from '@/features/games/presets';
 import type { AppStackParamList } from '@/navigation/types';
 
 const MAX_NAME_LENGTH = 60;
@@ -158,6 +163,21 @@ export function CreateGameTemplateScreen() {
     setAreNameSuggestionsDismissed(false);
   }
 
+  /** A library entry only guarantees a name and cover. If it also has a matching template preset
+   *  (same `id`), applying that fills scoring direction and fields too; otherwise the draft's
+   *  current scoring direction and fields (whatever the user already set up) are left alone. */
+  function applyLibraryEntry(entry: GameLibraryEntry) {
+    const preset = GAME_TEMPLATE_PRESETS.find((candidate) => candidate.id === entry.id);
+    if (preset) {
+      applyPreset(preset);
+      return;
+    }
+
+    setName(entry.name);
+    setCoverKey(entry.id);
+    setAreNameSuggestionsDismissed(true);
+  }
+
   function addField() {
     const label = nextFieldLabel.trim();
     if (!label) return;
@@ -186,8 +206,8 @@ export function CreateGameTemplateScreen() {
   const nameSuggestions =
     areNameSuggestionsDismissed || trimmedName.length === 0
       ? []
-      : GAME_TEMPLATE_PRESETS.filter((preset) =>
-          normalizeForSearch(preset.name).includes(normalizeForSearch(trimmedName)),
+      : GAME_LIBRARY.filter((entry) =>
+          normalizeForSearch(entry.name).includes(normalizeForSearch(trimmedName)),
         ).slice(0, MAX_NAME_SUGGESTIONS);
 
   function handleSubmit() {
@@ -239,15 +259,22 @@ export function CreateGameTemplateScreen() {
           />
           {nameSuggestions.length > 0 ? (
             <View className="mt-2 gap-2">
-              {nameSuggestions.map((preset) => (
-                <ListRow
-                  key={preset.id}
-                  title={preset.name}
-                  meta={`${scoringDirectionLabel(preset.scoringDirection)} · ${preset.fields.length} velden`}
-                  left={<CoverThumbnail source={coverImageForKey(preset.id)} size={40} />}
-                  onPress={() => applyPreset(preset)}
-                />
-              ))}
+              {nameSuggestions.map((entry) => {
+                const preset = GAME_TEMPLATE_PRESETS.find((candidate) => candidate.id === entry.id);
+                return (
+                  <ListRow
+                    key={entry.id}
+                    title={entry.name}
+                    meta={
+                      preset
+                        ? `${scoringDirectionLabel(preset.scoringDirection)} · ${preset.fields.length} velden`
+                        : undefined
+                    }
+                    left={<CoverThumbnail source={coverImageForKey(entry.id)} size={40} />}
+                    onPress={() => applyLibraryEntry(entry)}
+                  />
+                );
+              })}
             </View>
           ) : null}
         </View>
