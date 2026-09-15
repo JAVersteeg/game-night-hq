@@ -136,16 +136,19 @@ export type Database = {
       };
       group_members: {
         Row: {
+          color: Database['public']['Enums']['player_color'];
           group_id: string;
           joined_at: string;
           user_id: string;
         };
         Insert: {
+          color: Database['public']['Enums']['player_color'];
           group_id: string;
           joined_at?: string;
           user_id: string;
         };
         Update: {
+          color?: Database['public']['Enums']['player_color'];
           group_id?: string;
           joined_at?: string;
           user_id?: string;
@@ -323,7 +326,7 @@ export type Database = {
       create_game_template: {
         Args: {
           p_bonus_rules?: Json;
-          p_cover_key?: string | null;
+          p_cover_key?: string;
           p_fields: Json;
           p_group_id: string;
           p_name: string;
@@ -401,9 +404,40 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      set_member_color: {
+        Args: {
+          p_color: Database['public']['Enums']['player_color'];
+          p_group_id: string;
+        };
+        Returns: {
+          color: Database['public']['Enums']['player_color'];
+          group_id: string;
+          joined_at: string;
+          user_id: string;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'group_members';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
     };
     Enums: {
       bonus_operator: '==' | '>' | '<' | '>=' | '<=';
+      player_color:
+        | 'red'
+        | 'orange'
+        | 'yellow'
+        | 'green'
+        | 'teal'
+        | 'blue'
+        | 'purple'
+        | 'pink'
+        | 'brown'
+        | 'grey'
+        | 'black'
+        | 'lime';
       scoring_direction: 'highest_total_wins' | 'lowest_total_wins' | 'ranked';
       session_status: 'in_progress' | 'completed';
     };
@@ -436,10 +470,8 @@ export type Tables<
     }
     ? R
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema['Tables'] &
-        DefaultSchema['Views'])
-    ? (DefaultSchema['Tables'] &
-        DefaultSchema['Views'])[DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])
+    ? (DefaultSchema['Tables'] & DefaultSchema['Views'])[DefaultSchemaTableNameOrOptions] extends {
         Row: infer R;
       }
       ? R
@@ -448,8 +480,7 @@ export type Tables<
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema['Tables']
-    | { schema: keyof DatabaseWithoutInternals },
+    keyof DefaultSchema['Tables'] | { schema: keyof DatabaseWithoutInternals },
   TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
   }
@@ -473,8 +504,7 @@ export type TablesInsert<
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema['Tables']
-    | { schema: keyof DatabaseWithoutInternals },
+    keyof DefaultSchema['Tables'] | { schema: keyof DatabaseWithoutInternals },
   TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
   }
@@ -498,8 +528,7 @@ export type TablesUpdate<
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema['Enums']
-    | { schema: keyof DatabaseWithoutInternals },
+    keyof DefaultSchema['Enums'] | { schema: keyof DatabaseWithoutInternals },
   EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
   }
@@ -515,8 +544,7 @@ export type Enums<
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema['CompositeTypes']
-    | { schema: keyof DatabaseWithoutInternals },
+    keyof DefaultSchema['CompositeTypes'] | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
   }
@@ -534,6 +562,20 @@ export const Constants = {
   public: {
     Enums: {
       bonus_operator: ['==', '>', '<', '>=', '<='],
+      player_color: [
+        'red',
+        'orange',
+        'yellow',
+        'green',
+        'teal',
+        'blue',
+        'purple',
+        'pink',
+        'brown',
+        'grey',
+        'black',
+        'lime',
+      ],
       scoring_direction: ['highest_total_wins', 'lowest_total_wins', 'ranked'],
       session_status: ['in_progress', 'completed'],
     },

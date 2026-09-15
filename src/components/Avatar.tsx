@@ -1,11 +1,17 @@
 import { Image, Text, View } from 'react-native';
 
+import { getPlayerColor, type PlayerColor } from '@/lib/playerColors';
+
 interface AvatarProps {
   displayName: string;
   /** Diameter in px. Also drives the font size, so one number controls the whole thing. */
   size?: number;
   /** From `profiles.avatar_url`. Nothing writes this yet; initials are the fallback until then. */
   avatarUrl?: string | null;
+  /** A group member's chosen colour. Omitted where identity isn't group-scoped (the profile
+   *  screen's own avatar, which has no single colour across groups) — falls back to the generic
+   *  accent look. */
+  color?: PlayerColor;
 }
 
 /**
@@ -20,7 +26,7 @@ function initialsFrom(displayName: string): string {
   return (words[0].slice(0, 1) + words[words.length - 1].slice(0, 1)).toUpperCase();
 }
 
-export function Avatar({ displayName, size = 40, avatarUrl }: AvatarProps) {
+export function Avatar({ displayName, size = 40, avatarUrl, color }: AvatarProps) {
   const dimensions = { width: size, height: size, borderRadius: size / 2 };
 
   if (avatarUrl) {
@@ -29,9 +35,19 @@ export function Avatar({ displayName, size = 40, avatarUrl }: AvatarProps) {
     );
   }
 
+  const palette = color ? getPlayerColor(color) : null;
+
   return (
-    <View className="items-center justify-center bg-accent-soft" style={dimensions}>
-      <Text className="font-semibold text-accent-softFg" style={{ fontSize: size * 0.4 }}>
+    <View
+      className={
+        palette ? 'items-center justify-center' : 'items-center justify-center bg-accent-soft'
+      }
+      style={palette ? { ...dimensions, backgroundColor: palette.swatch } : dimensions}
+    >
+      <Text
+        className={palette ? 'font-semibold' : 'font-semibold text-accent-softFg'}
+        style={palette ? { fontSize: size * 0.4, color: palette.fg } : { fontSize: size * 0.4 }}
+      >
         {initialsFrom(displayName)}
       </Text>
     </View>

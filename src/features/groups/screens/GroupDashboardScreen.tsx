@@ -10,8 +10,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { BarList } from '@/components/charts/BarList';
-import { DivergingBar } from '@/components/charts/DivergingBar';
-import { seriesColor, seriesColorByUser } from '@/components/charts/series';
+import { DivergingBar, TICK_HEIGHT, TRACK_HEIGHT } from '@/components/charts/DivergingBar';
+import { seriesColor } from '@/components/charts/series';
 import { TrendChart } from '@/components/charts/TrendChart';
 import { CoverThumbnail } from '@/components/CoverThumbnail';
 import { EmptyState } from '@/components/EmptyState';
@@ -32,6 +32,7 @@ import {
 import { useGroupMembers } from '@/features/groups/hooks/useGroupMembers';
 import { useGroup } from '@/features/groups/hooks/useGroups';
 import { useSessionHistory } from '@/features/sessions/hooks/useSessionHistory';
+import { getPlayerColor } from '@/lib/playerColors';
 import { theme } from '@/lib/theme';
 import type { AppStackParamList } from '@/navigation/types';
 
@@ -346,6 +347,16 @@ function LeaderboardRow({
   color: string;
   isFirst: boolean;
 }) {
+  // DivergingBar's own layout footprint (TICK_HEIGHT) is taller than its visible track
+  // (TRACK_HEIGHT), to leave its centre tick room to stand proud on both ends. Pulled in on top and
+  // bottom here so the track lines up with where the plain fill bar's track would sit. A couple
+  // extra pixels come off the bottom specifically — the faint tick still reads as part of the bar,
+  // so an even top/bottom split left the padding underneath it looking a touch taller than the
+  // padding under the other two metrics' bars.
+  const divergingBarHalfOffset = (TICK_HEIGHT - TRACK_HEIGHT) / 2;
+  const divergingBarTopOffset = -divergingBarHalfOffset;
+  const divergingBarBottomOffset = -(divergingBarHalfOffset + 1);
+
   return (
     <View className={`gap-2 px-4 py-3 ${isFirst ? '' : 'border-t border-line'}`}>
       <View className="flex-row items-center gap-3">
@@ -365,7 +376,9 @@ function LeaderboardRow({
       {/* The bar repeats the number rather than adding one: it's there so the gap between first
           and fifth is visible without reading five figures. */}
       {bar.kind === 'diverging' ? (
-        <DivergingBar offset={bar.offset} color={color} />
+        <View style={{ marginTop: divergingBarTopOffset, marginBottom: divergingBarBottomOffset }}>
+          <DivergingBar offset={bar.offset} color={color} />
+        </View>
       ) : (
         <View className="h-1.5 overflow-hidden rounded-full bg-surface-sunken">
           <View
@@ -511,9 +524,13 @@ function GameStatsSection({
   // Ranked games plot finish position, not points: 1 is the best score there, so the axis is
   // flipped and pinned to the real range of places instead of a padded one.
   const isRanked = template?.scoring_direction === 'ranked';
-  const colorByUser = stats
-    ? seriesColorByUser(stats.trend.series.map((entry) => entry.userId))
-    : new Map<string, string>();
+  // Each player's own chosen colour (group settings → Leden), not an arbitrary per-chart ramp —
+  // so a player is the same colour here as their avatar everywhere else, and a colour change shows
+  // up the moment `members` refetches. Falls back to the old index-based ramp for a userId this
+  // group's current member list doesn't have (a departed member still present in past sessions).
+  const colorByUser = new Map(
+    (members ?? []).map((member) => [member.userId, getPlayerColor(member.color).swatch]),
+  );
 
   return (
     <View className="mt-8">

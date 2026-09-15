@@ -1,13 +1,17 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { groupKeys } from '@/features/groups/hooks/useGroups';
 import { supabase } from '@/lib/supabase';
+import type { Enums } from '@/types/database';
+
+export type PlayerColor = Enums<'player_color'>;
 
 export interface GroupMember {
   userId: string;
   joinedAt: string;
   displayName: string;
   avatarUrl: string | null;
+  color: PlayerColor;
 }
 
 /**
@@ -29,7 +33,7 @@ export function useGroupMembers(groupId: string) {
     queryFn: async (): Promise<GroupMember[]> => {
       const { data, error } = await supabase
         .from('group_members')
-        .select('user_id, joined_at, profiles(display_name, avatar_url)')
+        .select('user_id, joined_at, color, profiles(display_name, avatar_url)')
         .eq('group_id', groupId)
         .order('joined_at', { ascending: true });
 
@@ -40,7 +44,44 @@ export function useGroupMembers(groupId: string) {
         joinedAt: row.joined_at,
         displayName: row.profiles.display_name,
         avatarUrl: row.profiles.avatar_url,
+        color: row.color,
       }));
     },
   });
+}
+
+/**
+ * Changing your own colour goes through set_member_color rather than a direct update: there is no
+ * UPDATE policy on group_members (see the migration for why), so this is the only write path.
+ * `colorErrorMessage` below covers the one failure the user can act on — another member took the
+ * colour first, a real possibility since the picker's "taken" state can go stale between opening
+ * the modal and tapping a swatch.
+ */
+export function useSetMemberColor(groupId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (color: PlayerColor) => {
+      const { data, error } = await supabase.rpc('set_member_color', {
+        p_group_id: groupId,
+        p_color: color,
+      });
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: groupKeys.members(groupId) });
+    },
+  });
+}
+
+/** set_member_color raises 23505 (unique_violation) when the colour was taken between the picker
+ *  loading and the tap landing; everything else is a connection or server problem. */
+export function colorErrorMessage(error: unknown): string {
+  const code = (error as { code?: string } | null)?.code;
+  if (code === '23505') {
+    return 'Deze kleur is net door iemand anders gekozen. Kies een andere.';
+  }
+  return 'Kleur wijzigen is niet gelukt. Controleer je verbinding en probeer het opnieuw.';
 }

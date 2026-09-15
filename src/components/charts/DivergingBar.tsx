@@ -11,8 +11,11 @@ interface DivergingBarProps {
   color: string;
 }
 
-const TRACK_HEIGHT = 6;
-const TICK_HEIGHT = 12;
+/** Exported so consumers stacking this next to a plain fill bar (of height TRACK_HEIGHT) can offset
+ *  the difference — this component's own layout footprint is TICK_HEIGHT, taller than its visible
+ *  track, to leave the centre tick room to stand proud on both ends. */
+export const TRACK_HEIGHT = 6;
+export const TICK_HEIGHT = 12;
 
 /**
  * A bar for values that run either side of zero, like a points saldo: zero is the middle of the
