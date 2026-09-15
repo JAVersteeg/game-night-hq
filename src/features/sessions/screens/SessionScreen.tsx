@@ -346,28 +346,30 @@ function RoundsStandingsList({
  *  in progress that was never banked, so finishing has to say whether it still counts. Counting it
  *  is the default — the usual reason to finish is that the last round just ended. */
 function FinishRoundsModal({
-  visible,
   roundNumber,
   countsCurrentRound,
   onToggleCurrentRound,
   onCancel,
   onConfirm,
   isPending,
+  hasFailed,
 }: {
-  visible: boolean;
   roundNumber: number;
   countsCurrentRound: boolean;
   onToggleCurrentRound: () => void;
   onCancel: () => void;
   onConfirm: () => void;
   isPending: boolean;
+  /** Finishing is a two-step write (bank the round, then lock the session); without this a failure
+   *  anywhere in it would just leave the dialog open with no explanation. */
+  hasFailed: boolean;
 }) {
   // Without a single banked round there is nothing to keep, so confirming throws the session away
   // rather than filing an all-zero result in the history.
   const willDiscardSession = roundNumber === 1 && !countsCurrentRound;
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
+    <Modal visible transparent animationType="fade" onRequestClose={onCancel}>
       <Pressable
         className="flex-1 items-center justify-center bg-surface-deep/70 px-6"
         onPress={onCancel}
@@ -390,6 +392,11 @@ function FinishRoundsModal({
             onSelect={onToggleCurrentRound}
             testID="finish-count-current-round"
           />
+          {hasFailed ? (
+            <Text className="text-sm text-danger">
+              Afronden is niet gelukt. Controleer je verbinding en probeer het opnieuw.
+            </Text>
+          ) : null}
           <Button
             label={willDiscardSession ? 'Potje verwijderen' : 'Afronden'}
             onPress={onConfirm}
@@ -404,7 +411,6 @@ function FinishRoundsModal({
 }
 
 interface LeaveConfirmModalProps {
-  visible: boolean;
   onCancel: () => void;
   onConfirm: () => void;
 }
@@ -413,9 +419,9 @@ interface LeaveConfirmModalProps {
  *  header back button, and Android's hardware back button all funnel through the same
  *  `beforeRemove` event. Confirming deletes the session: there's no "in progress but nobody's
  *  keeping score" state to leave it in, so backing out has to mean throwing it away. */
-function LeaveConfirmModal({ visible, onCancel, onConfirm }: LeaveConfirmModalProps) {
+function LeaveConfirmModal({ onCancel, onConfirm }: LeaveConfirmModalProps) {
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
+    <Modal visible transparent animationType="fade" onRequestClose={onCancel}>
       <Pressable
         className="flex-1 items-center justify-center bg-surface-deep/70 px-6"
         onPress={onCancel}
@@ -825,6 +831,9 @@ export function SessionScreen() {
                 label="Potje afronden"
                 variant="secondary"
                 onPress={() => {
+                  // Reset first, so a failed earlier attempt doesn't greet them with a stale error.
+                  commitRound.reset();
+                  finalizeSession.reset();
                   setCountsCurrentRound(true);
                   setIsFinishRoundsVisible(true);
                 }}
@@ -842,23 +851,23 @@ export function SessionScreen() {
         </View>
       ) : null}
 
-      <FinishRoundsModal
-        visible={isFinishRoundsVisible}
-        roundNumber={roundNumber}
-        countsCurrentRound={countsCurrentRound}
-        onToggleCurrentRound={() => setCountsCurrentRound((current) => !current)}
-        onCancel={() => setIsFinishRoundsVisible(false)}
-        onConfirm={confirmFinishRounds}
-        isPending={
-          commitRound.isPending || finalizeSession.isPending || deleteSession.isPending
-        }
-      />
+      {/* Mounted one at a time rather than both with a `visible` flag: Android only ever shows one
+          Modal, and two of them in the same tree left the second one refusing to appear at all. */}
+      {isFinishRoundsVisible ? (
+        <FinishRoundsModal
+          roundNumber={roundNumber}
+          countsCurrentRound={countsCurrentRound}
+          onToggleCurrentRound={() => setCountsCurrentRound((current) => !current)}
+          onCancel={() => setIsFinishRoundsVisible(false)}
+          onConfirm={confirmFinishRounds}
+          isPending={commitRound.isPending || finalizeSession.isPending || deleteSession.isPending}
+          hasFailed={commitRound.isError || finalizeSession.isError || deleteSession.isError}
+        />
+      ) : null}
 
-      <LeaveConfirmModal
-        visible={isLeaveConfirmVisible}
-        onCancel={cancelLeave}
-        onConfirm={confirmLeave}
-      />
+      {isLeaveConfirmVisible ? (
+        <LeaveConfirmModal onCancel={cancelLeave} onConfirm={confirmLeave} />
+      ) : null}
     </View>
   );
 }

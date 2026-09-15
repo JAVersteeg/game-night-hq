@@ -3,13 +3,14 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/Avatar';
 import { Button } from '@/components/Button';
 import { ChoiceRow } from '@/components/ChoiceRow';
 import { SectionLabel } from '@/components/SectionLabel';
 import { useAuth } from '@/features/auth/context/AuthContext';
-import { scoringDirectionLabel, useGameTemplates } from '@/features/games/hooks/useGameTemplates';
+import { useGameTemplates } from '@/features/games/hooks/useGameTemplates';
 import { useGroupMembers } from '@/features/groups/hooks/useGroupMembers';
 import { useCreateSession } from '@/features/sessions/hooks/useSessions';
 import type { AppStackParamList } from '@/navigation/types';
@@ -26,6 +27,11 @@ export function StartSessionScreen() {
   const navigation = useNavigation<Navigation>();
   const { session } = useAuth();
   const currentUserId = session?.user.id;
+
+  // "Potje starten" is the last thing in the scroll content rather than a pinned footer, so with
+  // enough members to make the list scroll it ends up under Android's navigation bar unless the
+  // bottom inset is added to the content padding.
+  const insets = useSafeAreaInsets();
 
   const { data: templates } = useGameTemplates(groupId);
   const template = templates?.find((candidate) => candidate.id === templateId);
@@ -71,7 +77,11 @@ export function StartSessionScreen() {
   }
 
   return (
-    <ScrollView className="flex-1 bg-surface" contentContainerClassName="gap-8 px-6 pb-12 pt-6">
+    <ScrollView
+      className="flex-1 bg-surface"
+      contentContainerClassName="gap-8 px-6 pt-6"
+      contentContainerStyle={{ paddingBottom: 48 + insets.bottom }}
+    >
       <View>
         <SectionLabel>Spel</SectionLabel>
         <Text className="mt-2 text-xl font-bold text-ink">{template?.name ?? '…'}</Text>
