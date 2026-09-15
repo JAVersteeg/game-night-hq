@@ -10,18 +10,20 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { BarList } from '@/components/charts/BarList';
-import { HeadToHead } from '@/components/charts/HeadToHead';
+import { DivergingBar } from '@/components/charts/DivergingBar';
 import { seriesColor, seriesColorByUser } from '@/components/charts/series';
 import { TrendChart } from '@/components/charts/TrendChart';
 import { CoverThumbnail } from '@/components/CoverThumbnail';
 import { EmptyState } from '@/components/EmptyState';
 import { GearIcon } from '@/components/GearIcon';
+import { InfoIcon } from '@/components/InfoIcon';
 import { SectionLabel } from '@/components/SectionLabel';
 import { SegmentedControl } from '@/components/SegmentedControl';
 import { StatTile } from '@/components/StatTile';
 import { coverImageForKey } from '@/features/games/covers';
 import type { GameStats, LeaderboardEntry } from '@/features/games/hooks/useGameStats';
 import { useGameStats } from '@/features/games/hooks/useGameStats';
+import type { ScoringDirection } from '@/features/games/hooks/useGameTemplates';
 import { useGameTemplate, useGameTemplates } from '@/features/games/hooks/useGameTemplates';
 import {
   useGroupDashboardStats,
@@ -229,18 +231,118 @@ function Chip({
   );
 }
 
+/** Dutch decimals, since every number on this screen is read out loud at the table. */
+function decimal(value: number): string {
+  return value.toFixed(1).replace('.', ',');
+}
+
+/** Below this, Winstfactor swings so hard on a single evening that it says more about the sample
+ *  than the player — the rows are dimmed and the explanation says why. */
+const MIN_GAMES_FOR_WIN_FACTOR = 10;
+
+type MetricKey = 'overwicht' | 'winstfactor' | 'puntensaldo';
+
+/** How far a saldo of the largest size in the list reaches from the centre: 1.5× the biggest
+ *  absolute saldo is the full half-track, so the leader fills two thirds of their side and there's
+ *  headroom left for a bigger night later. */
+const SALDO_HEADROOM = 1.5;
+
+type BarSpec =
+  /** 0-100, growing from the left edge. */
+  | { kind: 'fill'; width: number }
+  /** -100..100, growing left or right from a zero in the middle. */
+  | { kind: 'diverging'; offset: number };
+
+/** The scale a bar is drawn against, derived from the whole list rather than one row. */
+interface BarScale {
+  /** Largest value in the list. */
+  best: number;
+  /** Largest absolute value in the list — what a diverging bar is normalised against. */
+  maxAbs: number;
+}
+
+/** What the game's scoring direction means for a metric — only Puntensaldo cares, since it's the
+ *  one metric whose raw number doesn't already have "better" baked into it. */
+interface MetricContext {
+  /** Lowest total wins, so a saldo below the table average is the good end of the scale. */
+  lowerIsBetter: boolean;
+}
+
+interface MetricDefinition {
+  key: MetricKey;
+  label: string;
+  /** One or two lines, shown when the section's info icon is tapped. */
+  explanation: (context: MetricContext) => string;
+  format: (entry: LeaderboardEntry) => string;
+  bar: (entry: LeaderboardEntry, scale: BarScale) => BarSpec;
+  /** Higher sorts first, so a metric where lower is better negates here rather than making every
+   *  caller special-case the comparator. */
+  sortValue: (entry: LeaderboardEntry, context: MetricContext) => number;
+  /** Greys the number out where the metric can't be trusted yet. */
+  isWeak?: (entry: LeaderboardEntry) => boolean;
+}
+
+const METRICS: MetricDefinition[] = [
+  {
+    key: 'overwicht',
+    label: 'Overwicht',
+    explanation: () =>
+      'Het deel van de tafel dat je gemiddeld verslaat, ongeacht hoe groot die tafel was. 50% is precies middenmoot.',
+    format: (entry) => `${entry.beatShare}%`,
+    bar: (entry) => ({ kind: 'fill', width: entry.beatShare }),
+    sortValue: (entry) => entry.beatShare,
+  },
+  {
+    key: 'winstfactor',
+    label: 'Winstfactor',
+    explanation: () =>
+      'Hoe vaak je wint vergeleken met wat puur toeval zou opleveren bij deze tafelgroottes; 1,0× is toeval. Let op: onder de 10 potjes zegt dit getal nog weinig, één avond kan het al bijna verdubbelen.',
+    format: (entry) => `${decimal(entry.winFactor)}×`,
+    bar: (entry, scale) => ({
+      kind: 'fill',
+      width: scale.best === 0 ? 0 : (entry.winFactor / scale.best) * 100,
+    }),
+    sortValue: (entry) => entry.winFactor,
+    isWeak: (entry) => entry.gamesPlayed < MIN_GAMES_FOR_WIN_FACTOR,
+  },
+  {
+    key: 'puntensaldo',
+    label: 'Puntensaldo',
+    explanation: (context) =>
+      `Je punten ten opzichte van het tafelgemiddelde, gemiddeld over al je potjes. ${
+        context.lowerIsBetter
+          ? 'Bij dit spel wint de laagste score, dus hoe lager je saldo, hoe beter.'
+          : 'Hoe hoger je saldo, hoe beter.'
+      }`,
+    format: (entry) => `${entry.pointDiff > 0 ? '+' : ''}${decimal(entry.pointDiff)}`,
+    // A saldo runs either side of zero, so it gets the diverging bar: zero in the middle, and the
+    // fill reading as "above" or "below the table" without having to parse the sign first.
+    bar: (entry, scale) => ({
+      kind: 'diverging',
+      offset: scale.maxAbs === 0 ? 0 : (entry.pointDiff / (scale.maxAbs * SALDO_HEADROOM)) * 100,
+    }),
+    // Ranked highest-first like every other metric, so in a lowest-wins game the sign flips and
+    // -2,1 lands above +0,4 — the order the table itself would put them in.
+    sortValue: (entry, context) => (context.lowerIsBetter ? -entry.pointDiff : entry.pointDiff),
+  },
+];
+
 function LeaderboardRow({
   rank,
   name,
-  entry,
   meta,
+  value,
+  isWeak,
+  bar,
   color,
   isFirst,
 }: {
   rank: number;
   name: string;
-  entry: LeaderboardEntry;
   meta: string;
+  value: string;
+  isWeak: boolean;
+  bar: BarSpec;
   color: string;
   isFirst: boolean;
 }) {
@@ -256,46 +358,93 @@ function LeaderboardRow({
             {meta}
           </Text>
         </View>
-        <Text className="text-lg font-bold text-ink">{entry.winPct}%</Text>
+        <Text className={`text-lg font-bold ${isWeak ? 'text-ink-faint' : 'text-ink'}`}>
+          {value}
+        </Text>
       </View>
-      {/* The bar repeats the percentage rather than adding a number: it's there so the gap between
-          first and fifth is visible without reading five figures. */}
-      <View className="h-1.5 overflow-hidden rounded-full bg-surface-sunken">
-        <View
-          className="h-full rounded-full"
-          style={{ width: `${entry.winPct}%`, backgroundColor: color }}
-        />
-      </View>
+      {/* The bar repeats the number rather than adding one: it's there so the gap between first
+          and fifth is visible without reading five figures. */}
+      {bar.kind === 'diverging' ? (
+        <DivergingBar offset={bar.offset} color={color} />
+      ) : (
+        <View className="h-1.5 overflow-hidden rounded-full bg-surface-sunken">
+          <View
+            className="h-full rounded-full"
+            style={{ width: `${Math.max(0, Math.min(100, bar.width))}%`, backgroundColor: color }}
+          />
+        </View>
+      )}
     </View>
   );
 }
 
-/** Two players' record against each other, over the sessions of this game they both played. The
- *  chips append rather than toggle — tapping a third player pushes out the one picked longest ago,
- *  so there are always exactly two and no way to end up with an empty comparison. */
-function HeadToHeadSection({
+/** The "Ranglijst" heading with the one info affordance for the whole section: tapping it explains
+ *  all three metrics at once, since they're only really understood next to each other. */
+function LeaderboardHeader({ open, onToggle }: { open: boolean; onToggle: () => void }) {
+  return (
+    <Pressable
+      onPress={onToggle}
+      hitSlop={8}
+      accessibilityRole="button"
+      accessibilityLabel="Uitleg over de ranglijstcijfers"
+      accessibilityState={{ expanded: open }}
+      className="flex-row items-center gap-2 self-start active:opacity-60"
+    >
+      <SectionLabel>Ranglijst</SectionLabel>
+      <InfoIcon size={16} color={open ? theme.ink : theme.inkSubtle} />
+    </Pressable>
+  );
+}
+
+/** Per-player ranking for one game, by whichever of the three metrics is selected. One metric at a
+ *  time rather than a column per metric: three numbers plus a name don't fit at phone width
+ *  without shrinking all of them past reading size. */
+function LeaderboardSection({
   stats,
+  scoringDirection,
   displayNameById,
+  colorByUser,
 }: {
   stats: GameStats;
+  scoringDirection: ScoringDirection;
   displayNameById: Map<string, string>;
+  colorByUser: Map<string, string>;
 }) {
-  const [picked, setPicked] = useState<string[]>([]);
+  const [metricKey, setMetricKey] = useState<MetricKey>('overwicht');
+  const [infoOpen, setInfoOpen] = useState(false);
 
-  const candidates = stats.leaderboard.map((entry) => entry.userId);
-  const selection =
-    picked.length === 2 && picked.every((userId) => candidates.includes(userId))
-      ? picked
-      : candidates.slice(0, 2);
+  const isRanked = scoringDirection === 'ranked';
+  const context: MetricContext = { lowerIsBetter: scoringDirection === 'lowest_total_wins' };
 
-  if (candidates.length < 2) return null;
+  // Ranked games record a finish position, not points, so there is no table average to have a
+  // saldo against — it drops out of the chips and out of the explanation with it.
+  const metrics = METRICS.filter((metric) => !(isRanked && metric.key === 'puntensaldo'));
+  const metric = metrics.find((entry) => entry.key === metricKey) ?? metrics[0];
 
-  const [left, right] = selection;
-  const record = stats.headToHead[left]?.[right] ?? { wins: 0, losses: 0, draws: 0 };
+  const rows = [...stats.leaderboard].sort(
+    (a, b) =>
+      metric.sortValue(b, context) - metric.sortValue(a, context) || b.gamesPlayed - a.gamesPlayed,
+  );
+  const values = rows.map((entry) => metric.sortValue(entry, context));
+  const scale: BarScale = {
+    best: Math.max(...values, 0),
+    maxAbs: Math.max(...values.map(Math.abs), 0),
+  };
 
   return (
     <View className="mt-8">
-      <SectionLabel>Onderling</SectionLabel>
+      <LeaderboardHeader open={infoOpen} onToggle={() => setInfoOpen((current) => !current)} />
+
+      {infoOpen ? (
+        <Card tone="muted" className="mt-3 gap-3">
+          {metrics.map((entry) => (
+            <Text key={entry.key} className="text-sm leading-5 text-ink-muted">
+              <Text className="font-semibold text-ink">{entry.label}. </Text>
+              {entry.explanation(context)}
+            </Text>
+          ))}
+        </Card>
+      ) : null}
 
       <ScrollView
         horizontal
@@ -303,34 +452,40 @@ function HeadToHeadSection({
         className="mt-3"
         contentContainerClassName="gap-2"
       >
-        {candidates.map((userId) => (
+        {metrics.map((entry) => (
           <Chip
-            key={userId}
-            label={displayNameById.get(userId) ?? '?'}
-            selected={selection.includes(userId)}
-            onPress={() =>
-              setPicked((current) => [...current.filter((id) => id !== userId), userId].slice(-2))
-            }
+            key={entry.key}
+            label={entry.label}
+            selected={entry.key === metric.key}
+            onPress={() => setMetricKey(entry.key)}
           />
         ))}
       </ScrollView>
 
-      <Card className="mt-3">
-        <HeadToHead
-          left={displayNameById.get(left) ?? '?'}
-          right={displayNameById.get(right) ?? '?'}
-          leftWins={record.wins}
-          rightWins={record.losses}
-          draws={record.draws}
-        />
-      </Card>
+      <View className="mt-3 overflow-hidden rounded-2xl border border-line bg-surface">
+        {rows.map((entry, index) => (
+          <LeaderboardRow
+            key={entry.userId}
+            rank={index + 1}
+            name={displayNameById.get(entry.userId) ?? '?'}
+            meta={`${entry.wins}/${entry.gamesPlayed} gewonnen · ${
+              isRanked ? `gem. plek ${decimal(entry.avgTotal)}` : `gem. ${decimal(entry.avgTotal)}`
+            }`}
+            value={metric.format(entry)}
+            isWeak={metric.isWeak?.(entry) ?? false}
+            bar={metric.bar(entry, scale)}
+            color={colorByUser.get(entry.userId) ?? seriesColor(index)}
+            isFirst={index === 0}
+          />
+        ))}
+      </View>
     </View>
   );
 }
 
-/** Score trend, leaderboard and head-to-head for one game template, with chips to pick which of
- *  the group's played games they all describe. Only offers templates that have actually been
- *  played — `popularGames` is already filtered and capped that way. */
+/** Score trend and ranglijst for one game template, with chips to pick which of the group's played
+ *  games they describe. Only offers templates that have actually been played — `popularGames` is
+ *  already filtered and capped that way. */
 function GameStatsSection({
   groupId,
   popularGames,
@@ -411,26 +566,12 @@ function GameStatsSection({
             </Card>
           </View>
 
-          <View className="mt-8">
-            <SectionLabel>Ranglijst</SectionLabel>
-            <View className="mt-3 overflow-hidden rounded-2xl border border-line bg-surface">
-              {stats.leaderboard.map((entry, index) => (
-                <LeaderboardRow
-                  key={entry.userId}
-                  rank={index + 1}
-                  name={displayNameById.get(entry.userId) ?? '?'}
-                  entry={entry}
-                  meta={`${entry.wins}/${entry.gamesPlayed} gewonnen · ${
-                    isRanked ? `gem. plek ${entry.avgTotal}` : `gem. ${entry.avgTotal}`
-                  }`}
-                  color={colorByUser.get(entry.userId) ?? seriesColor(index)}
-                  isFirst={index === 0}
-                />
-              ))}
-            </View>
-          </View>
-
-          <HeadToHeadSection stats={stats} displayNameById={displayNameById} />
+          <LeaderboardSection
+            stats={stats}
+            scoringDirection={template.scoring_direction}
+            displayNameById={displayNameById}
+            colorByUser={colorByUser}
+          />
         </>
       )}
     </View>

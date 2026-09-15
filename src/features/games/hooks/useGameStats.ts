@@ -14,9 +14,23 @@ export interface LeaderboardEntry {
   userId: string;
   gamesPlayed: number;
   wins: number;
-  /** 0-100, rounded. */
-  winPct: number;
   avgTotal: number;
+  /**
+   * "Overwicht": the share of the table this player beats in an average session, 0-100. Normalised
+   * per session before averaging, so beating two of three counts the same as beating four of five
+   * — the whole point of it next to a raw win count. 50 is exactly mid-table.
+   */
+  beatShare: number;
+  /**
+   * "Winstfactor": wins divided by the wins pure chance would hand out at these table sizes
+   * (Σ 1/participants). 1 is chance, 2 is twice as often as chance.
+   */
+  winFactor: number;
+  /**
+   * "Puntensaldo": average points above or below the table average, one decimal. Meaningless for
+   * ranked templates, where the "total" is a finish position — the screen hides it there.
+   */
+  pointDiff: number;
 }
 
 export interface TrendSeriesData {
@@ -31,17 +45,9 @@ export interface GameTrend {
   series: TrendSeriesData[];
 }
 
-export interface HeadToHeadRecord {
-  wins: number;
-  losses: number;
-  draws: number;
-}
-
 export interface GameStats {
   leaderboard: LeaderboardEntry[];
   trend: GameTrend;
-  /** `headToHead[a][b]` is a's record against b, over the sessions they both played. */
-  headToHead: Record<string, Record<string, HeadToHeadRecord>>;
   /** Biggest participant count in any session of this game — the ranked trend axis runs 1..this. */
   maxParticipants: number;
 }
@@ -70,17 +76,16 @@ interface SessionTotals {
 const EMPTY_STATS: GameStats = {
   leaderboard: [],
   trend: { labels: [], series: [] },
-  headToHead: {},
   maxParticipants: 0,
 };
 
 /**
- * Everything the stats tab shows for one game template — leaderboard, score trend and the
- * head-to-head matrix — from a single pair of queries, since all three are derived from the same
- * per-session totals. Same two-query shape as `useSessionHistory` (session_scores has no direct FK
- * to sessions, only the composite one to session_participants, so it can't be embedded and is
- * fetched separately for the batch of session ids), scoped to one template and without the
- * game_templates embed, since the caller already has the template loaded.
+ * Everything the stats tab shows for one game template — leaderboard and score trend — from a
+ * single pair of queries, since both are derived from the same per-session totals. Same two-query
+ * shape as `useSessionHistory` (session_scores has no direct FK to sessions, only the composite one
+ * to session_participants, so it can't be embedded and is fetched separately for the batch of
+ * session ids), scoped to one template and without the game_templates embed, since the caller
+ * already has the template loaded.
  *
  * Takes the whole template rather than its parts so the query can't run before they arrive: the
  * fields and bonus rules are what the totals are computed from, they aren't in the query key, and
@@ -137,37 +142,93 @@ export function useGameStats(template: GameTemplateWithBonusRules | null | undef
       }));
 
       return {
-        leaderboard: buildLeaderboard(totalsBySession),
+        leaderboard: buildLeaderboard(totalsBySession, scoringDirection),
         trend: buildTrend(totalsBySession),
-        headToHead: buildHeadToHead(totalsBySession, scoringDirection),
         maxParticipants: Math.max(...totalsBySession.map((session) => session.totals.length)),
       };
     },
   });
 }
 
-function buildLeaderboard(sessions: SessionTotals[]): LeaderboardEntry[] {
-  const byUser = new Map<string, { gamesPlayed: number; wins: number; totalSum: number }>();
+interface LeaderboardTally {
+  gamesPlayed: number;
+  wins: number;
+  totalSum: number;
+  /** Σ of "share of the table beaten", one term per session with more than one player. */
+  shareSum: number;
+  shareCount: number;
+  /** Σ 1/participants — the wins an average player would pick up at these table sizes. */
+  expectedWins: number;
+  /** Σ of (own total − table average). */
+  diffSum: number;
+}
+
+function buildLeaderboard(
+  sessions: SessionTotals[],
+  scoringDirection: ScoringDirection,
+): LeaderboardEntry[] {
+  const byUser = new Map<string, LeaderboardTally>();
 
   for (const session of sessions) {
+    const participants = session.totals.length;
+    const average =
+      session.totals.reduce((sum, entry) => sum + entry.total, 0) / Math.max(1, participants);
+
     for (const entry of session.totals) {
-      const current = byUser.get(entry.userId) ?? { gamesPlayed: 0, wins: 0, totalSum: 0 };
-      current.gamesPlayed += 1;
-      current.wins += entry.isWinner ? 1 : 0;
-      current.totalSum += entry.total;
-      byUser.set(entry.userId, current);
+      const tally = byUser.get(entry.userId) ?? {
+        gamesPlayed: 0,
+        wins: 0,
+        totalSum: 0,
+        shareSum: 0,
+        shareCount: 0,
+        expectedWins: 0,
+        diffSum: 0,
+      };
+
+      tally.gamesPlayed += 1;
+      tally.wins += entry.isWinner ? 1 : 0;
+      tally.totalSum += entry.total;
+      tally.expectedWins += 1 / participants;
+      tally.diffSum += entry.total - average;
+
+      // A one-player session has no table to beat, so it's left out of the average rather than
+      // counted as a perfect score. It shouldn't exist, but nothing in the schema forbids it.
+      if (participants > 1) {
+        const beaten = session.totals.reduce((count, other) => {
+          if (other.userId === entry.userId) return count;
+          if (other.total === entry.total) return count + 0.5;
+          // 'ranked' stores finish position, so lower is better there too — the same branch as
+          // lowest_total_wins, exactly the way `computeTotals` treats it.
+          const isBetter =
+            scoringDirection === 'highest_total_wins'
+              ? entry.total > other.total
+              : entry.total < other.total;
+          return isBetter ? count + 1 : count;
+        }, 0);
+
+        tally.shareSum += beaten / (participants - 1);
+        tally.shareCount += 1;
+      }
+
+      byUser.set(entry.userId, tally);
     }
   }
 
   return Array.from(byUser.entries())
-    .map(([userId, stats]) => ({
+    .map(([userId, tally]) => ({
       userId,
-      gamesPlayed: stats.gamesPlayed,
-      wins: stats.wins,
-      winPct: Math.round((stats.wins / stats.gamesPlayed) * 100),
-      avgTotal: Math.round((stats.totalSum / stats.gamesPlayed) * 10) / 10,
+      gamesPlayed: tally.gamesPlayed,
+      wins: tally.wins,
+      avgTotal: round1(tally.totalSum / tally.gamesPlayed),
+      beatShare: tally.shareCount === 0 ? 0 : Math.round((tally.shareSum / tally.shareCount) * 100),
+      winFactor: tally.expectedWins === 0 ? 0 : round1(tally.wins / tally.expectedWins),
+      pointDiff: round1(tally.diffSum / tally.gamesPlayed),
     }))
-    .sort((a, b) => b.winPct - a.winPct || b.gamesPlayed - a.gamesPlayed);
+    .sort((a, b) => b.beatShare - a.beatShare || b.gamesPlayed - a.gamesPlayed);
+}
+
+function round1(value: number): number {
+  return Math.round(value * 10) / 10;
 }
 
 /** The last few sessions, with a line per player who shows up most often in them — a regular who
@@ -196,43 +257,4 @@ function buildTrend(sessions: SessionTotals[]): GameTrend {
       ),
     })),
   };
-}
-
-function buildHeadToHead(
-  sessions: SessionTotals[],
-  scoringDirection: ScoringDirection,
-): Record<string, Record<string, HeadToHeadRecord>> {
-  const matrix: Record<string, Record<string, HeadToHeadRecord>> = {};
-
-  const recordFor = (a: string, b: string): HeadToHeadRecord => {
-    matrix[a] ??= {};
-    matrix[a][b] ??= { wins: 0, losses: 0, draws: 0 };
-    return matrix[a][b];
-  };
-
-  for (const session of sessions) {
-    for (const left of session.totals) {
-      for (const right of session.totals) {
-        if (left.userId === right.userId) continue;
-
-        const entry = recordFor(left.userId, right.userId);
-        if (left.total === right.total) {
-          entry.draws += 1;
-          continue;
-        }
-
-        // 'ranked' stores finish position, so lower is better there too — the same branch as
-        // lowest_total_wins, exactly the way `computeTotals` treats it.
-        const leftIsBetter =
-          scoringDirection === 'highest_total_wins'
-            ? left.total > right.total
-            : left.total < right.total;
-
-        if (leftIsBetter) entry.wins += 1;
-        else entry.losses += 1;
-      }
-    }
-  }
-
-  return matrix;
 }
