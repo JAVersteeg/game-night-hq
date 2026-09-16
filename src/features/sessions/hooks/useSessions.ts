@@ -12,7 +12,10 @@ import type { Tables } from '@/types/database';
 export type Session = Tables<'sessions'>;
 
 export interface SessionWithTemplate extends Session {
-  game_templates: Pick<Tables<'game_templates'>, 'name' | 'scoring_direction' | 'rounds' | 'round_count'>;
+  game_templates: Pick<
+    Tables<'game_templates'>,
+    'name' | 'cover_key' | 'scoring_direction' | 'rounds' | 'round_count'
+  >;
 }
 
 export const sessionKeys = {
@@ -77,7 +80,7 @@ export function useSession(sessionId: string) {
     queryFn: async (): Promise<SessionWithTemplate> => {
       const { data, error } = await supabase
         .from('sessions')
-        .select('*, game_templates(name, scoring_direction, rounds, round_count)')
+        .select('*, game_templates(name, cover_key, scoring_direction, rounds, round_count)')
         .eq('id', sessionId)
         .single();
 
