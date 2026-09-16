@@ -46,6 +46,7 @@ import {
 } from '@/features/groups/hooks/useGroupMembers';
 import { useGroup } from '@/features/groups/hooks/useGroups';
 import { useSessionHistory } from '@/features/sessions/hooks/useSessionHistory';
+import { higherTotalIsBetter } from '@/features/sessions/scoring';
 import { getPlayerColor } from '@/lib/playerColors';
 import { theme } from '@/lib/theme';
 import type { AppStackParamList } from '@/navigation/types';
@@ -632,6 +633,14 @@ function GameStatsSection({
                 labels={stats.trend.labels}
                 inverted={isRanked}
                 domain={isRanked ? [1, Math.max(2, stats.maxParticipants)] : undefined}
+                // Ranked always plots a finish rank here (1 = best), even for a ranked-and-rounds
+                // template — see the comment above on `isRanked`. Otherwise it's whichever
+                // direction the template scores by.
+                higherIsBetter={
+                  isRanked
+                    ? false
+                    : higherTotalIsBetter(template.scoring_direction, template.rounds)
+                }
                 series={stats.trend.series.map((entry) => ({
                   name: displayNameById.get(entry.userId) ?? '?',
                   color: colorByUser.get(entry.userId) ?? seriesColor(0),
