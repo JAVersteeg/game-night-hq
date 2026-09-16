@@ -2,9 +2,12 @@ import type { NavigationAction, RouteProp } from '@react-navigation/native';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { ActivityIndicator, Modal, Pressable, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, View } from 'react-native';
 import { Text } from '@/components/Text';
 import DraggableFlatList, { type RenderItemParams } from 'react-native-draggable-flatlist';
+import { KeyboardAwareScrollView, KeyboardStickyView } from 'react-native-keyboard-controller';
+import { format } from 'date-fns';
+import { nl } from 'date-fns/locale';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/Avatar';
@@ -15,6 +18,7 @@ import { ChoiceRow } from '@/components/ChoiceRow';
 import { NumberStepper } from '@/components/NumberStepper';
 import { ScoreBars } from '@/components/ScoreBars';
 import { SectionLabel } from '@/components/SectionLabel';
+import { TextField } from '@/components/TextField';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { useGroupMembers, type GroupMember } from '@/features/groups/hooks/useGroupMembers';
 import { scoringDirectionLabel, useGameTemplate } from '@/features/games/hooks/useGameTemplates';
@@ -25,6 +29,12 @@ import {
   roundRankPoints,
   higherTotalIsBetter,
 } from '@/features/sessions/scoring';
+import {
+  useAddSessionNote,
+  useDeleteSessionNote,
+  useSessionNotes,
+  type SessionNote,
+} from '@/features/sessions/hooks/useSessionNotes';
 import { useSessionParticipants } from '@/features/sessions/hooks/useSessionParticipants';
 import { useSetScore, useSessionScores } from '@/features/sessions/hooks/useSessionScores';
 import type { RoundFieldValues } from '@/features/sessions/hooks/useSessions';
@@ -370,7 +380,9 @@ function RoundsStandingsList({
           <Text className="min-w-0 flex-1 text-base font-semibold text-ink" numberOfLines={1}>
             {member.displayName}
           </Text>
-          <Text className="text-xl font-bold text-ink">{totalByUserId.get(member.userId) ?? 0}</Text>
+          <Text className="text-xl font-bold text-ink">
+            {totalByUserId.get(member.userId) ?? 0}
+          </Text>
         </View>
       ))}
     </View>
@@ -445,6 +457,43 @@ function FinishRoundsModal({
   );
 }
 
+interface DeleteNoteConfirmModalProps {
+  onCancel: () => void;
+  onConfirm: () => void;
+  isPending: boolean;
+}
+
+/** A note has no undo once it's gone — unlike a score, which can just be re-entered — so deleting
+ *  one asks first, the same way leaving a live session does. */
+function DeleteNoteConfirmModal({ onCancel, onConfirm, isPending }: DeleteNoteConfirmModalProps) {
+  return (
+    <Modal visible transparent animationType="fade" onRequestClose={onCancel}>
+      <Pressable
+        className="flex-1 items-center justify-center bg-surface-deep/70 px-6"
+        onPress={onCancel}
+        accessibilityLabel="Sluit"
+      >
+        <Pressable className="w-full max-w-sm gap-4 rounded-3xl border border-line bg-surface p-6">
+          <View>
+            <Text className="text-xl font-bold text-ink">Notitie verwijderen?</Text>
+            <Text className="mt-1 text-sm text-ink-muted">
+              Deze notitie is daarna niet meer terug te halen.
+            </Text>
+          </View>
+          <Button
+            label="Verwijderen"
+            variant="secondary"
+            onPress={onConfirm}
+            isLoading={isPending}
+            testID="delete-note-confirm"
+          />
+          <Button label="Annuleren" onPress={onCancel} />
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
 interface LeaveConfirmModalProps {
   onCancel: () => void;
   onConfirm: () => void;
@@ -477,6 +526,84 @@ function LeaveConfirmModal({ onCancel, onConfirm }: LeaveConfirmModalProps) {
   );
 }
 
+/** An append-only log, oldest first. Any group member can add one while `canWrite` holds (in
+ *  progress, or within the 2-hour grace window after completion), but only the author can delete
+ *  their own — RLS is the real enforcement, this just hides the affordance. */
+function SessionNotesSection({
+  notes,
+  authorNameById,
+  currentUserId,
+  canWrite,
+  draft,
+  onDraftChange,
+  onAdd,
+  onDelete,
+  isAdding,
+}: {
+  notes: SessionNote[];
+  authorNameById: Map<string, string>;
+  currentUserId: string | undefined;
+  canWrite: boolean;
+  draft: string;
+  onDraftChange: (value: string) => void;
+  onAdd: () => void;
+  onDelete: (noteId: string) => void;
+  isAdding: boolean;
+}) {
+  return (
+    <View>
+      <SectionLabel>Notities</SectionLabel>
+      <View className="mt-2 gap-2">
+        {notes.length === 0 ? (
+          <Text className="text-sm text-ink-muted">Nog geen notities voor dit potje.</Text>
+        ) : (
+          notes.map((note) => (
+            <View key={note.id} className="rounded-2xl border border-line bg-surface px-4 py-3">
+              <View className="flex-row items-start gap-3">
+                <View className="min-w-0 flex-1">
+                  <Text className="text-base text-ink">{note.body}</Text>
+                  <Text className="mt-1 text-xs text-ink-subtle">
+                    {authorNameById.get(note.author_id) ?? 'Onbekend'} ·{' '}
+                    {format(new Date(note.created_at), 'HH:mm', { locale: nl })}
+                  </Text>
+                </View>
+                {canWrite && note.author_id === currentUserId ? (
+                  <Pressable
+                    onPress={() => onDelete(note.id)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Notitie verwijderen"
+                    className="active:opacity-70"
+                  >
+                    <Text className="text-sm font-semibold text-danger">Verwijderen</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            </View>
+          ))
+        )}
+      </View>
+      {canWrite ? (
+        <View className="mt-3 gap-2">
+          <TextField
+            value={draft}
+            onChangeText={onDraftChange}
+            placeholder="Notitie toevoegen…"
+            testID="session-note-input"
+          />
+          <Button
+            label="Toevoegen"
+            variant="secondary"
+            onPress={onAdd}
+            isLoading={isAdding}
+            disabled={draft.trim().length === 0}
+            testID="session-note-submit"
+          />
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
 /** A session in progress: live score entry for the scorekeeper, a read-only live view for
  *  everyone else, and a locked results view once it's finalised. */
 export function SessionScreen() {
@@ -489,8 +616,11 @@ export function SessionScreen() {
   // instead of replacing it.
   const insets = useSafeAreaInsets();
 
-  const { data: sessionData, isPending: isSessionPending, isError: isSessionError } =
-    useSession(sessionId);
+  const {
+    data: sessionData,
+    isPending: isSessionPending,
+    isError: isSessionError,
+  } = useSession(sessionId);
   const { data: members } = useGroupMembers(sessionData?.group_id ?? '');
   const { data: participantIds } = useSessionParticipants(sessionId);
   const { data: template } = useGameTemplate(sessionData?.template_id ?? '');
@@ -500,8 +630,13 @@ export function SessionScreen() {
   const deleteSession = useDeleteSession(sessionId, sessionData?.group_id ?? '');
   const commitRound = useCommitRound(sessionId);
   const undoRound = useUndoRound(sessionId);
+  const { data: notes } = useSessionNotes(sessionId);
+  const addNote = useAddSessionNote(sessionId);
+  const deleteNote = useDeleteSessionNote(sessionId);
 
   const [openParticipantId, setOpenParticipantId] = useState<string | null>(currentUserId ?? null);
+  const [noteDraft, setNoteDraft] = useState('');
+  const [pendingDeleteNoteId, setPendingDeleteNoteId] = useState<string | null>(null);
 
   const [isLeaveConfirmVisible, setIsLeaveConfirmVisible] = useState(false);
   const pendingLeaveActionRef = useRef<NavigationAction | null>(null);
@@ -519,6 +654,8 @@ export function SessionScreen() {
   const [fieldRoundDraft, setFieldRoundDraft] = useState<RoundFieldValues>({});
   const [isFinishRoundsVisible, setIsFinishRoundsVisible] = useState(false);
   const [countsCurrentRound, setCountsCurrentRound] = useState(true);
+  // Measured so a focused field scrolls clear of the pinned footer, which sits above the keyboard.
+  const [footerHeight, setFooterHeight] = useState(0);
 
   useLayoutEffect(() => {
     navigation.setOptions({ title: sessionData?.game_templates.name ?? 'Potje' });
@@ -654,6 +791,28 @@ export function SessionScreen() {
   const isScorekeeper = currentUserId === sessionData.scorekeeper_id;
   const isInProgress = sessionData.status === 'in_progress';
   const canEdit = isScorekeeper && isInProgress;
+  // Mirrors `can_write_session_notes`: notes are everyone's, not just the scorekeeper's — any
+  // group member can add one while the session is live, plus a 2-hour grace window after
+  // finalising so the table can still write up what happened. Same window RLS enforces.
+  const canWriteNotes =
+    isInProgress ||
+    (sessionData.completed_at !== null &&
+      Date.now() - new Date(sessionData.completed_at).getTime() < 2 * 60 * 60 * 1000);
+  // Keyed off group members, not participants: someone who sat this one out can still comment.
+  const authorNameById = new Map(
+    (members ?? []).map((member) => [member.userId, member.displayName]),
+  );
+
+  function handleAddNote() {
+    const body = noteDraft.trim();
+    if (!body || !currentUserId) return;
+    addNote.mutate({ authorId: currentUserId, body }, { onSuccess: () => setNoteDraft('') });
+  }
+
+  function confirmDeleteNote() {
+    if (!pendingDeleteNoteId) return;
+    deleteNote.mutate(pendingDeleteNoteId, { onSuccess: () => setPendingDeleteNoteId(null) });
+  }
   const isRanked = sessionData.game_templates.scoring_direction === 'ranked';
   const isRounds = sessionData.game_templates.rounds;
   // Rounds splits into two mechanics depending on direction: ranked-and-rounds drags a finish
@@ -667,7 +826,8 @@ export function SessionScreen() {
   const roundLabel = roundCount ? `Ronde ${roundNumber} van ${roundCount}` : `Ronde ${roundNumber}`;
   // Only the round that `last_round_order`/`last_round_values` describes can be taken back, and
   // undoing clears whichever one was set — so the button disappears until another round is banked.
-  const canUndoRound = sessionData.last_round_order !== null || sessionData.last_round_values !== null;
+  const canUndoRound =
+    sessionData.last_round_order !== null || sessionData.last_round_values !== null;
 
   const totals = computeTotals(
     participants.map((member) => member.userId),
@@ -705,7 +865,10 @@ export function SessionScreen() {
     const bankedRoundNumber = roundsPlayed + 1;
     if (isRankedRounds) {
       if (!roundOrder || roundOrder.length === 0) return;
-      commitRound.mutate({ order: roundOrder }, { onSuccess: () => maybeOfferFinish(bankedRoundNumber) });
+      commitRound.mutate(
+        { order: roundOrder },
+        { onSuccess: () => maybeOfferFinish(bankedRoundNumber) },
+      );
       return;
     }
     commitRound.mutate(
@@ -783,15 +946,18 @@ export function SessionScreen() {
 
     const winners = participants.filter((member) => totalByUserId.get(member.userId)?.isWinner);
     const orderedMembers = [...participants].sort(
-      (a, b) => (totalByUserId.get(a.userId)?.total ?? 0) - (totalByUserId.get(b.userId)?.total ?? 0),
+      (a, b) =>
+        (totalByUserId.get(a.userId)?.total ?? 0) - (totalByUserId.get(b.userId)?.total ?? 0),
     );
 
     return (
       <View className="flex-1 bg-surface">
-        <ScrollView
+        <KeyboardAwareScrollView
           className="flex-1"
           contentContainerClassName="gap-8 px-6 pt-6"
           contentContainerStyle={{ paddingBottom: 24 + insets.bottom }}
+          bottomOffset={24}
+          keyboardShouldPersistTaps="handled"
         >
           <View className="items-center">
             {winners.length === 1 ? (
@@ -840,19 +1006,44 @@ export function SessionScreen() {
               </Card>
             )}
           </View>
-        </ScrollView>
+
+          <SessionNotesSection
+            notes={notes ?? []}
+            authorNameById={authorNameById}
+            currentUserId={currentUserId}
+            canWrite={canWriteNotes}
+            draft={noteDraft}
+            onDraftChange={setNoteDraft}
+            onAdd={handleAddNote}
+            onDelete={setPendingDeleteNoteId}
+            isAdding={addNote.isPending}
+          />
+        </KeyboardAwareScrollView>
+
+        {pendingDeleteNoteId ? (
+          <DeleteNoteConfirmModal
+            onCancel={() => setPendingDeleteNoteId(null)}
+            onConfirm={confirmDeleteNote}
+            isPending={deleteNote.isPending}
+          />
+        ) : null}
       </View>
     );
   }
 
   return (
     <View className="flex-1 bg-surface">
-      <ScrollView
+      <KeyboardAwareScrollView
         className="flex-1"
         contentContainerClassName="gap-8 px-6 pt-6"
         // Without the pinned footer (a read-only viewer), the scroll content itself is the last
         // thing above the bottom of the screen and needs the inset added directly.
         contentContainerStyle={{ paddingBottom: canEdit ? 24 : 24 + insets.bottom }}
+        // The footer rides above the keyboard (KeyboardStickyView below), so a focused field has
+        // to clear it. Only part of the footer is visible there: the sticky offset pulls its
+        // safe-area padding down behind the keyboard, so that part doesn't count.
+        bottomOffset={8 + Math.max(footerHeight - insets.bottom, 0)}
+        keyboardShouldPersistTaps="handled"
       >
         {isRankedRounds ? (
           <View>
@@ -878,10 +1069,7 @@ export function SessionScreen() {
                   onOrderChange={setRoundOrder}
                 />
               ) : (
-                <RoundsStandingsList
-                  members={standingsMembers}
-                  totalByUserId={pointsByUserId}
-                />
+                <RoundsStandingsList members={standingsMembers} totalByUserId={pointsByUserId} />
               )}
             </View>
             {canEdit ? (
@@ -914,7 +1102,10 @@ export function SessionScreen() {
                 // per-round fallback) — this round hasn't been banked yet, so nothing about it
                 // should start pre-filled.
                 const roundValues = Object.fromEntries(
-                  fields.map((field) => [field.key, fieldRoundDraft[member.userId]?.[field.key] ?? 0]),
+                  fields.map((field) => [
+                    field.key,
+                    fieldRoundDraft[member.userId]?.[field.key] ?? 0,
+                  ]),
                 );
                 // The signed total of this round's draft — what "Volgende ronde" is about to add
                 // onto the running total. Only shown to the scorekeeper: a spectator never sees the
@@ -953,96 +1144,115 @@ export function SessionScreen() {
             ) : null}
           </View>
         ) : (
-        <View>
-          <SectionLabel>Deelnemers</SectionLabel>
-          {isRanked ? (
-            canEdit ? (
-              <View className="mt-2">
-                <RankedEntryList
-                  participants={participants}
-                  scoresByUser={scoresByUser ?? {}}
-                  onReorder={(userIds) =>
-                    userIds.forEach((userId, index) =>
-                      setScore.mutate({ userId, fieldKey: RANK_FIELD_KEY, value: index + 1 }),
-                    )
-                  }
-                />
-              </View>
+          <View>
+            <SectionLabel>Deelnemers</SectionLabel>
+            {isRanked ? (
+              canEdit ? (
+                <View className="mt-2">
+                  <RankedEntryList
+                    participants={participants}
+                    scoresByUser={scoresByUser ?? {}}
+                    onReorder={(userIds) =>
+                      userIds.forEach((userId, index) =>
+                        setScore.mutate({ userId, fieldKey: RANK_FIELD_KEY, value: index + 1 }),
+                      )
+                    }
+                  />
+                </View>
+              ) : (
+                <View className="mt-2">
+                  <RankedOrderList
+                    members={[...participants].sort(
+                      (a, b) =>
+                        (totalByUserId.get(a.userId)?.total ?? 0) -
+                        (totalByUserId.get(b.userId)?.total ?? 0),
+                    )}
+                  />
+                </View>
+              )
             ) : (
-              <View className="mt-2">
-                <RankedOrderList
-                  members={[...participants].sort(
-                    (a, b) =>
-                      (totalByUserId.get(a.userId)?.total ?? 0) -
-                      (totalByUserId.get(b.userId)?.total ?? 0),
-                  )}
-                />
+              <View className="mt-2 gap-2">
+                {participants.map((member) => (
+                  <PlayerCard
+                    key={member.userId}
+                    member={member}
+                    isScorekeeper={member.userId === sessionData.scorekeeper_id}
+                    fields={fields}
+                    values={(scoresByUser ?? {})[member.userId] ?? {}}
+                    total={totalByUserId.get(member.userId)?.total ?? 0}
+                    canEdit={canEdit}
+                    isOpen={openParticipantId === member.userId}
+                    onToggleOpen={() =>
+                      setOpenParticipantId((current) =>
+                        current === member.userId ? null : member.userId,
+                      )
+                    }
+                    onChangeField={(fieldKey, value) =>
+                      handleFieldChange(member.userId, fieldKey, value)
+                    }
+                  />
+                ))}
               </View>
-            )
-          ) : (
-            <View className="mt-2 gap-2">
-              {participants.map((member) => (
-                <PlayerCard
-                  key={member.userId}
-                  member={member}
-                  isScorekeeper={member.userId === sessionData.scorekeeper_id}
-                  fields={fields}
-                  values={(scoresByUser ?? {})[member.userId] ?? {}}
-                  total={totalByUserId.get(member.userId)?.total ?? 0}
-                  canEdit={canEdit}
-                  isOpen={openParticipantId === member.userId}
-                  onToggleOpen={() =>
-                    setOpenParticipantId((current) => (current === member.userId ? null : member.userId))
-                  }
-                  onChangeField={(fieldKey, value) =>
-                    handleFieldChange(member.userId, fieldKey, value)
-                  }
-                />
-              ))}
-            </View>
-          )}
-        </View>
+            )}
+          </View>
         )}
-      </ScrollView>
+
+        <SessionNotesSection
+          notes={notes ?? []}
+          authorNameById={authorNameById}
+          currentUserId={currentUserId}
+          canWrite={canWriteNotes}
+          draft={noteDraft}
+          onDraftChange={setNoteDraft}
+          onAdd={handleAddNote}
+          onDelete={setPendingDeleteNoteId}
+          isAdding={addNote.isPending}
+        />
+      </KeyboardAwareScrollView>
 
       {canEdit ? (
         // Pinned rather than appended to the scroll content, the way GamesTab pins "Spel
         // toevoegen": ending the session should stay reachable and in a fixed spot regardless of
-        // participant count or which card is expanded.
-        <View
-          className="border-t border-line px-6 pt-4"
-          style={{ paddingBottom: 16 + insets.bottom }}
-        >
-          {isRounds ? (
-            <View className="gap-2">
-              <Button
-                label="Volgende ronde"
-                onPress={handleNextRound}
-                isLoading={commitRound.isPending}
-                testID="next-round-submit"
-              />
+        // participant count or which card is expanded. KeyboardStickyView lifts it on top of the
+        // keyboard so the bottom of the screen stays visible while a field is focused; the offset
+        // cancels the safe-area padding, which the keyboard covers anyway.
+        <KeyboardStickyView offset={{ closed: 0, opened: insets.bottom }}>
+          <View
+            className="border-t border-line bg-surface px-6 pt-4"
+            style={{ paddingBottom: 16 + insets.bottom }}
+            onLayout={(event) => setFooterHeight(event.nativeEvent.layout.height)}
+          >
+            {isRounds ? (
+              <View className="gap-2">
+                <Button
+                  label="Volgende ronde"
+                  onPress={handleNextRound}
+                  isLoading={commitRound.isPending}
+                  testID="next-round-submit"
+                />
+                <Button
+                  label="Potje afronden"
+                  variant="secondary"
+                  onPress={() => {
+                    // Reset first, so a failed earlier attempt doesn't greet them with a stale error.
+                    commitRound.reset();
+                    finalizeSession.reset();
+                    setCountsCurrentRound(true);
+                    setIsFinishRoundsVisible(true);
+                  }}
+                  testID="finalize-session-submit"
+                />
+              </View>
+            ) : (
               <Button
                 label="Potje afronden"
-                variant="secondary"
-                onPress={() => {
-                  // Reset first, so a failed earlier attempt doesn't greet them with a stale error.
-                  commitRound.reset();
-                  finalizeSession.reset();
-                  setCountsCurrentRound(true);
-                  setIsFinishRoundsVisible(true);
-                }}
+                onPress={() => finalizeSession.mutate()}
+                isLoading={finalizeSession.isPending}
                 testID="finalize-session-submit"
               />
-            </View>
-          ) : (
-            <Button
-              label="Potje afronden"
-              onPress={() => finalizeSession.mutate()}
-              isLoading={finalizeSession.isPending}
-              testID="finalize-session-submit"
-            />
-          )}
-        </View>
+            )}
+          </View>
+        </KeyboardStickyView>
       ) : null}
 
       {/* Mounted one at a time rather than both with a `visible` flag: Android only ever shows one
@@ -1061,6 +1271,14 @@ export function SessionScreen() {
 
       {isLeaveConfirmVisible ? (
         <LeaveConfirmModal onCancel={cancelLeave} onConfirm={confirmLeave} />
+      ) : null}
+
+      {pendingDeleteNoteId && !isFinishRoundsVisible && !isLeaveConfirmVisible ? (
+        <DeleteNoteConfirmModal
+          onCancel={() => setPendingDeleteNoteId(null)}
+          onConfirm={confirmDeleteNote}
+          isPending={deleteNote.isPending}
+        />
       ) : null}
     </View>
   );

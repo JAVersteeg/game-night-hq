@@ -221,6 +221,38 @@ export type Database = {
         };
         Relationships: [];
       };
+      session_notes: {
+        Row: {
+          author_id: string;
+          body: string;
+          created_at: string;
+          id: string;
+          session_id: string;
+        };
+        Insert: {
+          author_id: string;
+          body: string;
+          created_at?: string;
+          id?: string;
+          session_id: string;
+        };
+        Update: {
+          author_id?: string;
+          body?: string;
+          created_at?: string;
+          id?: string;
+          session_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'session_notes_session_id_fkey';
+            columns: ['session_id'];
+            isOneToOne: false;
+            referencedRelation: 'sessions';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       session_participants: {
         Row: {
           session_id: string;
