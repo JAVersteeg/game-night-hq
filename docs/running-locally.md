@@ -3,8 +3,7 @@
 ## Prerequisites
 
 - Node.js and [pnpm](https://pnpm.io) (`corepack enable` will pick up the pinned version in `package.json`)
-- A phone with [Expo Go](https://expo.dev/go) installed, **or** a USB-connected Android/iOS device with
-  developer mode enabled for a dev-client build
+- A phone with [Expo Go](https://expo.dev/go) installed, **or** a USB-connected Android/iOS device with developer mode enabled for a dev-client build
 - Access to the project's Supabase credentials (ask the project owner, or see `eas.json` for the
   values used in EAS builds)
 

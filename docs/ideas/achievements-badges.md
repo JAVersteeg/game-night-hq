@@ -26,11 +26,9 @@ Fun, derived-only badge layer, scoped per group (no global/cross-group badges).
 
 **Pass-on badges** (jokey, held by whoever most recently triggered the condition — passes to someone else next time it happens)
 - **"Grote Daggoe"** (dog picture) — awarded to the player who finished last in the most recently played De Grote Dalmuti session in the group. Held by exactly one person until the next Dalmuti session produces a new last-place finisher.
-**Domination (per game)**
-- Highest win % *within a specific game template* in the group, not group-wide. Minimum of 8 games played for the holder.
-- Room for more of this type later (same "pass-on" mechanic, different trigger condition) — that's the notable design pattern here, not just this one badge.
+- **Domination (per game)**: Highest win % *within a specific game template* in the group, not group-wide. Minimum of 8 games played for the holder. Room for more of this type later (same "pass-on" mechanic, different trigger condition) — that's the notable design pattern here, not just this one badge.
 
 ## Design notes / open questions
 
 - **Pass-on badge mechanic**: needs its own tiny abstraction — "badge X is held by whoever most recently satisfied condition Y," recomputed from the most recent qualifying session each time it's viewed. Worth designing as a small reusable shape rather than one-off logic per badge, since more pass-on badges are likely.
-- **Artwork**: pass-on badges reference specific imagery (e.g. a dog for Grote Daggoe) — will need actual assets, not just an icon/emoji, when this gets built.
+- **Artwork**: pass-on badges reference specific imagery (e.g. a dog for Grote Daggoe) — will need actual assets, not just an icon/emoji, when this gets built. Jochem will try to design some badges.

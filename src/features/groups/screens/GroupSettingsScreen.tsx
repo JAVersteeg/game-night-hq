@@ -123,9 +123,6 @@ export function GroupSettingsScreen() {
     <ScrollView className="flex-1 bg-surface" contentContainerClassName="px-6 pb-12 pt-6">
       <SectionLabel>Uitnodigingscode</SectionLabel>
       <InviteCodeCard group={group} />
-      <Text className="mt-2 text-sm text-ink-subtle">
-        Deel deze code met vrienden zodat ze zich bij de groep kunnen aansluiten.
-      </Text>
 
       <View className="mt-8">
         <SectionLabel>{members ? `Leden (${members.length})` : 'Leden'}</SectionLabel>
