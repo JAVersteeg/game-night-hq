@@ -26,7 +26,15 @@ Fun, derived-only badge layer, scoped per group (no global/cross-group badges).
 
 **Pass-on badges** (jokey, held by whoever most recently triggered the condition — passes to someone else next time it happens)
 - **"Grote Daggoe"** (dog picture) — awarded to the player who finished last in the most recently played De Grote Dalmuti session in the group. Held by exactly one person until the next Dalmuti session produces a new last-place finisher.
+  - Text bij badge: "Balen man, jij bent de grote daggoe. Kan alleen maar afgestaan worden door de volgende keer niet te verliezen."
 - **Domination (per game)**: Highest win % *within a specific game template* in the group, not group-wide. Minimum of 8 games played for the holder. Room for more of this type later (same "pass-on" mechanic, different trigger condition) — that's the notable design pattern here, not just this one badge.
+  - For Catan: "Koning van Catan"
+
+## Design
+
+On the GroupDashboardScreen in the top-right corner, left of the options icon, there must be a trophy icon which opens the GroupBadgesScreen.
+
+On the GroupBadgesScreen, there must be a prominent place for the pass-on badges, since they are the most wanted/hated (depending on the badge) badges in the group.
 
 ## Design notes / open questions
 

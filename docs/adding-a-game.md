@@ -9,7 +9,7 @@ created from it — so it must match exactly in every file below.
 1. **Library entry** — add `{ id: '<id>', name: '<Display name>' }` to `GAME_LIBRARY` in
    `src/features/games/presets.ts`. This alone makes the game searchable on the create-game screen.
 2. **Cover art** — drop `<id>_cover.<ext>` in `assets/`, then add
-   `<id>: require('../../../assets/<id>_cover.<ext>')` to `GAME_COVERS` in
+   `<id>: require('../../../assets/game_covers/<id>_cover.<ext>')` to `GAME_COVERS` in
    `src/features/games/covers.ts`. Restart Metro; a newly added asset is not picked up by fast
    refresh.
 3. **Colour** — add `<id>: '<hex>'` to `GAME_COLORS` in `src/features/games/colors.ts`.

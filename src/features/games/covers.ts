@@ -8,11 +8,11 @@ import { gameKeyForTemplate } from '@/features/games/presets';
  * without the image itself ever touching the database.
  */
 export const GAME_COVERS: Record<string, ImageSourcePropType> = {
-  catan: require('../../../assets/catan_cover.png'),
-  heat: require('../../../assets/heat_cover.jpg'),
-  arschmallows: require('../../../assets/arschmallows_cover.png'),
-  dalmuti: require('../../../assets/dalmuti_cover.jpg'),
-  terraforming_mars: require('../../../assets/terraformingmars_cover.jpg'),
+  catan: require('../../../assets/game_covers/catan_cover.png'),
+  heat: require('../../../assets/game_covers/heat_cover.jpg'),
+  arschmallows: require('../../../assets/game_covers/arschmallows_cover.png'),
+  dalmuti: require('../../../assets/game_covers/dalmuti_cover.jpg'),
+  terraforming_mars: require('../../../assets/game_covers/terraformingmars_cover.jpg'),
 };
 
 export function coverImageForKey(coverKey: string | null | undefined): ImageSourcePropType | undefined {
