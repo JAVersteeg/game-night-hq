@@ -20,6 +20,7 @@ import { useGroupMembers, type GroupMember } from '@/features/groups/hooks/useGr
 import { scoringDirectionLabel, useGameTemplate } from '@/features/games/hooks/useGameTemplates';
 import {
   RANK_FIELD_KEY,
+  computeBreakdown,
   computeTotals,
   roundRankPoints,
   higherTotalIsBetter,
@@ -765,7 +766,16 @@ export function SessionScreen() {
     const orderedRows = participants
       .map((member) => {
         const entry = totalByUserId.get(member.userId);
-        return { name: member.displayName, total: entry?.total ?? 0, isWinner: entry?.isWinner ?? false };
+        return {
+          name: member.displayName,
+          total: entry?.total ?? 0,
+          isWinner: entry?.isWinner ?? false,
+          breakdown: computeBreakdown(
+            fields,
+            template?.bonus_rules ?? [],
+            (scoresByUser ?? {})[member.userId] ?? {},
+          ),
+        };
       })
       .sort((a, b) =>
         higherTotalIsBetter(scoringDirection, isRounds) ? b.total - a.total : a.total - b.total,
@@ -830,8 +840,6 @@ export function SessionScreen() {
               </Card>
             )}
           </View>
-
-          <Button label="Terug naar groep" onPress={() => navigation.goBack()} />
         </ScrollView>
       </View>
     );

@@ -10,6 +10,11 @@ export interface PlayerTotal {
   isWinner: boolean;
 }
 
+export interface ScoreBreakdownLine {
+  label: string;
+  value: number;
+}
+
 /** The synthetic `session_scores.field_key` a ranked template's finish order is stored under —
  *  ranked templates have no real fields, so there's nothing else to key it by. Value is the
  *  finish position, 1 = first place. Only used when the template isn't also `rounds`; a
@@ -62,6 +67,27 @@ export function computeTotal(
     0,
   );
   return fieldTotal + bonusTotal;
+}
+
+/** Per-field composition of a player's total, in field order, plus one trailing line for any
+ *  triggered bonus rules combined (a single line rather than one per rule, since bonus rules have
+ *  no label of their own to show — just the condition they were defined with). Lines sum to
+ *  exactly `computeTotal`'s result. Only meaningful for a fielded direction; a ranked template has
+ *  no fields, so this always returns an empty array for it. */
+export function computeBreakdown(
+  fields: Pick<GameTemplateField, 'key' | 'label' | 'sign'>[],
+  bonusRules: BonusRule[],
+  values: Record<string, number>,
+): ScoreBreakdownLine[] {
+  const fieldLines = fields.map((field) => ({
+    label: field.label,
+    value: field.sign * (values[field.key] ?? 0),
+  }));
+  const bonusTotal = bonusRules.reduce(
+    (sum, rule) => sum + bonusDelta(rule, values[rule.field_key] ?? 0),
+    0,
+  );
+  return bonusTotal !== 0 ? [...fieldLines, { label: 'Bonuspunten', value: bonusTotal }] : fieldLines;
 }
 
 /** The "total" of a fieldless direction, read straight out of its synthetic score key, or null for
