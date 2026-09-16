@@ -21,7 +21,10 @@ import { SectionLabel } from '@/components/SectionLabel';
 import { TextField } from '@/components/TextField';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { useGroupMembers, type GroupMember } from '@/features/groups/hooks/useGroupMembers';
-import { scoringDirectionLabel, useGameTemplate } from '@/features/games/hooks/useGameTemplates';
+import { CoverThumbnail } from '@/components/CoverThumbnail';
+import { gameColorForTemplate } from '@/features/games/colors';
+import { coverImageForTemplate } from '@/features/games/covers';
+import { useGameTemplate } from '@/features/games/hooks/useGameTemplates';
 import {
   RANK_FIELD_KEY,
   computeBreakdown,
@@ -926,6 +929,8 @@ export function SessionScreen() {
 
   if (sessionData.status === 'completed') {
     const scoringDirection = sessionData.game_templates.scoring_direction;
+    const gameName = sessionData.game_templates.name;
+    const coverKey = sessionData.game_templates.cover_key;
     const orderedRows = participants
       .map((member) => {
         const entry = totalByUserId.get(member.userId);
@@ -959,37 +964,57 @@ export function SessionScreen() {
           bottomOffset={24}
           keyboardShouldPersistTaps="handled"
         >
-          <View className="items-center">
-            {winners.length === 1 ? (
-              <>
-                <Avatar
-                  displayName={winners[0].displayName}
-                  avatarUrl={winners[0].avatarUrl}
-                  color={winners[0].color}
-                  size={72}
-                />
-                <View className="mt-3">
-                  <Badge tone="success">Winnaar</Badge>
+          <Card className="gap-4">
+            <View className="flex-row items-center gap-4">
+              <CoverThumbnail
+                source={coverImageForTemplate(coverKey, gameName)}
+                color={gameColorForTemplate(coverKey, gameName)}
+                size={80}
+              />
+              <View className="min-w-0 flex-1">
+                <Text className="text-2xl font-bold text-ink" numberOfLines={2}>
+                  {gameName}
+                </Text>
+                <Text className="mt-1 text-sm text-ink-muted">
+                  {format(new Date(sessionData.played_at), 'd MMMM yyyy', { locale: nl })}
+                  {isRounds
+                    ? ` · ${sessionData.rounds_played} ${sessionData.rounds_played === 1 ? 'ronde' : 'rondes'}`
+                    : ''}
+                </Text>
+              </View>
+            </View>
+
+            <View className="flex-row items-center gap-3 border-t border-line pt-4">
+              <View className="relative flex-row">
+                {winners.map((member, index) => (
+                  // A tie stacks the winners' avatars, each ringed in the card colour so the
+                  // overlap reads as separate faces.
+                  <View
+                    key={member.userId}
+                    className="rounded-full border-2 border-surface"
+                    style={{ marginLeft: index === 0 ? 0 : -14 }}
+                  >
+                    <Avatar
+                      displayName={member.displayName}
+                      avatarUrl={member.avatarUrl}
+                      color={member.color}
+                      size={48}
+                    />
+                  </View>
+                ))}
+                {/* Trophy badge overlaps the last (topmost) avatar's corner, like a notification
+                    dot, instead of spelling "Winnaar" out as a separate pill next to the name. */}
+                <View className="absolute -bottom-1 -right-1 h-6 w-6 items-center justify-center rounded-full border-2 border-surface bg-surface-muted">
+                  <Text className="text-xs leading-none">🏆</Text>
                 </View>
-                <Text className="mt-2 text-2xl font-bold text-ink">{winners[0].displayName}</Text>
-              </>
-            ) : (
-              <>
-                <View className="mt-3">
-                  <Badge tone="success">Gelijkspel</Badge>
-                </View>
-                <Text className="mt-2 text-2xl font-bold text-ink">
+              </View>
+              <View className="min-w-0 flex-1 items-start">
+                <Text className="text-xl font-bold text-ink" numberOfLines={2}>
                   {winners.map((member) => member.displayName).join(' & ')}
                 </Text>
-              </>
-            )}
-            <Text className="mt-1 text-base text-ink-muted">
-              {sessionData.game_templates.name} ·{' '}
-              {isRounds
-                ? `${sessionData.rounds_played} ${sessionData.rounds_played === 1 ? 'ronde' : 'rondes'}`
-                : scoringDirectionLabel(scoringDirection)}
-            </Text>
-          </View>
+              </View>
+            </View>
+          </Card>
 
           <View>
             <SectionLabel>Eindstand</SectionLabel>

@@ -8,8 +8,7 @@ interface SegmentedControlProps<T extends string> {
   onChange: (value: T) => void;
 }
 
-const BASE_FONT_SIZE = 16; // text-base
-const MIN_FONT_SIZE = 11;
+const BASE_FONT_SIZE = 14; // text-sm
 const SLOT_HORIZONTAL_PADDING = 12; // px-2 py-1 pill padding, minus a little slack
 
 /** Tab row for switching between views inside a group. Sits under the screen title. */
@@ -37,7 +36,9 @@ export function SegmentedControl<T extends string>({
         return available / labelWidths.current[option]!;
       }),
     );
-    const next = Math.max(MIN_FONT_SIZE, Math.min(BASE_FONT_SIZE, BASE_FONT_SIZE * scale));
+    // No lower floor: the label must always fit its slot, even if that means shrinking
+    // past what would normally be a comfortable minimum size.
+    const next = Math.min(BASE_FONT_SIZE, BASE_FONT_SIZE * scale);
     setFontSize((prev) => (Math.abs(prev - next) > 0.5 ? next : prev));
   }, [options]);
 
