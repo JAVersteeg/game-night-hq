@@ -2,7 +2,8 @@ import type { RouteProp } from '@react-navigation/native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useState } from 'react';
-import { Modal, Pressable, Text, View } from 'react-native';
+import { Modal, Pressable, View } from 'react-native';
+import { Text, TextInput } from '@/components/Text';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 
 import { Badge } from '@/components/Badge';
@@ -10,6 +11,7 @@ import { Button } from '@/components/Button';
 import { Card, ListRow } from '@/components/Card';
 import { ChoiceRow } from '@/components/ChoiceRow';
 import { CoverThumbnail } from '@/components/CoverThumbnail';
+import { NumberStepper } from '@/components/NumberStepper';
 import { SectionLabel } from '@/components/SectionLabel';
 import { TextField } from '@/components/TextField';
 import { gameColorForKey } from '@/features/games/colors';
@@ -73,6 +75,15 @@ function keyFromLabel(label: string, index: number, existingKeys: readonly strin
   return `${base}_${suffix}`;
 }
 
+/** The one-line description a preset gets wherever it's listed for picking: its scoring, field
+ *  count, and — since a preset can now be either — whether it's played in rounds. */
+function presetMeta(preset: GameTemplatePreset): string {
+  const parts = [scoringDirectionLabel(preset.scoringDirection)];
+  if (preset.fields.length > 0) parts.push(`${preset.fields.length} velden`);
+  if (preset.rounds) parts.push('rondes');
+  return parts.join(' · ');
+}
+
 interface TemplatesModalProps {
   visible: boolean;
   onClose: () => void;
@@ -101,7 +112,7 @@ function TemplatesModal({ visible, onClose, onSelect }: TemplatesModalProps) {
               <ListRow
                 key={preset.id}
                 title={preset.name}
-                meta={`${scoringDirectionLabel(preset.scoringDirection)} · ${preset.fields.length} velden`}
+                meta={presetMeta(preset)}
                 left={<CoverThumbnail
                     source={coverImageForKey(preset.id)}
                     color={gameColorForKey(preset.id)}
@@ -118,12 +129,24 @@ function TemplatesModal({ visible, onClose, onSelect }: TemplatesModalProps) {
   );
 }
 
-function FieldRow({ field, onToggleSign }: { field: DraftField; onToggleSign: () => void }) {
+function FieldRow({
+  field,
+  onToggleSign,
+  onChangeLabel,
+}: {
+  field: DraftField;
+  onToggleSign: () => void;
+  onChangeLabel: (label: string) => void;
+}) {
   return (
-    <Card className="flex-row items-center gap-3">
-      <Text className="min-w-0 flex-1 text-base font-semibold text-ink" numberOfLines={1}>
-        {field.label}
-      </Text>
+    <Card className="flex-row items-center gap-3 py-2">
+      <TextInput
+        value={field.label}
+        onChangeText={onChangeLabel}
+        maxLength={MAX_FIELD_LABEL_LENGTH}
+        className="min-w-0 flex-1 p-0 text-base font-semibold text-ink"
+        testID={`field-label-input-${field.id}`}
+      />
       {field.exclusive ? (
         <Badge tone="accent">Max 1 speler · {field.default ?? 0} punten</Badge>
       ) : (
@@ -152,12 +175,19 @@ export function CreateGameTemplateScreen() {
   ]);
   const [nextFieldLabel, setNextFieldLabel] = useState('');
   const [isTemplatesOpen, setIsTemplatesOpen] = useState(false);
+  // Rondes toggle applies to any scoring direction: it changes how the live entry form
+  // accumulates (repeat each round instead of filling in once), not what the form looks like.
+  // `roundCount` is purely informational — 0 means "geen vast aantal", like Dalmuti.
+  const [rounds, setRounds] = useState(false);
+  const [roundCount, setRoundCount] = useState(0);
 
   function applyPreset(preset: GameTemplatePreset) {
     setName(preset.name);
     setCoverKey(preset.id);
     setScoringDirection(preset.scoringDirection);
     setFields(preset.fields.map((field) => ({ id: nextDraftFieldId(), ...field })));
+    setRounds(preset.rounds ?? false);
+    setRoundCount(preset.roundCount ?? 0);
     setIsTemplatesOpen(false);
     setAreNameSuggestionsDismissed(true);
   }
@@ -203,9 +233,13 @@ export function CreateGameTemplateScreen() {
     );
   }
 
-  // Both fieldless directions score on finish order rather than on entered values, so the field
-  // editor drops out and an empty field list is what gets saved.
-  const isFieldless = scoringDirection === 'ranked' || scoringDirection === 'dalmuti_rounds';
+  function renameField(id: string, label: string) {
+    setFields(fields.map((field) => (field.id === id ? { ...field, label } : field)));
+  }
+
+  // Ranked scores on finish order rather than on entered values, so the field editor drops out and
+  // an empty field list is what gets saved — whether or not it's also played in rounds.
+  const isFieldless = scoringDirection === 'ranked';
   const trimmedName = name.trim();
   const canSubmit =
     trimmedName.length > 0 && (isFieldless || fields.length > 0) && !createGameTemplate.isPending;
@@ -233,6 +267,8 @@ export function CreateGameTemplateScreen() {
               default: defaultValue,
             })),
         coverKey,
+        rounds,
+        roundCount: rounds && roundCount > 0 ? roundCount : null,
       },
       { onSuccess: () => navigation.goBack() },
     );
@@ -272,16 +308,7 @@ export function CreateGameTemplateScreen() {
                   <ListRow
                     key={entry.id}
                     title={entry.name}
-                    meta={
-                      preset
-                        ? [
-                            scoringDirectionLabel(preset.scoringDirection),
-                            preset.fields.length > 0 ? `${preset.fields.length} velden` : null,
-                          ]
-                            .filter(Boolean)
-                            .join(' · ')
-                        : undefined
-                    }
+                    meta={preset ? presetMeta(preset) : undefined}
                     left={<CoverThumbnail
                         source={coverImageForKey(entry.id)}
                         color={gameColorForKey(entry.id)}
@@ -315,13 +342,27 @@ export function CreateGameTemplateScreen() {
               onSelect={() => setScoringDirection('ranked')}
               testID="scoring-direction-ranked"
             />
+          </View>
+        </View>
+
+        <View>
+          <SectionLabel>Rondes</SectionLabel>
+          <View className="mt-2 gap-2">
             <ChoiceRow
-              title="Dalmuti (rondes)"
-              meta="Per ronde punten voor je eindplek — hoogste totaal wint"
-              selected={scoringDirection === 'dalmuti_rounds'}
-              onSelect={() => setScoringDirection('dalmuti_rounds')}
-              testID="scoring-direction-dalmuti-rounds"
+              title="In rondes gespeeld"
+              mode="check"
+              selected={rounds}
+              onSelect={() => setRounds((current) => !current)}
+              testID="scoring-rounds-toggle"
             />
+            {rounds ? (
+              <NumberStepper
+                label="Verwacht aantal rondes (optioneel)"
+                value={roundCount}
+                onChange={(value) => setRoundCount(Math.max(0, value))}
+                testID="scoring-round-count"
+              />
+            ) : null}
           </View>
         </View>
 
@@ -334,6 +375,7 @@ export function CreateGameTemplateScreen() {
                   key={field.id}
                   field={field}
                   onToggleSign={() => toggleFieldSign(field.id)}
+                  onChangeLabel={(label) => renameField(field.id, label)}
                 />
               ))}
             </View>

@@ -2,7 +2,8 @@ import type { NavigationAction, RouteProp } from '@react-navigation/native';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, View } from 'react-native';
+import { Text } from '@/components/Text';
 import DraggableFlatList, { type RenderItemParams } from 'react-native-draggable-flatlist';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -20,11 +21,12 @@ import { scoringDirectionLabel, useGameTemplate } from '@/features/games/hooks/u
 import {
   RANK_FIELD_KEY,
   computeTotals,
-  dalmutiRoundPoints,
+  roundRankPoints,
   higherTotalIsBetter,
 } from '@/features/sessions/scoring';
 import { useSessionParticipants } from '@/features/sessions/hooks/useSessionParticipants';
 import { useSetScore, useSessionScores } from '@/features/sessions/hooks/useSessionScores';
+import type { RoundFieldValues } from '@/features/sessions/hooks/useSessions';
 import {
   useCommitRound,
   useDeleteSession,
@@ -42,6 +44,10 @@ interface PlayerCardProps {
   fields: { key: string; label: string; sign: number; defaultValue: number; exclusive: boolean }[];
   values: Record<string, number>;
   total: number;
+  /** This round's signed field total, shown as "+X" next to the total — only passed in field-rounds
+   *  mode, where a collapsed card otherwise gives no sign that anything's been entered this round
+   *  (`values` there is the round's own draft, not what's already in the running total). */
+  roundDelta?: number;
   canEdit: boolean;
   isOpen: boolean;
   onToggleOpen: () => void;
@@ -91,6 +97,7 @@ function PlayerCard({
   fields,
   values,
   total,
+  roundDelta,
   canEdit,
   isOpen,
   onToggleOpen,
@@ -103,14 +110,26 @@ function PlayerCard({
         accessibilityRole={canEdit ? 'button' : undefined}
         className={`flex-row items-center gap-3 px-4 py-3 ${canEdit ? 'active:opacity-70' : ''}`}
       >
-        <Avatar displayName={member.displayName} avatarUrl={member.avatarUrl} size={36} />
+        <Avatar
+          displayName={member.displayName}
+          avatarUrl={member.avatarUrl}
+          color={member.color}
+          size={36}
+        />
         <View className="min-w-0 flex-1 flex-row items-center gap-2">
           <Text className="min-w-0 flex-1 text-base font-semibold text-ink" numberOfLines={1}>
             {member.displayName}
           </Text>
           {isScorekeeper ? <Badge tone="accent">Scorebijhouder</Badge> : null}
         </View>
-        <Text className="text-2xl font-bold text-ink">{total}</Text>
+        <View className="items-end">
+          <Text className="text-2xl font-bold text-ink">{total}</Text>
+          {roundDelta !== undefined ? (
+            <Text className="text-xs font-semibold text-accent">
+              {roundDelta >= 0 ? `+${roundDelta}` : roundDelta}
+            </Text>
+          ) : null}
+        </View>
       </Pressable>
 
       {canEdit && isOpen ? (
@@ -161,7 +180,12 @@ function RankedOrderList({ members }: { members: GroupMember[] }) {
           className={`flex-row items-center gap-3 px-4 py-3 ${index === 0 ? '' : 'border-t border-line'}`}
         >
           <RankBadge position={index + 1} />
-          <Avatar displayName={member.displayName} avatarUrl={member.avatarUrl} size={32} />
+          <Avatar
+            displayName={member.displayName}
+            avatarUrl={member.avatarUrl}
+            color={member.color}
+            size={32}
+          />
           <Text className="min-w-0 flex-1 text-base font-semibold text-ink" numberOfLines={1}>
             {member.displayName}
           </Text>
@@ -197,14 +221,19 @@ function RankedEntryRow({
       }`}
     >
       <RankBadge position={position} />
-      <Avatar displayName={member.displayName} avatarUrl={member.avatarUrl} size={32} />
+      <Avatar
+        displayName={member.displayName}
+        avatarUrl={member.avatarUrl}
+        color={member.color}
+        size={32}
+      />
       <Text className="min-w-0 flex-1 text-base font-semibold text-ink" numberOfLines={1}>
         {member.displayName}
       </Text>
       {score ? (
         <View className="items-end">
           <Text className="text-base font-bold text-ink">{score.total}</Text>
-          <Text className="text-xs font-medium text-ink-muted">+{score.delta}</Text>
+          <Text className="text-xs font-semibold text-accent">+{score.delta}</Text>
         </View>
       ) : null}
       <Text className="text-lg text-ink-subtle">≡</Text>
@@ -301,7 +330,7 @@ function RoundsEntryList({
             member={item}
             score={{
               total: totalByUserId.get(item.userId) ?? 0,
-              delta: dalmutiRoundPoints(position, order.length),
+              delta: roundRankPoints(position, order.length),
             }}
             drag={drag}
             isActive={isActive}
@@ -331,7 +360,12 @@ function RoundsStandingsList({
           className={`flex-row items-center gap-3 px-4 py-3 ${index === 0 ? '' : 'border-t border-line'}`}
         >
           <RankBadge position={index + 1} />
-          <Avatar displayName={member.displayName} avatarUrl={member.avatarUrl} size={32} />
+          <Avatar
+            displayName={member.displayName}
+            avatarUrl={member.avatarUrl}
+            color={member.color}
+            size={32}
+          />
           <Text className="min-w-0 flex-1 text-base font-semibold text-ink" numberOfLines={1}>
             {member.displayName}
           </Text>
@@ -476,8 +510,12 @@ export function SessionScreen() {
 
   // The finish order of the round being played, as ids. Local until "Volgende ronde" banks it:
   // nothing about an unfinished round is written to the server, which is also why a spectator sees
-  // standings rather than a live order.
+  // standings rather than a live order. Only relevant for a ranked-and-rounds template.
   const [roundOrder, setRoundOrder] = useState<string[] | null>(null);
+  // The field entries for the round being played, keyed by participant then field key — the
+  // highest/lowest_total_wins-rounds counterpart of `roundOrder`. Local for the same reason: it's
+  // only added onto the running totals once "Volgende ronde" banks it.
+  const [fieldRoundDraft, setFieldRoundDraft] = useState<RoundFieldValues>({});
   const [isFinishRoundsVisible, setIsFinishRoundsVisible] = useState(false);
   const [countsCurrentRound, setCountsCurrentRound] = useState(true);
 
@@ -521,6 +559,18 @@ export function SessionScreen() {
       return [...seed, ...ids.filter((userId) => !seed.includes(userId))];
     });
   }, [participantIds, lastRoundOrder]);
+
+  // A field-rounds draft has nothing to carry between rounds (unlike the drag order, it starts
+  // empty every time), so it only needs clearing out if someone who's in it stops being a
+  // participant.
+  useEffect(() => {
+    const ids = new Set(participantIds ?? []);
+    setFieldRoundDraft((current) => {
+      const stale = Object.keys(current).some((userId) => !ids.has(userId));
+      if (!stale) return current;
+      return Object.fromEntries(Object.entries(current).filter(([userId]) => ids.has(userId)));
+    });
+  }, [participantIds]);
 
   function confirmLeave() {
     setIsLeaveConfirmVisible(false);
@@ -580,16 +630,43 @@ export function SessionScreen() {
     setScore.mutate({ userId, fieldKey, value });
   }
 
+  /** Same exclusivity rule as `handleFieldChange`, but against this round's local draft rather than
+   *  the committed running totals — nothing here is written to the server until the round is
+   *  banked. */
+  function handleFieldRoundChange(userId: string, fieldKey: string, value: number) {
+    const field = fields.find((candidate) => candidate.key === fieldKey);
+    setFieldRoundDraft((current) => {
+      const next: RoundFieldValues = { ...current };
+      if (field?.exclusive && value !== 0) {
+        for (const member of participants) {
+          if (member.userId === userId) continue;
+          if ((next[member.userId]?.[fieldKey] ?? 0) !== 0) {
+            next[member.userId] = { ...next[member.userId], [fieldKey]: 0 };
+          }
+        }
+      }
+      next[userId] = { ...next[userId], [fieldKey]: value };
+      return next;
+    });
+  }
+
   const isScorekeeper = currentUserId === sessionData.scorekeeper_id;
   const isInProgress = sessionData.status === 'in_progress';
   const canEdit = isScorekeeper && isInProgress;
   const isRanked = sessionData.game_templates.scoring_direction === 'ranked';
-  const isRounds = sessionData.game_templates.scoring_direction === 'dalmuti_rounds';
+  const isRounds = sessionData.game_templates.rounds;
+  // Rounds splits into two mechanics depending on direction: ranked-and-rounds drags a finish
+  // order each round (Dalmuti); a rounds template with real fields repeats the field-entry form
+  // each round instead. Only one of the two is ever true.
+  const isRankedRounds = isRanked && isRounds;
+  const isFieldRounds = isRounds && !isRanked;
+  const roundCount = sessionData.game_templates.round_count;
   const roundsPlayed = sessionData.rounds_played;
   const roundNumber = roundsPlayed + 1;
-  // Only the round that `last_round_order` describes can be taken back, and undoing clears it — so
-  // the button disappears until another round is banked.
-  const canUndoRound = sessionData.last_round_order !== null;
+  const roundLabel = roundCount ? `Ronde ${roundNumber} van ${roundCount}` : `Ronde ${roundNumber}`;
+  // Only the round that `last_round_order`/`last_round_values` describes can be taken back, and
+  // undoing clears whichever one was set — so the button disappears until another round is banked.
+  const canUndoRound = sessionData.last_round_order !== null || sessionData.last_round_values !== null;
 
   const totals = computeTotals(
     participants.map((member) => member.userId),
@@ -597,6 +674,7 @@ export function SessionScreen() {
     template?.bonus_rules ?? [],
     scoresByUser ?? {},
     sessionData.game_templates.scoring_direction,
+    isRounds,
   );
   const totalByUserId = new Map(totals.map((entry) => [entry.userId, entry]));
   const pointsByUserId = new Map(totals.map((entry) => [entry.userId, entry.total]));
@@ -609,19 +687,56 @@ export function SessionScreen() {
     (a, b) => (pointsByUserId.get(b.userId) ?? 0) - (pointsByUserId.get(a.userId) ?? 0),
   );
 
-  function handleNextRound() {
-    if (!roundOrder || roundOrder.length === 0) return;
-    commitRound.mutate(roundOrder);
+  /** Once round_count rounds have been banked, the finish dialog opens on its own — but the round
+   *  now on screen is a fresh, untouched one, so "count it too" starts unchecked rather than the
+   *  usual default. round_count is a nudge, not a wall: cancelling this leaves the session exactly
+   *  as playable as before, nothing is forced. */
+  function maybeOfferFinish(bankedRoundNumber: number) {
+    if (roundCount != null && bankedRoundNumber >= roundCount) {
+      commitRound.reset();
+      finalizeSession.reset();
+      setCountsCurrentRound(false);
+      setIsFinishRoundsVisible(true);
+    }
   }
 
-  /** Reverses the last banked round and drops the scorekeeper back into its order, since correcting
-   *  that order is the only reason to undo. */
+  function handleNextRound() {
+    const bankedRoundNumber = roundsPlayed + 1;
+    if (isRankedRounds) {
+      if (!roundOrder || roundOrder.length === 0) return;
+      commitRound.mutate({ order: roundOrder }, { onSuccess: () => maybeOfferFinish(bankedRoundNumber) });
+      return;
+    }
+    commitRound.mutate(
+      { values: fieldRoundDraft },
+      {
+        onSuccess: () => {
+          setFieldRoundDraft({});
+          maybeOfferFinish(bankedRoundNumber);
+        },
+      },
+    );
+  }
+
+  /** Reverses the last banked round and drops the scorekeeper back into it to correct, whichever
+   *  shape it was. */
   function handleUndoRound() {
-    undoRound.mutate(undefined, { onSuccess: (order) => setRoundOrder(order) });
+    undoRound.mutate(undefined, {
+      onSuccess: (result) => {
+        if ('order' in result) setRoundOrder(result.order);
+        else setFieldRoundDraft(result.values);
+      },
+    });
   }
 
   function confirmFinishRounds() {
-    const bankedRounds = roundsPlayed + (countsCurrentRound ? 1 : 0);
+    // Whether the current round can actually be banked — not just whether the checkbox is on.
+    // Without this, a null/empty `roundOrder` would fall through to a bare `finalize()` below while
+    // still being counted as a banked round here, completing the session with nothing written.
+    const willBankCurrentRound =
+      countsCurrentRound &&
+      (isRankedRounds ? Boolean(roundOrder && roundOrder.length > 0) : isFieldRounds);
+    const bankedRounds = roundsPlayed + (willBankCurrentRound ? 1 : 0);
 
     // Nothing was ever played, so there's no result worth filing — the session is thrown away
     // instead of landing in the history as a table of zeroes.
@@ -634,8 +749,12 @@ export function SessionScreen() {
     const finalize = () =>
       finalizeSession.mutate(undefined, { onSuccess: () => setIsFinishRoundsVisible(false) });
 
-    if (countsCurrentRound && roundOrder) {
-      commitRound.mutate(roundOrder, { onSuccess: finalize });
+    if (willBankCurrentRound) {
+      if (isRankedRounds && roundOrder) {
+        commitRound.mutate({ order: roundOrder }, { onSuccess: finalize });
+        return;
+      }
+      commitRound.mutate({ values: fieldRoundDraft }, { onSuccess: finalize });
       return;
     }
     finalize();
@@ -648,7 +767,9 @@ export function SessionScreen() {
         const entry = totalByUserId.get(member.userId);
         return { name: member.displayName, total: entry?.total ?? 0, isWinner: entry?.isWinner ?? false };
       })
-      .sort((a, b) => (higherTotalIsBetter(scoringDirection) ? b.total - a.total : a.total - b.total));
+      .sort((a, b) =>
+        higherTotalIsBetter(scoringDirection, isRounds) ? b.total - a.total : a.total - b.total,
+      );
 
     const winners = participants.filter((member) => totalByUserId.get(member.userId)?.isWinner);
     const orderedMembers = [...participants].sort(
@@ -668,6 +789,7 @@ export function SessionScreen() {
                 <Avatar
                   displayName={winners[0].displayName}
                   avatarUrl={winners[0].avatarUrl}
+                  color={winners[0].color}
                   size={72}
                 />
                 <View className="mt-3">
@@ -695,7 +817,10 @@ export function SessionScreen() {
 
           <View>
             <SectionLabel>Eindstand</SectionLabel>
-            {isRanked ? (
+            {/* A plain ranked template has only a finish position to show; ranked-and-rounds
+                (Dalmuti) banked real points round by round, so it gets the same points bar as a
+                field-based template rather than an ordinal list. */}
+            {isRanked && !isRounds ? (
               <View className="mt-2">
                 <RankedOrderList members={orderedMembers} />
               </View>
@@ -721,10 +846,10 @@ export function SessionScreen() {
         // thing above the bottom of the screen and needs the inset added directly.
         contentContainerStyle={{ paddingBottom: canEdit ? 24 : 24 + insets.bottom }}
       >
-        {isRounds ? (
+        {isRankedRounds ? (
           <View>
             <View className="flex-row items-center justify-between">
-              <SectionLabel>{`Ronde ${roundNumber}`}</SectionLabel>
+              <SectionLabel>{roundLabel}</SectionLabel>
               {canEdit && canUndoRound ? (
                 <Pressable
                   onPress={handleUndoRound}
@@ -755,6 +880,67 @@ export function SessionScreen() {
               <Text className="mt-3 text-sm text-ink-muted">
                 Sleep de spelers in de volgorde waarin ze deze ronde klaar waren. De laatste krijgt
                 0 punten, elke plek hoger levert 1 punt extra op.
+              </Text>
+            ) : null}
+          </View>
+        ) : isFieldRounds ? (
+          <View>
+            <View className="flex-row items-center justify-between">
+              <SectionLabel>{roundLabel}</SectionLabel>
+              {canEdit && canUndoRound ? (
+                <Pressable
+                  onPress={handleUndoRound}
+                  disabled={undoRound.isPending}
+                  accessibilityRole="button"
+                  className="active:opacity-70"
+                  testID="undo-round-button"
+                >
+                  <Text className="text-sm font-semibold text-accent">Ronde terugdraaien</Text>
+                </Pressable>
+              ) : null}
+            </View>
+            <View className="mt-2 gap-2">
+              {participants.map((member) => {
+                // Every unset field reads as 0 here explicitly (rather than a field's
+                // `defaultValue`, which for an exclusive field is its award amount, not a sane
+                // per-round fallback) — this round hasn't been banked yet, so nothing about it
+                // should start pre-filled.
+                const roundValues = Object.fromEntries(
+                  fields.map((field) => [field.key, fieldRoundDraft[member.userId]?.[field.key] ?? 0]),
+                );
+                // The signed total of this round's draft — what "Volgende ronde" is about to add
+                // onto the running total. Only shown to the scorekeeper: a spectator never sees the
+                // in-progress draft (it's local to the scorekeeper's device), so it would always
+                // read as a misleading "+0" for them.
+                const roundDelta = canEdit
+                  ? fields.reduce((sum, field) => sum + field.sign * roundValues[field.key], 0)
+                  : undefined;
+                return (
+                  <PlayerCard
+                    key={member.userId}
+                    member={member}
+                    isScorekeeper={member.userId === sessionData.scorekeeper_id}
+                    fields={fields}
+                    values={roundValues}
+                    total={totalByUserId.get(member.userId)?.total ?? 0}
+                    roundDelta={roundDelta}
+                    canEdit={canEdit}
+                    isOpen={openParticipantId === member.userId}
+                    onToggleOpen={() =>
+                      setOpenParticipantId((current) =>
+                        current === member.userId ? null : member.userId,
+                      )
+                    }
+                    onChangeField={(fieldKey, value) =>
+                      handleFieldRoundChange(member.userId, fieldKey, value)
+                    }
+                  />
+                );
+              })}
+            </View>
+            {canEdit ? (
+              <Text className="mt-3 text-sm text-ink-muted">
+                Vul de scores van deze ronde in. Bij "Volgende ronde" tellen ze op bij het totaal.
               </Text>
             ) : null}
           </View>

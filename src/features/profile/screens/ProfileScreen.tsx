@@ -1,4 +1,5 @@
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, View } from 'react-native';
+import { Text } from '@/components/Text';
 
 import { Avatar } from '@/components/Avatar';
 import { Card } from '@/components/Card';

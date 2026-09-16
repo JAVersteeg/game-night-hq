@@ -10,7 +10,7 @@ import { useFonts } from 'expo-font';
 import { DarkTheme, NavigationContainer } from '@react-navigation/native';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
-import { Text, TextInput, View } from 'react-native';
+import { View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { enableScreens } from 'react-native-screens';
@@ -40,18 +40,6 @@ const navigationTheme = {
 enableScreens();
 
 installGlobalErrorLogger();
-
-// Set Inter as the global default font for every Text/TextInput.
-const TextAny = Text as unknown as { defaultProps?: { style?: unknown } };
-TextAny.defaultProps = TextAny.defaultProps ?? {};
-TextAny.defaultProps.style = [{ fontFamily: 'Inter_500Medium' }, TextAny.defaultProps.style];
-
-const TextInputAny = TextInput as unknown as { defaultProps?: { style?: unknown } };
-TextInputAny.defaultProps = TextInputAny.defaultProps ?? {};
-TextInputAny.defaultProps.style = [
-  { fontFamily: 'Inter_500Medium' },
-  TextInputAny.defaultProps.style,
-];
 
 export default function App() {
   const [fontsLoaded] = useFonts({

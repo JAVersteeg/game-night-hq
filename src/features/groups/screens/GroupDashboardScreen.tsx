@@ -4,7 +4,8 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { format } from 'date-fns';
 import { nl } from 'date-fns/locale';
 import { useLayoutEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { Text } from '@/components/Text';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
@@ -13,6 +14,7 @@ import { BarList } from '@/components/charts/BarList';
 import { DivergingBar, TICK_HEIGHT, TRACK_HEIGHT } from '@/components/charts/DivergingBar';
 import { seriesColor } from '@/components/charts/series';
 import { TrendChart } from '@/components/charts/TrendChart';
+import { ColorPickerModal } from '@/components/ColorPickerModal';
 import { CoverThumbnail } from '@/components/CoverThumbnail';
 import { EmptyState } from '@/components/EmptyState';
 import { GearIcon } from '@/components/GearIcon';
@@ -20,6 +22,7 @@ import { InfoIcon } from '@/components/InfoIcon';
 import { SectionLabel } from '@/components/SectionLabel';
 import { SegmentedControl } from '@/components/SegmentedControl';
 import { StatTile } from '@/components/StatTile';
+import { useAuth } from '@/features/auth/context/AuthContext';
 import {
   gameColorForTemplate,
   gamePaletteForTemplate,
@@ -35,7 +38,12 @@ import {
   useGroupDashboardStats,
   type PopularGame,
 } from '@/features/groups/hooks/useGroupDashboardStats';
-import { useGroupMembers } from '@/features/groups/hooks/useGroupMembers';
+import {
+  colorErrorMessage,
+  useGroupMembers,
+  useSetMemberColor,
+  type PlayerColor,
+} from '@/features/groups/hooks/useGroupMembers';
 import { useGroup } from '@/features/groups/hooks/useGroups';
 import { useSessionHistory } from '@/features/sessions/hooks/useSessionHistory';
 import { getPlayerColor } from '@/lib/playerColors';
@@ -444,22 +452,27 @@ function LeaderboardHeader({ open, onToggle }: { open: boolean; onToggle: () => 
 function LeaderboardSection({
   stats,
   scoringDirection,
+  rounds,
   displayNameById,
   colorByUser,
 }: {
   stats: GameStats;
   scoringDirection: ScoringDirection;
+  rounds: boolean;
   displayNameById: Map<string, string>;
   colorByUser: Map<string, string>;
 }) {
   const [metricKey, setMetricKey] = useState<MetricKey>('overwicht');
   const [infoOpen, setInfoOpen] = useState(false);
 
-  const isRanked = scoringDirection === 'ranked';
   // A rounds game's totals are normalised to points per round by `useGameStats`, so a saldo against
   // the table average still means something — but an average of those per-round points next to the
   // win count would read as a score, which it isn't, so the meta line leaves it out.
-  const isRounds = scoringDirection === 'dalmuti_rounds';
+  const isRounds = rounds;
+  // A plain ranked template records a finish position, not points, so there's no table average to
+  // have a saldo against. A ranked-and-rounds template (Dalmuti) accumulates real points instead —
+  // same as a field-based rounds game — so it keeps puntensaldo.
+  const isRanked = scoringDirection === 'ranked' && !isRounds;
   const context: MetricContext = { lowerIsBetter: scoringDirection === 'lowest_total_wins' };
 
   // Ranked games record a finish position, not points, so there is no table average to have a
@@ -561,9 +574,11 @@ function GameStatsSection({
   if (popularGames.length === 0) return null;
 
   // Ranked games plot finish position, not points: 1 is the best score there, so the axis is
-  // flipped and pinned to the real range of places instead of a padded one.
+  // flipped and pinned to the real range of places instead of a padded one. `useGameStats` already
+  // converts a ranked-and-rounds template's (Dalmuti) points into a finish rank for the trend, so
+  // this applies the same way regardless of rounds.
   const isRanked = template?.scoring_direction === 'ranked';
-  const isRounds = template?.scoring_direction === 'dalmuti_rounds';
+  const isRounds = template?.rounds ?? false;
   // Each player's own chosen colour (group settings → Leden), not an arbitrary per-chart ramp —
   // so a player is the same colour here as their avatar everywhere else, and a colour change shows
   // up the moment `members` refetches. Falls back to the old index-based ramp for a userId this
@@ -573,7 +588,7 @@ function GameStatsSection({
   );
 
   return (
-    <View className="mt-8">
+    <View className="mt-8 border-t border-line pt-6">
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -582,7 +597,7 @@ function GameStatsSection({
         {popularGames.map((game) => (
           <Chip
             key={game.templateId}
-            label={game.name}
+            label={game.name === 'De Grote Dalmuti' ? 'Dalmuti' : game.name}
             selected={game.templateId === templateId}
             onPress={() => setSelectedTemplateId(game.templateId)}
             palette={gamePaletteForTemplate(game.coverKey, game.name)}
@@ -629,6 +644,7 @@ function GameStatsSection({
           <LeaderboardSection
             stats={stats}
             scoringDirection={template.scoring_direction}
+            rounds={template.rounds}
             displayNameById={displayNameById}
             colorByUser={colorByUser}
           />
@@ -655,7 +671,7 @@ function StatsTab({ groupId }: { groupId: string }) {
         </Text>
       ) : null}
 
-      <View className="mt-8">
+      <View className="mt-4">
         <SectionLabel>Meest gespeeld</SectionLabel>
         {isPending ? (
           <View className="items-center py-6">
@@ -699,10 +715,28 @@ function StatsTab({ groupId }: { groupId: string }) {
  * has played enough to have popular games. That's expected, not a bug.
  */
 export function GroupDashboardScreen() {
-  const { groupId } = useRoute<RouteProp<AppStackParamList, 'GroupDashboard'>>().params;
+  const { groupId, justJoined } = useRoute<RouteProp<AppStackParamList, 'GroupDashboard'>>().params;
   const navigation = useNavigation<Navigation>();
+  const { session } = useAuth();
   const { data: group } = useGroup(groupId);
   const [tab, setTab] = useState<Tab>('Spellen');
+
+  // Only relevant right after JoinGroupScreen sets `justJoined` — `join_group_by_code` already
+  // auto-assigned a colour so joining itself never blocked on a picker, but a new member should get
+  // an immediate, obvious chance to swap it for one they'd rather have.
+  const [colorModalOpen, setColorModalOpen] = useState(justJoined === true);
+  const { data: members } = useGroupMembers(groupId);
+  const setColor = useSetMemberColor(groupId);
+  const me = members?.find((member) => member.userId === session?.user.id);
+
+  function closeColorModal() {
+    setColorModalOpen(false);
+    setColor.reset();
+  }
+
+  function handleSelectColor(color: PlayerColor) {
+    setColor.mutate(color, { onSuccess: closeColorModal });
+  }
 
   // useLayoutEffect so the title and gear button are in place on the first paint.
   useLayoutEffect(() => {
@@ -730,7 +764,7 @@ export function GroupDashboardScreen() {
     // Only the bottom edge: the native stack header already accounts for the top inset, but
     // GamesTab's pinned "Spel toevoegen" button would otherwise sit under Android's gesture bar.
     <SafeAreaView className="flex-1 bg-surface" edges={['bottom']}>
-      <View className="px-6 pt-4">
+      <View className="px-6 pt-2">
         <SegmentedControl options={TABS} value={tab} onChange={setTab} />
       </View>
       {tab === 'Spellen' ? (
@@ -740,6 +774,26 @@ export function GroupDashboardScreen() {
       ) : (
         <StatsTab groupId={groupId} />
       )}
+
+      {me ? (
+        <ColorPickerModal
+          visible={colorModalOpen}
+          title="Welkom! Kies je kleur"
+          description="Je hebt automatisch een kleur gekregen — kies hieronder een andere als je liever een andere hebt."
+          currentColor={me.color}
+          takenColors={
+            new Set(
+              (members ?? [])
+                .filter((member) => member.userId !== me.userId)
+                .map((member) => member.color),
+            )
+          }
+          isPending={setColor.isPending}
+          errorMessage={setColor.isError ? colorErrorMessage(setColor.error) : null}
+          onSelect={handleSelectColor}
+          onClose={closeColorModal}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }

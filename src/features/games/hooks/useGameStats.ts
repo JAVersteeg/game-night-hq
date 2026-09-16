@@ -97,6 +97,7 @@ export function useGameStats(template: GameTemplateWithBonusRules | null | undef
   const fields = template?.game_template_fields ?? [];
   const bonusRules = template?.bonus_rules ?? [];
   const scoringDirection = template?.scoring_direction ?? 'highest_total_wins';
+  const rounds = template?.rounds ?? false;
 
   return useQuery({
     queryKey: gameStatsKeys.detail(templateId),
@@ -142,9 +143,9 @@ export function useGameStats(template: GameTemplateWithBonusRules | null | undef
           bonusRules,
           scoresBySession.get(session.id) ?? {},
           scoringDirection,
+          rounds,
         );
-        const divisor =
-          scoringDirection === 'dalmuti_rounds' ? Math.max(1, session.rounds_played) : 1;
+        const divisor = rounds ? Math.max(1, session.rounds_played) : 1;
 
         return {
           playedAt: session.played_at,
@@ -155,13 +156,37 @@ export function useGameStats(template: GameTemplateWithBonusRules | null | undef
         };
       });
 
+      // The leaderboard stays points-based for a ranked-and-rounds template (Dalmuti) — a saldo
+      // against the table average still means something there — but the trend line is meant to
+      // read like the plain-ranked case: who finished where in each game, not how many points that
+      // was worth. So the trend gets its own totals, converted from points to finish rank.
+      const trendTotalsBySession: SessionTotals[] =
+        scoringDirection === 'ranked' && rounds
+          ? totalsBySession.map((session) => ({
+              ...session,
+              totals: toFinishRanks(session.totals),
+            }))
+          : totalsBySession;
+
       return {
-        leaderboard: buildLeaderboard(totalsBySession, scoringDirection),
-        trend: buildTrend(totalsBySession),
+        leaderboard: buildLeaderboard(totalsBySession, scoringDirection, rounds),
+        trend: buildTrend(trendTotalsBySession),
         maxParticipants: Math.max(...totalsBySession.map((session) => session.totals.length)),
       };
     },
   });
+}
+
+/** Converts one session's point totals (higher is better) into finish rank (1 = best), the way a
+ *  plain ranked template already stores its result. Ties share a rank, competition-style — two
+ *  players tied for first are both rank 1 and the next player is rank 3, not 2. */
+function toFinishRanks(
+  totals: { userId: string; total: number; isWinner: boolean }[],
+): { userId: string; total: number; isWinner: boolean }[] {
+  return totals.map((entry) => ({
+    ...entry,
+    total: 1 + totals.filter((other) => other.total > entry.total).length,
+  }));
 }
 
 interface LeaderboardTally {
@@ -180,6 +205,7 @@ interface LeaderboardTally {
 function buildLeaderboard(
   sessions: SessionTotals[],
   scoringDirection: ScoringDirection,
+  rounds: boolean,
 ): LeaderboardEntry[] {
   const byUser = new Map<string, LeaderboardTally>();
 
@@ -211,7 +237,7 @@ function buildLeaderboard(
         const beaten = session.totals.reduce((count, other) => {
           if (other.userId === entry.userId) return count;
           if (other.total === entry.total) return count + 0.5;
-          const isBetter = higherTotalIsBetter(scoringDirection)
+          const isBetter = higherTotalIsBetter(scoringDirection, rounds)
             ? entry.total > other.total
             : entry.total < other.total;
           return isBetter ? count + 1 : count;

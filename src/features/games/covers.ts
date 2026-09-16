@@ -12,6 +12,7 @@ export const GAME_COVERS: Record<string, ImageSourcePropType> = {
   heat: require('../../../assets/heat_cover.jpg'),
   arschmallows: require('../../../assets/arschmallows_cover.png'),
   dalmuti: require('../../../assets/dalmuti_cover.jpg'),
+  terraforming_mars: require('../../../assets/terraformingmars_cover.jpg'),
 };
 
 export function coverImageForKey(coverKey: string | null | undefined): ImageSourcePropType | undefined {

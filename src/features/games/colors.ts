@@ -36,6 +36,7 @@ export const GAME_PALETTES: Record<string, GamePalette> = {
   heat: { swatch: '#f63d1f', line: '#8e2615', soft: '#361b16', softFg: '#e0a89f' },
   arschmallows: { swatch: '#b8ce3d', line: '#6d792b', soft: '#2d311c', softFg: '#ced4aa' },
   dalmuti: { swatch: '#90489a', line: '#643a69', soft: '#2b202c', softFg: '#c9b3cc' },
+  terraforming_mars: { swatch: '#d26f38', line: '#7d3e1c', soft: '#34291a', softFg: '#dacdb3' },
 };
 
 export function gamePaletteForKey(coverKey: string | null | undefined): GamePalette | undefined {

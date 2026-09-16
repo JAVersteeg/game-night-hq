@@ -34,16 +34,17 @@ If a library decision isn't covered here, pick the smallest dependency that solv
 
 **Game Template**
 - Defined per group, by any member (not just a group "admin" — no admin role planned for v1).
-- Has a name, a list of custom fields, a scoring direction, and optional bonus rules.
+- Has a name, a list of custom fields, a scoring direction, whether it's played in rounds, and optional bonus rules.
 - **Field:** `{ key, label, type: "number", sign: 1 | -1, default: number }`. The sign lets a field count against the total (e.g. "penalty cards" as sign -1) without needing a formula language.
-- **Scoring direction:** `highest_total_wins` | `lowest_total_wins` | `ranked` | `dalmuti_rounds`. The first two are computed as the signed sum of a player's fields for that session, plus any bonus rule deltas. `ranked` is different: the template has no fields and no bonus rules at all — there's nothing to sum. Instead, the scorekeeper drags participants into finish order during live play, and that position (1 = first place) is the only thing recorded, stored as a session score under the synthetic field key `rank`. `dalmuti_rounds` is the same fieldless drag UI played repeatedly: each round's finish order is converted to points (`participants − rank`, so last place scores 0) and added to a running session total under the synthetic field key `points`; highest total wins.
-- **Bonus rule (optional, list):** `{ condition: { field_key, operator: "==" | ">" | "<" | ">=" | "<=", value }, points_delta }`. Evaluated per player at session end. This covers "bonus/penalty conditions" without a full expression engine — see Open Decisions if this turns out to be insufficient. Not applicable to `ranked` templates, which have no fields for a condition to reference.
+- **Scoring direction:** `highest_total_wins` | `lowest_total_wins` | `ranked`. The first two are computed as the signed sum of a player's fields for that session, plus any bonus rule deltas. `ranked` is different: the template has no fields and no bonus rules at all — there's nothing to sum. Instead, the scorekeeper drags participants into finish order during live play, and that position (1 = first place) is the only thing recorded, stored as a session score under the synthetic field key `rank`.
+- **Rounds:** `{ rounds: boolean, round_count: number | null }`, orthogonal to scoring direction — any template can be played in rounds, not just `ranked`. `round_count` is purely informational (drives a "Ronde 3 van 6" readout and nudges the scorekeeper toward finishing once reached) and never a hard cap; `null` means open-ended. For `highest_total_wins`/`lowest_total_wins`, a rounds template repeats the same field-entry form every round, with each round's entries adding onto the running per-field totals instead of overwriting them — bonus rules and the total calculation are unchanged by this, since they already just sum whatever ends up in `session_scores`. For `ranked`, rounds repeats the drag-to-finish-order step every round: each round's finish order is converted to points (`participants − rank`, so last place scores 0) and added to a running session total under the synthetic field key `points`, highest total wins. De Grote Dalmuti is the canonical example: an ordinary `ranked` template with `rounds: true` and no fixed `round_count` — not a special case in the schema.
+- **Bonus rule (optional, list):** `{ condition: { field_key, operator: "==" | ">" | "<" | ">=" | "<=", value }, points_delta }`. Evaluated against whatever's currently in `session_scores` — once at session end for a single-round template, or freshly on every round for a rounds template, since it's the same running values either way. This covers "bonus/penalty conditions" without a full expression engine — see Open Decisions if this turns out to be insufficient. Not applicable to `ranked` templates, which have no fields for a condition to reference.
 
 **Session**
 - One instance of playing a game, within a group, on a given date.
 - Has a `scorekeeper_id` (a group member), chosen fresh when the session is created — not a fixed role.
 - Has participants (a subset of group members) and one set of field values per participant.
-- **v1 is single-round for every direction except `dalmuti_rounds`**: one set of field values per player per session. A `dalmuti_rounds` session instead accumulates points over rounds, and tracks `rounds_played` plus `last_round_order` (the finish order of the most recently banked round — enough to undo it exactly once). Individual rounds are never stored, only the running total.
+- **A session for a non-rounds template is single-round**: one set of field values per player per session. A session for a `rounds` template instead accumulates over rounds, and tracks `rounds_played` plus whichever of `last_round_order` (ranked) or `last_round_values` (field-based) describes the most recently banked round — enough to undo it exactly once. Individual rounds are never stored, only the running total.
 - Only the scorekeeper can write score entries for a session in progress. Everyone else in the group gets read-only realtime updates.
 
 **Stats (derived, not stored)**
@@ -62,7 +63,7 @@ Computed from session history per group, at minimum:
 
 1. **Onboarding:** silent anonymous sign-in → prompt for a display name (once) → land on group list (empty state: "create or join a group")
 2. **Create/join group:** create generates an invite code/link; joining consumes one and adds the user to `group_members`
-3. **Define a game:** from within a group, add a game template — name, fields (with sign), scoring direction, optional bonus rules
+3. **Define a game:** from within a group, add a game template — name, fields (with sign), scoring direction, optional rounds, optional bonus rules
 4. **Start a session:** pick a game, pick participants from the group, pick a scorekeeper for this session → session goes live
 5. **Live play:** scorekeeper sees an entry form for each participant's fields; everyone else in the group who opens that session sees a read-only live view via a Realtime subscription
 6. **End session:** scorekeeper finalizes → totals and winner computed and locked → session becomes part of group history
@@ -75,7 +76,7 @@ Computed from session history per group, at minimum:
 profiles            (id, display_name, avatar_url)
 groups              (id, name, created_by, invite_code)
 group_members       (group_id, user_id, joined_at)
-game_templates       (id, group_id, name, scoring_direction, created_by)
+game_templates       (id, group_id, name, scoring_direction, rounds, round_count, created_by)
 game_template_fields (id, template_id, key, label, sign, default_value)
 bonus_rules          (id, template_id, field_key, operator, value, points_delta)
 sessions             (id, group_id, template_id, scorekeeper_id, status, played_at)
@@ -94,7 +95,6 @@ Use Row Level Security everywhere: a row is only readable/writable by members of
 ## Non-Goals (v1)
 
 Explicitly out of scope unless we revisit:
-- Multi-round sessions for the field-based directions (e.g. per-hand poker scoring within one sitting). `dalmuti_rounds` is the one exception and is deliberately game-specific: rounds there carry no field values, only a finish order.
 - A general formula/expression language for scoring (bonus rules cover the stated need)
 - Push notifications
 - Offline write queueing for the scorekeeper (assume connectivity during live entry; if this becomes a real problem in practice, revisit)

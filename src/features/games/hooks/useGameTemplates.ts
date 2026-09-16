@@ -41,8 +41,6 @@ export function scoringDirectionLabel(direction: ScoringDirection): string {
       return 'Laagste totaal wint';
     case 'ranked':
       return 'Ranglijst';
-    case 'dalmuti_rounds':
-      return 'Dalmuti (rondes)';
   }
 }
 
@@ -101,6 +99,8 @@ export function useCreateGameTemplate(groupId: string) {
       scoringDirection: ScoringDirection;
       fields: NewGameTemplateField[];
       coverKey?: string | null;
+      rounds?: boolean;
+      roundCount?: number | null;
     }) => {
       const { data, error } = await supabase.rpc('create_game_template', {
         p_group_id: groupId,
@@ -117,6 +117,8 @@ export function useCreateGameTemplate(groupId: string) {
         // Omitted rather than passed as null: the RPC's own default is null, and the generated
         // Args type doesn't accept one.
         p_cover_key: input.coverKey ?? undefined,
+        p_rounds: input.rounds ?? false,
+        p_round_count: input.roundCount ?? undefined,
       });
 
       if (error) throw error;

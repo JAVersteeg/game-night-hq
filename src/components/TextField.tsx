@@ -1,4 +1,5 @@
-import { Text, TextInput, View, type TextInputProps } from 'react-native';
+import { View, type TextInputProps } from 'react-native';
+import { Text, TextInput } from '@/components/Text';
 
 import { SectionLabel } from '@/components/SectionLabel';
 import { theme } from '@/lib/theme';

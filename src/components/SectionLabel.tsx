@@ -1,4 +1,4 @@
-import { Text } from 'react-native';
+import { Text } from '@/components/Text';
 
 /** The small uppercase heading above a card or list section — invite code, members, stats, etc. */
 export function SectionLabel({ children }: { children: string }) {

@@ -12,7 +12,7 @@ import type { Tables } from '@/types/database';
 export type Session = Tables<'sessions'>;
 
 export interface SessionWithTemplate extends Session {
-  game_templates: Pick<Tables<'game_templates'>, 'name' | 'scoring_direction'>;
+  game_templates: Pick<Tables<'game_templates'>, 'name' | 'scoring_direction' | 'rounds' | 'round_count'>;
 }
 
 export const sessionKeys = {
@@ -77,7 +77,7 @@ export function useSession(sessionId: string) {
     queryFn: async (): Promise<SessionWithTemplate> => {
       const { data, error } = await supabase
         .from('sessions')
-        .select('*, game_templates(name, scoring_direction)')
+        .select('*, game_templates(name, scoring_direction, rounds, round_count)')
         .eq('id', sessionId)
         .single();
 
@@ -117,21 +117,38 @@ export function useFinalizeSession(sessionId: string, groupId: string) {
   });
 }
 
+/** One round's field entries, keyed by participant then field key — what `useCommitRound` adds onto
+ *  a highest/lowest_total_wins rounds template's running totals. */
+export type RoundFieldValues = Record<string, Record<string, number>>;
+
+/** Whichever shape of round `undo_round` reversed, so the screen can drop the scorekeeper back into
+ *  it to correct: a finish order for a ranked-and-rounds template, or field entries for a
+ *  highest/lowest_total_wins one. */
+export type RoundUndoResult = { order: string[] } | { values: RoundFieldValues };
+
 /**
- * Banks one Dalmuti round: the finish order goes in, the server adds `participants - rank` to every
- * player's running total and bumps `rounds_played`. An RPC rather than a batch of score upserts
- * because a partially applied round can't be spotted afterwards — only the totals are stored, so
- * there's nothing to compare a half-written round against.
+ * Banks one round: for a ranked-and-rounds template (Dalmuti) the finish order goes in and the
+ * server adds `participants - rank` to every player's running `points` total; for a
+ * highest/lowest_total_wins rounds template the round's field entries go in and are added onto
+ * each field's running total. Either way `rounds_played` is bumped. An RPC rather than a batch of
+ * score upserts because a partially applied round can't be spotted afterwards — only the running
+ * totals are stored, so there's nothing to compare a half-written round against.
  */
 export function useCommitRound(sessionId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (userIdsInFinishOrder: string[]) => {
-      const { error } = await supabase.rpc('commit_dalmuti_round', {
-        p_session_id: sessionId,
-        p_order: userIdsInFinishOrder,
-      });
+    mutationFn: async (round: { order: string[] } | { values: RoundFieldValues }) => {
+      const { error } =
+        'order' in round
+          ? await supabase.rpc('commit_ranked_round', {
+              p_session_id: sessionId,
+              p_order: round.order,
+            })
+          : await supabase.rpc('commit_field_round', {
+              p_session_id: sessionId,
+              p_values: round.values,
+            });
 
       if (error) throw error;
     },
@@ -143,22 +160,21 @@ export function useCommitRound(sessionId: string) {
 }
 
 /**
- * Takes back the round `sessions.last_round_order` describes and returns that order, so the screen
- * can drop the scorekeeper back into it to correct. Only the most recent round is recoverable:
- * committing clears nothing, but undoing clears `last_round_order`, which is what makes a second
- * undo in a row impossible.
+ * Takes back whichever round `sessions.last_round_order`/`last_round_values` describes. Only the
+ * most recent round is recoverable: committing clears nothing, but undoing clears whichever of the
+ * two columns was set, which is what makes a second undo in a row impossible.
  */
 export function useUndoRound(sessionId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (): Promise<string[]> => {
-      const { data, error } = await supabase.rpc('undo_dalmuti_round', {
+    mutationFn: async (): Promise<RoundUndoResult> => {
+      const { data, error } = await supabase.rpc('undo_round', {
         p_session_id: sessionId,
       });
 
       if (error) throw error;
-      return data ?? [];
+      return data as RoundUndoResult;
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) });

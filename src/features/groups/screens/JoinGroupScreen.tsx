@@ -1,7 +1,8 @@
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useState } from 'react';
-import { Text, TextInput, View } from 'react-native';
+import { View } from 'react-native';
+import { Text, TextInput } from '@/components/Text';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 
 import { Button } from '@/components/Button';
@@ -25,7 +26,8 @@ export function JoinGroupScreen() {
     // Joining is idempotent, so entering the code of a group you are already in simply takes you
     // there rather than failing.
     joinGroup.mutate(trimmed, {
-      onSuccess: (group) => navigation.replace('GroupDashboard', { groupId: group.id }),
+      onSuccess: (group) =>
+        navigation.replace('GroupDashboard', { groupId: group.id, justJoined: true }),
     });
   }
 

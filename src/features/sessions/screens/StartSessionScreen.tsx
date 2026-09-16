@@ -2,7 +2,8 @@ import type { RouteProp } from '@react-navigation/native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, View } from 'react-native';
+import { Text } from '@/components/Text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/Avatar';
@@ -103,7 +104,12 @@ export function StartSessionScreen() {
                 mode="check"
                 title={member.displayName}
                 left={
-                  <Avatar displayName={member.displayName} avatarUrl={member.avatarUrl} size={32} />
+                  <Avatar
+                    displayName={member.displayName}
+                    avatarUrl={member.avatarUrl}
+                    color={member.color}
+                    size={32}
+                  />
                 }
                 selected={participantIds.includes(member.userId)}
                 onSelect={() => toggleParticipant(member.userId)}
@@ -127,6 +133,7 @@ export function StartSessionScreen() {
                     <Avatar
                       displayName={member.displayName}
                       avatarUrl={member.avatarUrl}
+                      color={member.color}
                       size={32}
                     />
                   }

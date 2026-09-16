@@ -21,6 +21,7 @@ export const GAME_LIBRARY: GameLibraryEntry[] = [
   { id: 'heat', name: 'Heat' },
   { id: 'arschmallows', name: 'Arschmallows' },
   { id: 'dalmuti', name: 'De Grote Dalmuti' },
+  { id: 'terraforming_mars', name: 'Terraforming Mars' },
 ];
 
 const BY_NORMALIZED_NAME = new Map(
@@ -47,6 +48,12 @@ export interface GameTemplatePreset {
   name: string;
   scoringDirection: ScoringDirection;
   fields: NewGameTemplateField[];
+  /** Whether the live entry form repeats each round, accumulating into a running total, rather
+   *  than being filled in once. */
+  rounds?: boolean;
+  /** Informational expected round count (e.g. Arschmallows' 6) — shown as progress, not enforced.
+   *  Omitted for an open-ended rounds template like Dalmuti, which has no fixed count. */
+  roundCount?: number;
 }
 
 /**
@@ -64,12 +71,14 @@ export interface GameTemplatePreset {
  */
 export const GAME_TEMPLATE_PRESETS: GameTemplatePreset[] = [
   {
-    // Scored per round on finish order alone, so it has no fields — the rounds direction is the
-    // whole template.
+    // Scored per round on finish order alone, so it has no fields — an ordinary ranked template,
+    // just played round by round rather than once. No fixed round count: a hand of Dalmuti runs
+    // until the cards decide, not until some number is reached.
     id: 'dalmuti',
     name: 'De Grote Dalmuti',
-    scoringDirection: 'dalmuti_rounds',
+    scoringDirection: 'ranked',
     fields: [],
+    rounds: true,
   },
   {
     id: 'catan',

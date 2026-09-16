@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Text, TextInput, View } from 'react-native';
+import { View } from 'react-native';
+import { Text, TextInput } from '@/components/Text';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { SafeAreaView } from 'react-native-safe-area-context';
 

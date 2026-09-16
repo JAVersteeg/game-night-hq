@@ -4,13 +4,26 @@
     "appVersionSource": "remote"
   },
   "build": {
+    "development": {
+      "corepack": true,
+      "pnpm": "10.33.2",
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://qdnyzujlaesqncwrqoaj.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_tnrftfG98RjFISKmk2o0Hw_RMQBwHyY"
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    },
     "preview": {
       "corepack": true,
       "pnpm": "10.33.2",
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_SUPABASE_URL": "REPLACE_WITH_YOUR_SUPABASE_URL",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "REPLACE_WITH_YOUR_SUPABASE_ANON_KEY"
+        "EXPO_PUBLIC_SUPABASE_URL": "https://qdnyzujlaesqncwrqoaj.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_tnrftfG98RjFISKmk2o0Hw_RMQBwHyY"
       },
       "android": {
         "buildType": "apk"
@@ -20,8 +33,8 @@
       "corepack": true,
       "pnpm": "10.33.2",
       "env": {
-        "EXPO_PUBLIC_SUPABASE_URL": "REPLACE_WITH_YOUR_SUPABASE_URL",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "REPLACE_WITH_YOUR_SUPABASE_ANON_KEY"
+        "EXPO_PUBLIC_SUPABASE_URL": "https://qdnyzujlaesqncwrqoaj.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_tnrftfG98RjFISKmk2o0Hw_RMQBwHyY"
       },
       "android": {
         "autoIncrement": true
@@ -32,6 +45,11 @@
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "android": {
+        "serviceAccountKeyPath": "./play-service-account.json",
+        "track": "internal"
+      }
+    }
   }
 }

@@ -27,6 +27,7 @@ interface SessionRow {
     name: string;
     cover_key: string | null;
     scoring_direction: ScoringDirection;
+    rounds: boolean;
     game_template_fields: { key: string; sign: number }[];
     bonus_rules: BonusRule[];
   };
@@ -49,7 +50,7 @@ export function useSessionHistory(groupId: string) {
         .from('sessions')
         .select(
           `id, played_at,
-           game_templates(name, cover_key, scoring_direction, game_template_fields(key, sign), bonus_rules(*)),
+           game_templates(name, cover_key, scoring_direction, rounds, game_template_fields(key, sign), bonus_rules(*)),
            session_participants(user_id)`,
         )
         .eq('group_id', groupId)
@@ -85,6 +86,7 @@ export function useSessionHistory(groupId: string) {
           session.game_templates.bonus_rules,
           scoresBySession.get(session.id) ?? {},
           session.game_templates.scoring_direction,
+          session.game_templates.rounds,
         );
 
         return {

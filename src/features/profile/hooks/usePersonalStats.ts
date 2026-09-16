@@ -46,6 +46,7 @@ interface SessionRow {
     name: string;
     cover_key: string | null;
     scoring_direction: ScoringDirection;
+    rounds: boolean;
     game_template_fields: { key: string; sign: number }[];
     bonus_rules: BonusRule[];
   };
@@ -93,7 +94,7 @@ export function usePersonalStats() {
         .from('sessions')
         .select(
           `id, played_at, template_id,
-           game_templates(name, cover_key, scoring_direction, game_template_fields(key, sign), bonus_rules(*)),
+           game_templates(name, cover_key, scoring_direction, rounds, game_template_fields(key, sign), bonus_rules(*)),
            session_participants(user_id)`,
         )
         .in(
@@ -140,6 +141,7 @@ export function usePersonalStats() {
           entry.game_templates.bonus_rules,
           scoresBySession.get(entry.id) ?? {},
           entry.game_templates.scoring_direction,
+          entry.game_templates.rounds,
         );
 
         const isWinner = totals.some((total) => total.userId === userId && total.isWinner);
