@@ -79,7 +79,7 @@ export interface BadgeTemplate {
 
 /** Below this a winstfactor says more about the sample than the player — one lucky avond can
  *  almost double it — so nobody under it can hold the badge, however high they rank.
- *  `docs/ideas/achievements-badges.md` names 8; the exact number is still open. */
+ *  `docs/ideas/milestones-badges.md` names 8; the exact number is still open. */
 export const MIN_SESSIONS_FOR_DOMINATION = 8;
 /** 1,0× is what pure chance hands out, so the holder has to be at least at chance level. */
 const MIN_WIN_FACTOR_FOR_DOMINATION = 1;
@@ -137,7 +137,18 @@ export const DOMINATION_BADGE_NAMES: Record<string, string> = {
 
 function dominationName(template: BadgeTemplate): string {
   const named = template.gameKey ? DOMINATION_BADGE_NAMES[template.gameKey] : undefined;
-  return named ?? `Koning van ${template.name}`;
+  return named ?? `${template.name} Dominantie`;
+}
+
+/** Art key into `BADGE_ART`, keyed by game library key — same pattern as `DOMINATION_BADGE_NAMES`.
+ *  Most domination badges have no drawing, so this only lists the ones that do. */
+const DOMINATION_BADGE_ART: Record<string, string> = {
+  catan: 'koning_van_catan',
+  heat: 'domination_heat',
+};
+
+function dominationArtKey(template: BadgeTemplate): string | null {
+  return (template.gameKey ? DOMINATION_BADGE_ART[template.gameKey] : undefined) ?? null;
 }
 
 /** Dutch decimals, same as the stats screens — every number here is read out loud at the table. */
@@ -190,7 +201,7 @@ function dominationBadge(template: BadgeTemplate): PassOnBadgeDefinition {
     name: dominationName(template),
     condition: `Hoogste winstfactor, ${template.name}`,
     description: `Voor wie de hoogste winstfactor heeft bij ${template.name}, met minimaal ${MIN_SESSIONS_FOR_DOMINATION} potjes op de teller, en meer potjes gewonnen dan puur toeval zou opleveren.`,
-    artKey: template.gameKey === 'catan' ? 'koning_van_catan' : null,
+    artKey: dominationArtKey(template),
     featured: template.gameKey === 'catan',
     avatarMark: false,
     qualifies: (session) => session.templateId === template.id,

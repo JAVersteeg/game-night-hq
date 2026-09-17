@@ -8,6 +8,7 @@ import type { ImageSourcePropType } from 'react-native';
 export const BADGE_ART: Record<string, ImageSourcePropType> = {
   grote_daggoe: require('../../../assets/badges/badge_col_grote_daggoe.png'),
   koning_van_catan: require('../../../assets/badges/badge_col_koning_van_catan.png'),
+  domination_heat: require('../../../assets/badges/badge_col_domination_heat.png'),
 };
 
 export function badgeArtFor(artKey: string | null): ImageSourcePropType | null {
