@@ -19,9 +19,9 @@
       "package": "com.jversteeg.gamenighthq",
       "icon": "./assets/icon.png",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#1c1813",
         "foregroundImage": "./assets/foregroundImage.png",
-        "backgroundImage": "./assets/backgroundColor.png",
+        "backgroundImage": "./assets/backgroundColour.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false
