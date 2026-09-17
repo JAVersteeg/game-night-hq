@@ -10,7 +10,6 @@ import { format } from 'date-fns';
 import { nl } from 'date-fns/locale';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Avatar } from '@/components/Avatar';
 import { Badge } from '@/components/Badge';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
@@ -20,6 +19,8 @@ import { ScoreBars } from '@/components/ScoreBars';
 import { SectionLabel } from '@/components/SectionLabel';
 import { TextField } from '@/components/TextField';
 import { useAuth } from '@/features/auth/context/AuthContext';
+import { AvatarMarksProvider } from '@/features/badges/avatarMarks';
+import { MemberAvatar } from '@/features/groups/components/MemberAvatar';
 import { useGroupMembers, type GroupMember } from '@/features/groups/hooks/useGroupMembers';
 import { CoverThumbnail } from '@/components/CoverThumbnail';
 import { gameColorForTemplate } from '@/features/games/colors';
@@ -124,12 +125,7 @@ function PlayerCard({
         accessibilityRole={canEdit ? 'button' : undefined}
         className={`flex-row items-center gap-3 px-4 py-3 ${canEdit ? 'active:opacity-70' : ''}`}
       >
-        <Avatar
-          displayName={member.displayName}
-          avatarUrl={member.avatarUrl}
-          color={member.color}
-          size={36}
-        />
+        <MemberAvatar member={member} size={36} />
         <View className="min-w-0 flex-1 flex-row items-center gap-2">
           <Text className="min-w-0 flex-1 text-base font-semibold text-ink" numberOfLines={1}>
             {member.displayName}
@@ -194,12 +190,7 @@ function RankedOrderList({ members }: { members: GroupMember[] }) {
           className={`flex-row items-center gap-3 px-4 py-3 ${index === 0 ? '' : 'border-t border-line'}`}
         >
           <RankBadge position={index + 1} />
-          <Avatar
-            displayName={member.displayName}
-            avatarUrl={member.avatarUrl}
-            color={member.color}
-            size={32}
-          />
+          <MemberAvatar member={member} size={32} />
           <Text className="min-w-0 flex-1 text-base font-semibold text-ink" numberOfLines={1}>
             {member.displayName}
           </Text>
@@ -235,12 +226,7 @@ function RankedEntryRow({
       }`}
     >
       <RankBadge position={position} />
-      <Avatar
-        displayName={member.displayName}
-        avatarUrl={member.avatarUrl}
-        color={member.color}
-        size={32}
-      />
+      <MemberAvatar member={member} size={32} />
       <Text className="min-w-0 flex-1 text-base font-semibold text-ink" numberOfLines={1}>
         {member.displayName}
       </Text>
@@ -374,12 +360,7 @@ function RoundsStandingsList({
           className={`flex-row items-center gap-3 px-4 py-3 ${index === 0 ? '' : 'border-t border-line'}`}
         >
           <RankBadge position={index + 1} />
-          <Avatar
-            displayName={member.displayName}
-            avatarUrl={member.avatarUrl}
-            color={member.color}
-            size={32}
-          />
+          <MemberAvatar member={member} size={32} />
           <Text className="min-w-0 flex-1 text-base font-semibold text-ink" numberOfLines={1}>
             {member.displayName}
           </Text>
@@ -812,6 +793,21 @@ export function SessionScreen() {
     addNote.mutate({ authorId: currentUserId, body }, { onSuccess: () => setNoteDraft('') });
   }
 
+  /** Finalising shouldn't silently drop a note that was typed but never sent, so it's posted first.
+   *  `then` runs either way: a failed note stays in the input and can still be sent in the grace
+   *  window, which beats blocking the finish on it. */
+  function withDraftNoteSaved(then: () => void) {
+    const body = noteDraft.trim();
+    if (!body || !currentUserId) {
+      then();
+      return;
+    }
+    addNote.mutate(
+      { authorId: currentUserId, body },
+      { onSuccess: () => setNoteDraft(''), onSettled: then },
+    );
+  }
+
   function confirmDeleteNote() {
     if (!pendingDeleteNoteId) return;
     deleteNote.mutate(pendingDeleteNoteId, { onSuccess: () => setPendingDeleteNoteId(null) });
@@ -914,7 +910,9 @@ export function SessionScreen() {
     }
 
     const finalize = () =>
-      finalizeSession.mutate(undefined, { onSuccess: () => setIsFinishRoundsVisible(false) });
+      withDraftNoteSaved(() =>
+        finalizeSession.mutate(undefined, { onSuccess: () => setIsFinishRoundsVisible(false) }),
+      );
 
     if (willBankCurrentRound) {
       if (isRankedRounds && roundOrder) {
@@ -956,81 +954,269 @@ export function SessionScreen() {
     );
 
     return (
+      <AvatarMarksProvider groupId={sessionData.group_id}>
+        <View className="flex-1 bg-surface">
+          <KeyboardAwareScrollView
+            className="flex-1"
+            contentContainerClassName="gap-8 px-6 pt-6"
+            contentContainerStyle={{ paddingBottom: 24 + insets.bottom }}
+            bottomOffset={24}
+            keyboardShouldPersistTaps="handled"
+          >
+            <Card className="gap-4">
+              <View className="flex-row items-center gap-4">
+                <CoverThumbnail
+                  source={coverImageForTemplate(coverKey, gameName)}
+                  color={gameColorForTemplate(coverKey, gameName)}
+                  size={80}
+                />
+                <View className="min-w-0 flex-1">
+                  <Text className="text-2xl font-bold text-ink" numberOfLines={2}>
+                    {gameName}
+                  </Text>
+                  <Text className="mt-1 text-sm text-ink-muted">
+                    {format(new Date(sessionData.played_at), 'd MMMM yyyy', { locale: nl })}
+                    {isRounds
+                      ? ` · ${sessionData.rounds_played} ${sessionData.rounds_played === 1 ? 'ronde' : 'rondes'}`
+                      : ''}
+                  </Text>
+                </View>
+              </View>
+
+              <View className="flex-row items-center gap-3 border-t border-line pt-4">
+                <View className="relative flex-row">
+                  {winners.map((member, index) => (
+                    // A tie stacks the winners' avatars, each ringed in the card colour so the
+                    // overlap reads as separate faces.
+                    <View
+                      key={member.userId}
+                      className="rounded-full border-2 border-surface"
+                      style={{ marginLeft: index === 0 ? 0 : -14 }}
+                    >
+                      <MemberAvatar member={member} size={48} />
+                    </View>
+                  ))}
+                  {/* Trophy badge overlaps the last (topmost) avatar's corner, like a notification
+                    dot, instead of spelling "Winnaar" out as a separate pill next to the name. */}
+                  <View className="absolute -bottom-1 -right-1 h-6 w-6 items-center justify-center rounded-full border-2 border-surface bg-surface-muted">
+                    <Text className="text-xs leading-none">🏆</Text>
+                  </View>
+                </View>
+                <View className="min-w-0 flex-1 items-start">
+                  <Text className="text-xl font-bold text-ink" numberOfLines={2}>
+                    {winners.map((member) => member.displayName).join(' & ')}
+                  </Text>
+                </View>
+              </View>
+            </Card>
+
+            <View>
+              <SectionLabel>Eindstand</SectionLabel>
+              {/* A plain ranked template has only a finish position to show; ranked-and-rounds
+                (Dalmuti) banked real points round by round, so it gets the same points bar as a
+                field-based template rather than an ordinal list. */}
+              {isRanked && !isRounds ? (
+                <View className="mt-2">
+                  <RankedOrderList members={orderedMembers} />
+                </View>
+              ) : (
+                <Card className="mt-2">
+                  <ScoreBars rows={orderedRows} />
+                </Card>
+              )}
+            </View>
+
+            <SessionNotesSection
+              notes={notes ?? []}
+              authorNameById={authorNameById}
+              currentUserId={currentUserId}
+              canWrite={canWriteNotes}
+              draft={noteDraft}
+              onDraftChange={setNoteDraft}
+              onAdd={handleAddNote}
+              onDelete={setPendingDeleteNoteId}
+              isAdding={addNote.isPending}
+            />
+          </KeyboardAwareScrollView>
+
+          {pendingDeleteNoteId ? (
+            <DeleteNoteConfirmModal
+              onCancel={() => setPendingDeleteNoteId(null)}
+              onConfirm={confirmDeleteNote}
+              isPending={deleteNote.isPending}
+            />
+          ) : null}
+        </View>
+      </AvatarMarksProvider>
+    );
+  }
+
+  return (
+    <AvatarMarksProvider groupId={sessionData.group_id}>
       <View className="flex-1 bg-surface">
         <KeyboardAwareScrollView
           className="flex-1"
           contentContainerClassName="gap-8 px-6 pt-6"
-          contentContainerStyle={{ paddingBottom: 24 + insets.bottom }}
-          bottomOffset={24}
+          // Without the pinned footer (a read-only viewer), the scroll content itself is the last
+          // thing above the bottom of the screen and needs the inset added directly.
+          contentContainerStyle={{ paddingBottom: canEdit ? 24 : 24 + insets.bottom }}
+          // The footer rides above the keyboard (KeyboardStickyView below), so a focused field has
+          // to clear it. Only part of the footer is visible there: the sticky offset pulls its
+          // safe-area padding down behind the keyboard, so that part doesn't count.
+          bottomOffset={8 + Math.max(footerHeight - insets.bottom, 0)}
           keyboardShouldPersistTaps="handled"
         >
-          <Card className="gap-4">
-            <View className="flex-row items-center gap-4">
-              <CoverThumbnail
-                source={coverImageForTemplate(coverKey, gameName)}
-                color={gameColorForTemplate(coverKey, gameName)}
-                size={80}
-              />
-              <View className="min-w-0 flex-1">
-                <Text className="text-2xl font-bold text-ink" numberOfLines={2}>
-                  {gameName}
-                </Text>
-                <Text className="mt-1 text-sm text-ink-muted">
-                  {format(new Date(sessionData.played_at), 'd MMMM yyyy', { locale: nl })}
-                  {isRounds
-                    ? ` · ${sessionData.rounds_played} ${sessionData.rounds_played === 1 ? 'ronde' : 'rondes'}`
-                    : ''}
-                </Text>
-              </View>
-            </View>
-
-            <View className="flex-row items-center gap-3 border-t border-line pt-4">
-              <View className="relative flex-row">
-                {winners.map((member, index) => (
-                  // A tie stacks the winners' avatars, each ringed in the card colour so the
-                  // overlap reads as separate faces.
-                  <View
-                    key={member.userId}
-                    className="rounded-full border-2 border-surface"
-                    style={{ marginLeft: index === 0 ? 0 : -14 }}
+          {isRankedRounds ? (
+            <View>
+              <View className="flex-row items-center justify-between">
+                <SectionLabel>{roundLabel}</SectionLabel>
+                {canEdit && canUndoRound ? (
+                  <Pressable
+                    onPress={handleUndoRound}
+                    disabled={undoRound.isPending}
+                    accessibilityRole="button"
+                    className="active:opacity-70"
+                    testID="undo-round-button"
                   >
-                    <Avatar
-                      displayName={member.displayName}
-                      avatarUrl={member.avatarUrl}
-                      color={member.color}
-                      size={48}
+                    <Text className="text-sm font-semibold text-accent">Ronde terugdraaien</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+              <View className="mt-2">
+                {canEdit ? (
+                  <RoundsEntryList
+                    order={roundMembers}
+                    totalByUserId={pointsByUserId}
+                    onOrderChange={setRoundOrder}
+                  />
+                ) : (
+                  <RoundsStandingsList members={standingsMembers} totalByUserId={pointsByUserId} />
+                )}
+              </View>
+              {canEdit ? (
+                <Text className="mt-3 text-sm text-ink-muted">
+                  Sleep de spelers in de volgorde waarin ze deze ronde klaar waren. De laatste
+                  krijgt 0 punten, elke plek hoger levert 1 punt extra op.
+                </Text>
+              ) : null}
+            </View>
+          ) : isFieldRounds ? (
+            <View>
+              <View className="flex-row items-center justify-between">
+                <SectionLabel>{roundLabel}</SectionLabel>
+                {canEdit && canUndoRound ? (
+                  <Pressable
+                    onPress={handleUndoRound}
+                    disabled={undoRound.isPending}
+                    accessibilityRole="button"
+                    className="active:opacity-70"
+                    testID="undo-round-button"
+                  >
+                    <Text className="text-sm font-semibold text-accent">Ronde terugdraaien</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+              <View className="mt-2 gap-2">
+                {participants.map((member) => {
+                  // Every unset field reads as 0 here explicitly (rather than a field's
+                  // `defaultValue`, which for an exclusive field is its award amount, not a sane
+                  // per-round fallback) — this round hasn't been banked yet, so nothing about it
+                  // should start pre-filled.
+                  const roundValues = Object.fromEntries(
+                    fields.map((field) => [
+                      field.key,
+                      fieldRoundDraft[member.userId]?.[field.key] ?? 0,
+                    ]),
+                  );
+                  // The signed total of this round's draft — what "Volgende ronde" is about to add
+                  // onto the running total. Only shown to the scorekeeper: a spectator never sees the
+                  // in-progress draft (it's local to the scorekeeper's device), so it would always
+                  // read as a misleading "+0" for them.
+                  const roundDelta = canEdit
+                    ? fields.reduce((sum, field) => sum + field.sign * roundValues[field.key], 0)
+                    : undefined;
+                  return (
+                    <PlayerCard
+                      key={member.userId}
+                      member={member}
+                      isScorekeeper={member.userId === sessionData.scorekeeper_id}
+                      fields={fields}
+                      values={roundValues}
+                      total={totalByUserId.get(member.userId)?.total ?? 0}
+                      roundDelta={roundDelta}
+                      canEdit={canEdit}
+                      isOpen={openParticipantId === member.userId}
+                      onToggleOpen={() =>
+                        setOpenParticipantId((current) =>
+                          current === member.userId ? null : member.userId,
+                        )
+                      }
+                      onChangeField={(fieldKey, value) =>
+                        handleFieldRoundChange(member.userId, fieldKey, value)
+                      }
+                    />
+                  );
+                })}
+              </View>
+              {canEdit ? (
+                <Text className="mt-3 text-sm text-ink-muted">
+                  Vul de scores van deze ronde in. Bij "Volgende ronde" tellen ze op bij het totaal.
+                </Text>
+              ) : null}
+            </View>
+          ) : (
+            <View>
+              <SectionLabel>Deelnemers</SectionLabel>
+              {isRanked ? (
+                canEdit ? (
+                  <View className="mt-2">
+                    <RankedEntryList
+                      participants={participants}
+                      scoresByUser={scoresByUser ?? {}}
+                      onReorder={(userIds) =>
+                        userIds.forEach((userId, index) =>
+                          setScore.mutate({ userId, fieldKey: RANK_FIELD_KEY, value: index + 1 }),
+                        )
+                      }
                     />
                   </View>
-                ))}
-                {/* Trophy badge overlaps the last (topmost) avatar's corner, like a notification
-                    dot, instead of spelling "Winnaar" out as a separate pill next to the name. */}
-                <View className="absolute -bottom-1 -right-1 h-6 w-6 items-center justify-center rounded-full border-2 border-surface bg-surface-muted">
-                  <Text className="text-xs leading-none">🏆</Text>
+                ) : (
+                  <View className="mt-2">
+                    <RankedOrderList
+                      members={[...participants].sort(
+                        (a, b) =>
+                          (totalByUserId.get(a.userId)?.total ?? 0) -
+                          (totalByUserId.get(b.userId)?.total ?? 0),
+                      )}
+                    />
+                  </View>
+                )
+              ) : (
+                <View className="mt-2 gap-2">
+                  {participants.map((member) => (
+                    <PlayerCard
+                      key={member.userId}
+                      member={member}
+                      isScorekeeper={member.userId === sessionData.scorekeeper_id}
+                      fields={fields}
+                      values={(scoresByUser ?? {})[member.userId] ?? {}}
+                      total={totalByUserId.get(member.userId)?.total ?? 0}
+                      canEdit={canEdit}
+                      isOpen={openParticipantId === member.userId}
+                      onToggleOpen={() =>
+                        setOpenParticipantId((current) =>
+                          current === member.userId ? null : member.userId,
+                        )
+                      }
+                      onChangeField={(fieldKey, value) =>
+                        handleFieldChange(member.userId, fieldKey, value)
+                      }
+                    />
+                  ))}
                 </View>
-              </View>
-              <View className="min-w-0 flex-1 items-start">
-                <Text className="text-xl font-bold text-ink" numberOfLines={2}>
-                  {winners.map((member) => member.displayName).join(' & ')}
-                </Text>
-              </View>
+              )}
             </View>
-          </Card>
-
-          <View>
-            <SectionLabel>Eindstand</SectionLabel>
-            {/* A plain ranked template has only a finish position to show; ranked-and-rounds
-                (Dalmuti) banked real points round by round, so it gets the same points bar as a
-                field-based template rather than an ordinal list. */}
-            {isRanked && !isRounds ? (
-              <View className="mt-2">
-                <RankedOrderList members={orderedMembers} />
-              </View>
-            ) : (
-              <Card className="mt-2">
-                <ScoreBars rows={orderedRows} />
-              </Card>
-            )}
-          </View>
+          )}
 
           <SessionNotesSection
             notes={notes ?? []}
@@ -1045,7 +1231,75 @@ export function SessionScreen() {
           />
         </KeyboardAwareScrollView>
 
-        {pendingDeleteNoteId ? (
+        {canEdit ? (
+          // Pinned rather than appended to the scroll content, the way GamesTab pins "Spel
+          // toevoegen": ending the session should stay reachable and in a fixed spot regardless of
+          // participant count or which card is expanded. KeyboardStickyView lifts it on top of the
+          // keyboard so the bottom of the screen stays visible while a field is focused; the offset
+          // cancels the safe-area padding, which the keyboard covers anyway.
+          <KeyboardStickyView offset={{ closed: 0, opened: insets.bottom }}>
+            <View
+              className="border-t border-line bg-surface px-6 pt-4"
+              style={{ paddingBottom: 16 + insets.bottom }}
+              onLayout={(event) => setFooterHeight(event.nativeEvent.layout.height)}
+            >
+              {isRounds ? (
+                <View className="gap-2">
+                  <Button
+                    label="Volgende ronde"
+                    onPress={handleNextRound}
+                    isLoading={commitRound.isPending}
+                    testID="next-round-submit"
+                  />
+                  <Button
+                    label="Potje afronden"
+                    variant="secondary"
+                    onPress={() => {
+                      // Reset first, so a failed earlier attempt doesn't greet them with a stale error.
+                      commitRound.reset();
+                      finalizeSession.reset();
+                      setCountsCurrentRound(true);
+                      setIsFinishRoundsVisible(true);
+                    }}
+                    testID="finalize-session-submit"
+                  />
+                </View>
+              ) : (
+                <Button
+                  label="Potje afronden"
+                  onPress={() => withDraftNoteSaved(() => finalizeSession.mutate())}
+                  isLoading={finalizeSession.isPending || addNote.isPending}
+                  testID="finalize-session-submit"
+                />
+              )}
+            </View>
+          </KeyboardStickyView>
+        ) : null}
+
+        {/* Mounted one at a time rather than both with a `visible` flag: Android only ever shows one
+          Modal, and two of them in the same tree left the second one refusing to appear at all. */}
+        {isFinishRoundsVisible ? (
+          <FinishRoundsModal
+            roundNumber={roundNumber}
+            countsCurrentRound={countsCurrentRound}
+            onToggleCurrentRound={() => setCountsCurrentRound((current) => !current)}
+            onCancel={() => setIsFinishRoundsVisible(false)}
+            onConfirm={confirmFinishRounds}
+            isPending={
+              commitRound.isPending ||
+              addNote.isPending ||
+              finalizeSession.isPending ||
+              deleteSession.isPending
+            }
+            hasFailed={commitRound.isError || finalizeSession.isError || deleteSession.isError}
+          />
+        ) : null}
+
+        {isLeaveConfirmVisible ? (
+          <LeaveConfirmModal onCancel={cancelLeave} onConfirm={confirmLeave} />
+        ) : null}
+
+        {pendingDeleteNoteId && !isFinishRoundsVisible && !isLeaveConfirmVisible ? (
           <DeleteNoteConfirmModal
             onCancel={() => setPendingDeleteNoteId(null)}
             onConfirm={confirmDeleteNote}
@@ -1053,258 +1307,6 @@ export function SessionScreen() {
           />
         ) : null}
       </View>
-    );
-  }
-
-  return (
-    <View className="flex-1 bg-surface">
-      <KeyboardAwareScrollView
-        className="flex-1"
-        contentContainerClassName="gap-8 px-6 pt-6"
-        // Without the pinned footer (a read-only viewer), the scroll content itself is the last
-        // thing above the bottom of the screen and needs the inset added directly.
-        contentContainerStyle={{ paddingBottom: canEdit ? 24 : 24 + insets.bottom }}
-        // The footer rides above the keyboard (KeyboardStickyView below), so a focused field has
-        // to clear it. Only part of the footer is visible there: the sticky offset pulls its
-        // safe-area padding down behind the keyboard, so that part doesn't count.
-        bottomOffset={8 + Math.max(footerHeight - insets.bottom, 0)}
-        keyboardShouldPersistTaps="handled"
-      >
-        {isRankedRounds ? (
-          <View>
-            <View className="flex-row items-center justify-between">
-              <SectionLabel>{roundLabel}</SectionLabel>
-              {canEdit && canUndoRound ? (
-                <Pressable
-                  onPress={handleUndoRound}
-                  disabled={undoRound.isPending}
-                  accessibilityRole="button"
-                  className="active:opacity-70"
-                  testID="undo-round-button"
-                >
-                  <Text className="text-sm font-semibold text-accent">Ronde terugdraaien</Text>
-                </Pressable>
-              ) : null}
-            </View>
-            <View className="mt-2">
-              {canEdit ? (
-                <RoundsEntryList
-                  order={roundMembers}
-                  totalByUserId={pointsByUserId}
-                  onOrderChange={setRoundOrder}
-                />
-              ) : (
-                <RoundsStandingsList members={standingsMembers} totalByUserId={pointsByUserId} />
-              )}
-            </View>
-            {canEdit ? (
-              <Text className="mt-3 text-sm text-ink-muted">
-                Sleep de spelers in de volgorde waarin ze deze ronde klaar waren. De laatste krijgt
-                0 punten, elke plek hoger levert 1 punt extra op.
-              </Text>
-            ) : null}
-          </View>
-        ) : isFieldRounds ? (
-          <View>
-            <View className="flex-row items-center justify-between">
-              <SectionLabel>{roundLabel}</SectionLabel>
-              {canEdit && canUndoRound ? (
-                <Pressable
-                  onPress={handleUndoRound}
-                  disabled={undoRound.isPending}
-                  accessibilityRole="button"
-                  className="active:opacity-70"
-                  testID="undo-round-button"
-                >
-                  <Text className="text-sm font-semibold text-accent">Ronde terugdraaien</Text>
-                </Pressable>
-              ) : null}
-            </View>
-            <View className="mt-2 gap-2">
-              {participants.map((member) => {
-                // Every unset field reads as 0 here explicitly (rather than a field's
-                // `defaultValue`, which for an exclusive field is its award amount, not a sane
-                // per-round fallback) — this round hasn't been banked yet, so nothing about it
-                // should start pre-filled.
-                const roundValues = Object.fromEntries(
-                  fields.map((field) => [
-                    field.key,
-                    fieldRoundDraft[member.userId]?.[field.key] ?? 0,
-                  ]),
-                );
-                // The signed total of this round's draft — what "Volgende ronde" is about to add
-                // onto the running total. Only shown to the scorekeeper: a spectator never sees the
-                // in-progress draft (it's local to the scorekeeper's device), so it would always
-                // read as a misleading "+0" for them.
-                const roundDelta = canEdit
-                  ? fields.reduce((sum, field) => sum + field.sign * roundValues[field.key], 0)
-                  : undefined;
-                return (
-                  <PlayerCard
-                    key={member.userId}
-                    member={member}
-                    isScorekeeper={member.userId === sessionData.scorekeeper_id}
-                    fields={fields}
-                    values={roundValues}
-                    total={totalByUserId.get(member.userId)?.total ?? 0}
-                    roundDelta={roundDelta}
-                    canEdit={canEdit}
-                    isOpen={openParticipantId === member.userId}
-                    onToggleOpen={() =>
-                      setOpenParticipantId((current) =>
-                        current === member.userId ? null : member.userId,
-                      )
-                    }
-                    onChangeField={(fieldKey, value) =>
-                      handleFieldRoundChange(member.userId, fieldKey, value)
-                    }
-                  />
-                );
-              })}
-            </View>
-            {canEdit ? (
-              <Text className="mt-3 text-sm text-ink-muted">
-                Vul de scores van deze ronde in. Bij "Volgende ronde" tellen ze op bij het totaal.
-              </Text>
-            ) : null}
-          </View>
-        ) : (
-          <View>
-            <SectionLabel>Deelnemers</SectionLabel>
-            {isRanked ? (
-              canEdit ? (
-                <View className="mt-2">
-                  <RankedEntryList
-                    participants={participants}
-                    scoresByUser={scoresByUser ?? {}}
-                    onReorder={(userIds) =>
-                      userIds.forEach((userId, index) =>
-                        setScore.mutate({ userId, fieldKey: RANK_FIELD_KEY, value: index + 1 }),
-                      )
-                    }
-                  />
-                </View>
-              ) : (
-                <View className="mt-2">
-                  <RankedOrderList
-                    members={[...participants].sort(
-                      (a, b) =>
-                        (totalByUserId.get(a.userId)?.total ?? 0) -
-                        (totalByUserId.get(b.userId)?.total ?? 0),
-                    )}
-                  />
-                </View>
-              )
-            ) : (
-              <View className="mt-2 gap-2">
-                {participants.map((member) => (
-                  <PlayerCard
-                    key={member.userId}
-                    member={member}
-                    isScorekeeper={member.userId === sessionData.scorekeeper_id}
-                    fields={fields}
-                    values={(scoresByUser ?? {})[member.userId] ?? {}}
-                    total={totalByUserId.get(member.userId)?.total ?? 0}
-                    canEdit={canEdit}
-                    isOpen={openParticipantId === member.userId}
-                    onToggleOpen={() =>
-                      setOpenParticipantId((current) =>
-                        current === member.userId ? null : member.userId,
-                      )
-                    }
-                    onChangeField={(fieldKey, value) =>
-                      handleFieldChange(member.userId, fieldKey, value)
-                    }
-                  />
-                ))}
-              </View>
-            )}
-          </View>
-        )}
-
-        <SessionNotesSection
-          notes={notes ?? []}
-          authorNameById={authorNameById}
-          currentUserId={currentUserId}
-          canWrite={canWriteNotes}
-          draft={noteDraft}
-          onDraftChange={setNoteDraft}
-          onAdd={handleAddNote}
-          onDelete={setPendingDeleteNoteId}
-          isAdding={addNote.isPending}
-        />
-      </KeyboardAwareScrollView>
-
-      {canEdit ? (
-        // Pinned rather than appended to the scroll content, the way GamesTab pins "Spel
-        // toevoegen": ending the session should stay reachable and in a fixed spot regardless of
-        // participant count or which card is expanded. KeyboardStickyView lifts it on top of the
-        // keyboard so the bottom of the screen stays visible while a field is focused; the offset
-        // cancels the safe-area padding, which the keyboard covers anyway.
-        <KeyboardStickyView offset={{ closed: 0, opened: insets.bottom }}>
-          <View
-            className="border-t border-line bg-surface px-6 pt-4"
-            style={{ paddingBottom: 16 + insets.bottom }}
-            onLayout={(event) => setFooterHeight(event.nativeEvent.layout.height)}
-          >
-            {isRounds ? (
-              <View className="gap-2">
-                <Button
-                  label="Volgende ronde"
-                  onPress={handleNextRound}
-                  isLoading={commitRound.isPending}
-                  testID="next-round-submit"
-                />
-                <Button
-                  label="Potje afronden"
-                  variant="secondary"
-                  onPress={() => {
-                    // Reset first, so a failed earlier attempt doesn't greet them with a stale error.
-                    commitRound.reset();
-                    finalizeSession.reset();
-                    setCountsCurrentRound(true);
-                    setIsFinishRoundsVisible(true);
-                  }}
-                  testID="finalize-session-submit"
-                />
-              </View>
-            ) : (
-              <Button
-                label="Potje afronden"
-                onPress={() => finalizeSession.mutate()}
-                isLoading={finalizeSession.isPending}
-                testID="finalize-session-submit"
-              />
-            )}
-          </View>
-        </KeyboardStickyView>
-      ) : null}
-
-      {/* Mounted one at a time rather than both with a `visible` flag: Android only ever shows one
-          Modal, and two of them in the same tree left the second one refusing to appear at all. */}
-      {isFinishRoundsVisible ? (
-        <FinishRoundsModal
-          roundNumber={roundNumber}
-          countsCurrentRound={countsCurrentRound}
-          onToggleCurrentRound={() => setCountsCurrentRound((current) => !current)}
-          onCancel={() => setIsFinishRoundsVisible(false)}
-          onConfirm={confirmFinishRounds}
-          isPending={commitRound.isPending || finalizeSession.isPending || deleteSession.isPending}
-          hasFailed={commitRound.isError || finalizeSession.isError || deleteSession.isError}
-        />
-      ) : null}
-
-      {isLeaveConfirmVisible ? (
-        <LeaveConfirmModal onCancel={cancelLeave} onConfirm={confirmLeave} />
-      ) : null}
-
-      {pendingDeleteNoteId && !isFinishRoundsVisible && !isLeaveConfirmVisible ? (
-        <DeleteNoteConfirmModal
-          onCancel={() => setPendingDeleteNoteId(null)}
-          onConfirm={confirmDeleteNote}
-          isPending={deleteNote.isPending}
-        />
-      ) : null}
-    </View>
+    </AvatarMarksProvider>
   );
 }

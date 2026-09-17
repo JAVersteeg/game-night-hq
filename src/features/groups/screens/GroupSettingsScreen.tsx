@@ -4,11 +4,12 @@ import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Share, View } from 'react-native';
 import { Text } from '@/components/Text';
 
-import { Avatar } from '@/components/Avatar';
 import { Button } from '@/components/Button';
 import { ColorPickerModal } from '@/components/ColorPickerModal';
 import { SectionLabel } from '@/components/SectionLabel';
 import { useAuth } from '@/features/auth/context/AuthContext';
+import { AvatarMarksProvider } from '@/features/badges/avatarMarks';
+import { MemberAvatar } from '@/features/groups/components/MemberAvatar';
 import {
   colorErrorMessage,
   useGroupMembers,
@@ -64,12 +65,7 @@ function MemberRow({
 }) {
   const row = (
     <View className="flex-row items-center gap-3 px-4 py-3">
-      <Avatar
-        displayName={member.displayName}
-        avatarUrl={member.avatarUrl}
-        color={member.color}
-        size={36}
-      />
+      <MemberAvatar member={member} size={36} />
       <Text className="shrink text-base text-ink" numberOfLines={1}>
         {member.displayName}
       </Text>
@@ -120,58 +116,60 @@ export function GroupSettingsScreen() {
   }
 
   return (
-    <ScrollView className="flex-1 bg-surface" contentContainerClassName="px-6 pb-12 pt-6">
-      <SectionLabel>Uitnodigingscode</SectionLabel>
-      <InviteCodeCard group={group} />
+    <AvatarMarksProvider groupId={groupId}>
+      <ScrollView className="flex-1 bg-surface" contentContainerClassName="px-6 pb-12 pt-6">
+        <SectionLabel>Uitnodigingscode</SectionLabel>
+        <InviteCodeCard group={group} />
 
-      <View className="mt-8">
-        <SectionLabel>{members ? `Leden (${members.length})` : 'Leden'}</SectionLabel>
-        <View className="mt-2 overflow-hidden rounded-2xl border border-line bg-surface">
-          {isPending ? (
-            <View className="items-center py-6">
-              <ActivityIndicator />
-            </View>
-          ) : isError || !members ? (
-            <Text className="px-4 py-6 text-base text-ink-muted">
-              De leden konden niet worden geladen.
-            </Text>
-          ) : (
-            members.map((member, index) => {
-              const isCurrentUser = member.userId === session?.user.id;
-              return (
-                <View
-                  key={member.userId}
-                  className={index > 0 ? 'border-t border-line' : undefined}
-                >
-                  <MemberRow
-                    member={member}
-                    isCurrentUser={isCurrentUser}
-                    onPress={() => setColorModalOpen(true)}
-                  />
-                </View>
-              );
-            })
-          )}
+        <View className="mt-8">
+          <SectionLabel>{members ? `Leden (${members.length})` : 'Leden'}</SectionLabel>
+          <View className="mt-2 overflow-hidden rounded-2xl border border-line bg-surface">
+            {isPending ? (
+              <View className="items-center py-6">
+                <ActivityIndicator />
+              </View>
+            ) : isError || !members ? (
+              <Text className="px-4 py-6 text-base text-ink-muted">
+                De leden konden niet worden geladen.
+              </Text>
+            ) : (
+              members.map((member, index) => {
+                const isCurrentUser = member.userId === session?.user.id;
+                return (
+                  <View
+                    key={member.userId}
+                    className={index > 0 ? 'border-t border-line' : undefined}
+                  >
+                    <MemberRow
+                      member={member}
+                      isCurrentUser={isCurrentUser}
+                      onPress={() => setColorModalOpen(true)}
+                    />
+                  </View>
+                );
+              })
+            )}
+          </View>
         </View>
-      </View>
 
-      {me ? (
-        <ColorPickerModal
-          visible={colorModalOpen}
-          currentColor={me.color}
-          takenColors={
-            new Set(
-              (members ?? [])
-                .filter((member) => member.userId !== me.userId)
-                .map((member) => member.color),
-            )
-          }
-          isPending={setColor.isPending}
-          errorMessage={setColor.isError ? colorErrorMessage(setColor.error) : null}
-          onSelect={handleSelectColor}
-          onClose={closeColorModal}
-        />
-      ) : null}
-    </ScrollView>
+        {me ? (
+          <ColorPickerModal
+            visible={colorModalOpen}
+            currentColor={me.color}
+            takenColors={
+              new Set(
+                (members ?? [])
+                  .filter((member) => member.userId !== me.userId)
+                  .map((member) => member.color),
+              )
+            }
+            isPending={setColor.isPending}
+            errorMessage={setColor.isError ? colorErrorMessage(setColor.error) : null}
+            onSelect={handleSelectColor}
+            onClose={closeColorModal}
+          />
+        ) : null}
+      </ScrollView>
+    </AvatarMarksProvider>
   );
 }

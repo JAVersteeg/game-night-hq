@@ -1,0 +1,6 @@
+/* Inter is the product typeface. The app loads it through @expo-google-fonts/inter
+   (weights 400/500/600/700) and sets it as the default for every Text/TextInput.
+   No font binaries ship with the repo, so this design system loads the same family
+   from the Google Fonts CDN. Swap in self-hosted @font-face rules here if the app
+   ever vendors the .woff2/.ttf files. */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");

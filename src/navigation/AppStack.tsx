@@ -1,5 +1,7 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
+import { BadgeDetailScreen } from '@/features/badges/screens/BadgeDetailScreen';
+import { GroupBadgesScreen } from '@/features/badges/screens/GroupBadgesScreen';
 import { CreateGameTemplateScreen } from '@/features/games/screens/CreateGameTemplateScreen';
 import { CreateGroupScreen } from '@/features/groups/screens/CreateGroupScreen';
 import { GroupDashboardScreen } from '@/features/groups/screens/GroupDashboardScreen';
@@ -53,6 +55,14 @@ export function AppStack() {
         name="GroupSettings"
         component={GroupSettingsScreen}
         options={{ ...HEADER_OPTIONS, title: 'Instellingen' }}
+      />
+      {/* Title is set by the screen itself, to the group's name — the screen's own "Badges"
+          heading is in the content flow, as the design has it. */}
+      <Stack.Screen name="GroupBadges" component={GroupBadgesScreen} options={HEADER_OPTIONS} />
+      <Stack.Screen
+        name="BadgeDetail"
+        component={BadgeDetailScreen}
+        options={{ ...HEADER_OPTIONS, title: 'Badge' }}
       />
       <Stack.Screen
         name="CreateGameTemplate"

@@ -111,6 +111,9 @@ export function useFinalizeSession(sessionId: string, groupId: string) {
       void queryClient.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) });
       void queryClient.invalidateQueries({ queryKey: groupKeys.dashboard(groupId) });
       void queryClient.invalidateQueries({ queryKey: sessionHistoryKeys.list(groupId) });
+      // A finished potje can move a pass-on badge or complete an achievement, both derived from
+      // exactly this list of sessions.
+      void queryClient.invalidateQueries({ queryKey: groupKeys.badges(groupId) });
       // Every stats surface counts this session from now on. Invalidated by prefix rather than by
       // exact key: the template id isn't in scope here, and the profile's stats span all groups,
       // so neither one can be named precisely — and both are cheap to refetch at this scale.

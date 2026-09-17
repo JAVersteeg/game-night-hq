@@ -10,6 +10,7 @@ export const theme = {
   surfaceSunken: '#2a241d',
   surfaceDeep: '#16120e',
   line: '#3a322a',
+  accentLine: '#7c4426',
   ink: '#f2ebe2',
   inkSubtle: '#8a7e71',
   inkFaint: '#5f5549',

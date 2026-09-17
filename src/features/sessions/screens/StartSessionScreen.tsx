@@ -6,11 +6,12 @@ import { ActivityIndicator, ScrollView, View } from 'react-native';
 import { Text } from '@/components/Text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Avatar } from '@/components/Avatar';
 import { Button } from '@/components/Button';
 import { ChoiceRow } from '@/components/ChoiceRow';
 import { SectionLabel } from '@/components/SectionLabel';
 import { useAuth } from '@/features/auth/context/AuthContext';
+import { AvatarMarksProvider } from '@/features/badges/avatarMarks';
+import { MemberAvatar } from '@/features/groups/components/MemberAvatar';
 import { useGameTemplates } from '@/features/games/hooks/useGameTemplates';
 import { useGroupMembers } from '@/features/groups/hooks/useGroupMembers';
 import { useCreateSession } from '@/features/sessions/hooks/useSessions';
@@ -78,86 +79,74 @@ export function StartSessionScreen() {
   }
 
   return (
-    <ScrollView
-      className="flex-1 bg-surface"
-      contentContainerClassName="gap-8 px-6 pt-6"
-      contentContainerStyle={{ paddingBottom: 48 + insets.bottom }}
-    >
-      <View>
-        <SectionLabel>Spel</SectionLabel>
-        <Text className="mt-2 text-xl font-bold text-ink">{template?.name ?? '…'}</Text>
-      </View>
-
-      <View>
-        <SectionLabel>Deelnemers</SectionLabel>
-        <View className="mt-2 gap-2">
-          {isPending ? (
-            <View className="items-center py-6">
-              <ActivityIndicator />
-            </View>
-          ) : isError || !members ? (
-            <Text className="text-base text-ink-muted">De leden konden niet worden geladen.</Text>
-          ) : (
-            members.map((member) => (
-              <ChoiceRow
-                key={member.userId}
-                mode="check"
-                title={member.displayName}
-                left={
-                  <Avatar
-                    displayName={member.displayName}
-                    avatarUrl={member.avatarUrl}
-                    color={member.color}
-                    size={32}
-                  />
-                }
-                selected={participantIds.includes(member.userId)}
-                onSelect={() => toggleParticipant(member.userId)}
-              />
-            ))
-          )}
-        </View>
-      </View>
-
-      {participantIds.length > 0 && members ? (
+    <AvatarMarksProvider groupId={groupId}>
+      <ScrollView
+        className="flex-1 bg-surface"
+        contentContainerClassName="gap-8 px-6 pt-6"
+        contentContainerStyle={{ paddingBottom: 48 + insets.bottom }}
+      >
         <View>
-          <SectionLabel>Scorebijhouder</SectionLabel>
+          <SectionLabel>Spel</SectionLabel>
+          <Text className="mt-2 text-xl font-bold text-ink">{template?.name ?? '…'}</Text>
+        </View>
+
+        <View>
+          <SectionLabel>Deelnemers</SectionLabel>
           <View className="mt-2 gap-2">
-            {members
-              .filter((member) => participantIds.includes(member.userId))
-              .map((member) => (
+            {isPending ? (
+              <View className="items-center py-6">
+                <ActivityIndicator />
+              </View>
+            ) : isError || !members ? (
+              <Text className="text-base text-ink-muted">De leden konden niet worden geladen.</Text>
+            ) : (
+              members.map((member) => (
                 <ChoiceRow
                   key={member.userId}
+                  mode="check"
                   title={member.displayName}
-                  left={
-                    <Avatar
-                      displayName={member.displayName}
-                      avatarUrl={member.avatarUrl}
-                      color={member.color}
-                      size={32}
-                    />
-                  }
-                  selected={scorekeeperId === member.userId}
-                  onSelect={() => setScorekeeperId(member.userId)}
+                  left={<MemberAvatar member={member} size={32} />}
+                  selected={participantIds.includes(member.userId)}
+                  onSelect={() => toggleParticipant(member.userId)}
                 />
-              ))}
+              ))
+            )}
           </View>
         </View>
-      ) : null}
 
-      {createSession.isError ? (
-        <Text className="text-danger">
-          Het potje kon niet worden gestart. Controleer je verbinding en probeer het opnieuw.
-        </Text>
-      ) : null}
+        {participantIds.length > 0 && members ? (
+          <View>
+            <SectionLabel>Scorebijhouder</SectionLabel>
+            <View className="mt-2 gap-2">
+              {members
+                .filter((member) => participantIds.includes(member.userId))
+                .map((member) => (
+                  <ChoiceRow
+                    key={member.userId}
+                    title={member.displayName}
+                    left={<MemberAvatar member={member} size={32} />}
+                    selected={scorekeeperId === member.userId}
+                    onSelect={() => setScorekeeperId(member.userId)}
+                  />
+                ))}
+            </View>
+          </View>
+        ) : null}
 
-      <Button
-        label="Potje starten"
-        onPress={handleSubmit}
-        disabled={!canSubmit}
-        isLoading={createSession.isPending}
-        testID="start-session-submit"
-      />
-    </ScrollView>
+        {createSession.isError ? (
+          <Text className="text-danger">
+            Het potje kon niet worden gestart. Controleer je verbinding en probeer het opnieuw.
+          </Text>
+        ) : null}
+
+        <Button
+          label="Potje starten"
+          onPress={handleSubmit}
+          disabled={!canSubmit}
+          isLoading={createSession.isPending}
+          testID="start-session-submit"
+        />
+      </ScrollView>
+    </AvatarMarksProvider>
   );
 }

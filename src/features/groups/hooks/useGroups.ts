@@ -11,6 +11,7 @@ export const groupKeys = {
   list: (userId: string) => ['groups', 'list', userId] as const,
   members: (groupId: string) => ['groups', 'members', groupId] as const,
   dashboard: (groupId: string) => ['groups', 'dashboard', groupId] as const,
+  badges: (groupId: string) => ['groups', 'badges', groupId] as const,
 };
 
 /**

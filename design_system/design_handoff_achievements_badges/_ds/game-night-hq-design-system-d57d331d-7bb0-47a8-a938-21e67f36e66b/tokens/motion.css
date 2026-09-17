@@ -1,0 +1,10 @@
+:root {
+  /* Native pressables handle their own feedback; there is no transition system in the
+     app. These encode the two feedback patterns the code does use. */
+  --press-opacity: 0.8; /* @kind other */ /* active:opacity-80 on filled buttons */
+  --press-opacity-soft: 0.7; /* @kind other */ /* active:opacity-70 on the avatar button */
+  --disabled-opacity: 0.5; /* @kind other */ /* opacity-50 */
+  --duration-fast: 120ms; /* @kind other */
+  --duration-base: 200ms; /* @kind other */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1); /* @kind other */
+}

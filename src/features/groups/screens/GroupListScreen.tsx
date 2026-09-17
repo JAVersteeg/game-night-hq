@@ -50,7 +50,7 @@ export function GroupListScreen() {
   return (
     <SafeAreaView className="flex-1 bg-surface" edges={['top', 'bottom']}>
       <View className="flex-row items-center justify-between gap-4 px-6 pb-2 pt-2">
-        <View >
+        <View>
           <Text className="text-3xl font-bold tracking-tight text-ink">Jouw groepen</Text>
         </View>
 

@@ -1,11 +1,11 @@
-import { Image, View } from 'react-native';
+import { Image, View, type ImageSourcePropType } from 'react-native';
 import { Text } from '@/components/Text';
 
 import { getPlayerColor, type PlayerColor } from '@/lib/playerColors';
 
 interface AvatarProps {
   displayName: string;
-  /** Diameter in px. Also drives the font size, so one number controls the whole thing. */
+  /** Diameter in px. Also drives the font size and the mark, so one number controls the whole thing. */
   size?: number;
   /** From `profiles.avatar_url`. Nothing writes this yet; initials are the fallback until then. */
   avatarUrl?: string | null;
@@ -13,7 +13,15 @@ interface AvatarProps {
    *  screen's own avatar, which has no single colour across groups) — falls back to the generic
    *  accent look. */
   color?: PlayerColor;
+  /** Badge artwork worn in the bottom-left corner. Pass it through `MemberAvatar` rather than
+   *  directly, so which badge that is stays decided in one place. */
+  mark?: ImageSourcePropType | null;
 }
+
+/** The mark's diameter as a share of the avatar's, so it reads the same at 28px and at 96px. */
+export const AVATAR_MARK_SCALE = 0.46;
+/** How far the mark hangs past the avatar's edge, as a share of the avatar's diameter. */
+const MARK_OVERHANG = 0.08;
 
 /**
  * Derives up to two initials from a display name. Falls back to '?' rather than rendering an empty
@@ -27,7 +35,12 @@ function initialsFrom(displayName: string): string {
   return (words[0].slice(0, 1) + words[words.length - 1].slice(0, 1)).toUpperCase();
 }
 
-export function Avatar({ displayName, size = 40, avatarUrl, color }: AvatarProps) {
+function AvatarFace({
+  displayName,
+  size,
+  avatarUrl,
+  color,
+}: Required<Pick<AvatarProps, 'displayName' | 'size'>> & Pick<AvatarProps, 'avatarUrl' | 'color'>) {
   const dimensions = { width: size, height: size, borderRadius: size / 2 };
 
   if (avatarUrl) {
@@ -51,6 +64,35 @@ export function Avatar({ displayName, size = 40, avatarUrl, color }: AvatarProps
       >
         {initialsFrom(displayName)}
       </Text>
+    </View>
+  );
+}
+
+export function Avatar({ displayName, size = 40, avatarUrl, color, mark }: AvatarProps) {
+  if (!mark) {
+    return <AvatarFace displayName={displayName} size={size} avatarUrl={avatarUrl} color={color} />;
+  }
+
+  const markSize = Math.round(size * AVATAR_MARK_SCALE);
+  const overhang = Math.round(size * MARK_OVERHANG);
+
+  // The wrapper keeps the avatar's own footprint, so a marked avatar lines up with an unmarked one
+  // in the same list; the mark hangs over the corner instead of pushing anything aside.
+  return (
+    <View style={{ width: size, height: size }}>
+      <AvatarFace displayName={displayName} size={size} avatarUrl={avatarUrl} color={color} />
+      <Image
+        source={mark}
+        style={{
+          position: 'absolute',
+          left: -overhang,
+          bottom: -overhang,
+          width: markSize,
+          height: markSize,
+        }}
+        resizeMode="contain"
+        accessibilityIgnoresInvertColors
+      />
     </View>
   );
 }

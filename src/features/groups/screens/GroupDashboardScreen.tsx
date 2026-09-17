@@ -18,11 +18,13 @@ import { ColorPickerModal } from '@/components/ColorPickerModal';
 import { CoverThumbnail } from '@/components/CoverThumbnail';
 import { EmptyState } from '@/components/EmptyState';
 import { GearIcon } from '@/components/GearIcon';
+import { TrophyIcon } from '@/components/TrophyIcon';
 import { InfoIcon } from '@/components/InfoIcon';
 import { SectionLabel } from '@/components/SectionLabel';
 import { SegmentedControl } from '@/components/SegmentedControl';
 import { StatTile } from '@/components/StatTile';
 import { useAuth } from '@/features/auth/context/AuthContext';
+import { AvatarMarksProvider } from '@/features/badges/avatarMarks';
 import {
   gameColorForTemplate,
   gamePaletteForTemplate,
@@ -38,6 +40,7 @@ import {
   useGroupDashboardStats,
   type PopularGame,
 } from '@/features/groups/hooks/useGroupDashboardStats';
+import { MemberMark } from '@/features/groups/components/MemberAvatar';
 import {
   colorErrorMessage,
   useGroupMembers,
@@ -67,6 +70,21 @@ function SettingsButton({ onPress }: { onPress: () => void }) {
       testID="group-settings-button"
     >
       <GearIcon size={22} color={theme.ink} />
+    </Pressable>
+  );
+}
+
+function BadgesButton({ onPress }: { onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      hitSlop={12}
+      accessibilityRole="button"
+      accessibilityLabel="Badges en achievements"
+      className="active:opacity-70"
+      testID="group-badges-button"
+    >
+      <TrophyIcon size={26} color={theme.ink} />
     </Pressable>
   );
 }
@@ -366,8 +384,13 @@ const METRICS: MetricDefinition[] = [
   },
 ];
 
+/** The mark beside a name in a ranking — sized to the 16px name it follows rather than to an
+ *  avatar, since the rankings don't show one. */
+const LEADERBOARD_MARK_SIZE = 20;
+
 function LeaderboardRow({
   rank,
+  userId,
   name,
   meta,
   value,
@@ -377,6 +400,7 @@ function LeaderboardRow({
   isFirst,
 }: {
   rank: number;
+  userId: string;
   name: string;
   meta: string;
   value: string;
@@ -400,9 +424,12 @@ function LeaderboardRow({
       <View className="flex-row items-center gap-3">
         <Text className="w-5 text-sm font-semibold text-ink-subtle">{rank}</Text>
         <View className="min-w-0 flex-1">
-          <Text className="text-base font-semibold text-ink" numberOfLines={1}>
-            {name}
-          </Text>
+          <View className="flex-row items-center gap-1.5">
+            <Text className="shrink text-base font-semibold text-ink" numberOfLines={1}>
+              {name}
+            </Text>
+            <MemberMark userId={userId} size={LEADERBOARD_MARK_SIZE} />
+          </View>
           <Text className="mt-0.5 text-sm text-ink-muted" numberOfLines={1}>
             {meta}
           </Text>
@@ -527,6 +554,7 @@ function LeaderboardSection({
           <LeaderboardRow
             key={entry.userId}
             rank={index + 1}
+            userId={entry.userId}
             name={displayNameById.get(entry.userId) ?? '?'}
             meta={
               isRounds
@@ -752,7 +780,10 @@ export function GroupDashboardScreen() {
     navigation.setOptions({
       title: group?.name ?? '',
       headerRight: () => (
-        <SettingsButton onPress={() => navigation.navigate('GroupSettings', { groupId })} />
+        <View className="flex-row items-center gap-5">
+          <BadgesButton onPress={() => navigation.navigate('GroupBadges', { groupId })} />
+          <SettingsButton onPress={() => navigation.navigate('GroupSettings', { groupId })} />
+        </View>
       ),
     });
   }, [navigation, group?.name, groupId]);
@@ -772,37 +803,39 @@ export function GroupDashboardScreen() {
   return (
     // Only the bottom edge: the native stack header already accounts for the top inset, but
     // GamesTab's pinned "Spel toevoegen" button would otherwise sit under Android's gesture bar.
-    <SafeAreaView className="flex-1 bg-surface" edges={['bottom']}>
-      <View className="px-6 pt-2">
-        <SegmentedControl options={TABS} value={tab} onChange={setTab} />
-      </View>
-      {tab === 'Spellen' ? (
-        <GamesTab groupId={groupId} />
-      ) : tab === 'Geschiedenis' ? (
-        <HistoryTab groupId={groupId} />
-      ) : (
-        <StatsTab groupId={groupId} />
-      )}
+    <AvatarMarksProvider groupId={groupId}>
+      <SafeAreaView className="flex-1 bg-surface" edges={['bottom']}>
+        <View className="px-6 pt-2">
+          <SegmentedControl options={TABS} value={tab} onChange={setTab} />
+        </View>
+        {tab === 'Spellen' ? (
+          <GamesTab groupId={groupId} />
+        ) : tab === 'Geschiedenis' ? (
+          <HistoryTab groupId={groupId} />
+        ) : (
+          <StatsTab groupId={groupId} />
+        )}
 
-      {me ? (
-        <ColorPickerModal
-          visible={colorModalOpen}
-          title="Welkom! Kies je kleur"
-          description="Je hebt automatisch een kleur gekregen — kies hieronder een andere als je liever een andere hebt."
-          currentColor={me.color}
-          takenColors={
-            new Set(
-              (members ?? [])
-                .filter((member) => member.userId !== me.userId)
-                .map((member) => member.color),
-            )
-          }
-          isPending={setColor.isPending}
-          errorMessage={setColor.isError ? colorErrorMessage(setColor.error) : null}
-          onSelect={handleSelectColor}
-          onClose={closeColorModal}
-        />
-      ) : null}
-    </SafeAreaView>
+        {me ? (
+          <ColorPickerModal
+            visible={colorModalOpen}
+            title="Welkom! Kies je kleur"
+            description="Je hebt automatisch een kleur gekregen — kies hieronder een andere als je liever een andere hebt."
+            currentColor={me.color}
+            takenColors={
+              new Set(
+                (members ?? [])
+                  .filter((member) => member.userId !== me.userId)
+                  .map((member) => member.color),
+              )
+            }
+            isPending={setColor.isPending}
+            errorMessage={setColor.isError ? colorErrorMessage(setColor.error) : null}
+            onSelect={handleSelectColor}
+            onClose={closeColorModal}
+          />
+        ) : null}
+      </SafeAreaView>
+    </AvatarMarksProvider>
   );
 }

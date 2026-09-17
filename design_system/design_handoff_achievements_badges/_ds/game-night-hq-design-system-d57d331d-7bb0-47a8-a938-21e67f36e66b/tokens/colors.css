@@ -1,0 +1,112 @@
+:root {
+  /* ---------- Base ramps ---------- */
+
+  /* Clay — the accent. Catan's fired-terracotta hex tile.
+     Replaces the violet accent scale in tailwind.config.ts, using the
+     "Theme switch" hook the config documents at the top of the file.
+     On a dark ground the accent steps one notch brighter (clay-400) so it
+     carries against the night surfaces. */
+  --clay-200: #efc7ac;
+  --clay-300: #e2a07c;
+  --clay-400: #d4753f;
+  --clay-500: #c25a2b;
+  --clay-600: #a4481f;
+  --clay-900: #3b2117;
+
+  /* Night — warm dark neutrals. Brown-black, never blue-black: the whole
+     system is warm, and a cool grey would read as a different product. */
+  --night-950: #16120e;
+  --night-900: #1c1813;
+  --night-850: #221d17;
+  --night-800: #2a241d;
+  --night-700: #3a322a;
+  --night-600: #4d433a;
+  --night-500: #5f5549;
+  --night-400: #8a7e71;
+  --night-300: #b6aa9c;
+  --night-100: #f2ebe2;
+
+  /* Resource ramps — brick, lumber, grain. Double as the semantic ramps.
+     All lifted for legibility on dark. */
+  --brick-400: #e2685a;
+  --brick-700: #8c3a30;
+  --brick-900: #351b18;
+  --brick-200: #f0aaa0;
+
+  --lumber-400: #5fa878;
+  --lumber-700: #2e4636;
+  --lumber-900: #1d2c22;
+  --lumber-200: #a9d5b8;
+
+  --grain-400: #e0a736;
+  --grain-900: #322610;
+  --grain-200: #efd18f;
+
+  --wool-400: #aabd74;
+  --ore-400: #93a7b5;
+  --desert-300: #e8d3a9;
+  --sea-400: #7fa8b8;
+
+  /* ---------- Semantic aliases ---------- */
+
+  /* accent.* in tailwind.config.ts */
+  --accent: var(--clay-400);
+  --accent-fg: var(--night-950); /* dark ink on bright clay — white would fail contrast */
+  --accent-soft: var(--clay-900);
+  --accent-soft-fg: var(--clay-300);
+  --accent-strong: var(--clay-500);
+  --accent-line: var(--clay-700, #7c4426);
+
+  /* surface.* — three steps, all warm dark */
+  --surface: var(--night-900);
+  --surface-muted: var(--night-850);
+  --surface-sunken: var(--night-800);
+  --surface-deep: var(--night-950); /* page behind the app, modal scrims */
+
+  /* line.* */
+  --line: var(--night-700);
+  --line-strong: var(--night-600);
+
+  /* ink.* — text, four steps of emphasis */
+  --ink: var(--night-100);
+  --ink-muted: var(--night-300);
+  --ink-subtle: var(--night-400);
+  --ink-faint: var(--night-500);
+
+  /* text aliases, by role */
+  --text-body: var(--ink);
+  --text-secondary: var(--ink-muted);
+  --text-placeholder: var(--ink-subtle);
+  --text-on-accent: var(--accent-fg);
+
+  /* success.* */
+  --success: var(--lumber-400);
+  --success-soft: var(--lumber-900);
+  --success-soft-fg: var(--lumber-200);
+  --success-line: var(--lumber-700);
+
+  /* warning.* */
+  --warning: var(--grain-400);
+  --warning-soft: var(--grain-900);
+  --warning-soft-fg: var(--grain-200);
+
+  /* danger.* */
+  --danger: var(--brick-400);
+  --danger-soft: var(--brick-900);
+  --danger-soft-fg: var(--brick-200);
+  --danger-line: var(--brick-700);
+
+  /* Chart / player series. Stats screens plot one line per player;
+     these are the resource colours in a fixed, repeatable order. */
+  --series-1: var(--clay-400);
+  --series-2: var(--lumber-400);
+  --series-3: var(--grain-400);
+  --series-4: var(--ore-400);
+  --series-5: var(--wool-400);
+  --series-6: var(--sea-400);
+}
+
+/* The clay-700 mid step, used only for the accent hairline. */
+:root {
+  --clay-700: #7c4426;
+}

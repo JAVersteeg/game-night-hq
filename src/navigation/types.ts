@@ -12,6 +12,10 @@ export type AppStackParamList = {
    *  immediately swap it for one they'd rather have. */
   GroupDashboard: { groupId: string; justJoined?: boolean };
   GroupSettings: { groupId: string };
+  GroupBadges: { groupId: string };
+  /** Both ids travel: the badge list is derived per group, so the detail screen re-reads the same
+   *  cached query and looks its badge up by id. */
+  BadgeDetail: { groupId: string; badgeId: string };
   CreateGameTemplate: { groupId: string };
   StartSession: { groupId: string; templateId: string };
   /**

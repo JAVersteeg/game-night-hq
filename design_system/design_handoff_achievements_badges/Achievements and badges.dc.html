@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="_ds/game-night-hq-design-system-d57d331d-7bb0-47a8-a938-21e67f36e66b/tokens/fonts.css">
+<link rel="stylesheet" href="_ds/game-night-hq-design-system-d57d331d-7bb0-47a8-a938-21e67f36e66b/tokens/colors.css">
+<link rel="stylesheet" href="_ds/game-night-hq-design-system-d57d331d-7bb0-47a8-a938-21e67f36e66b/tokens/typography.css">
+<link rel="stylesheet" href="_ds/game-night-hq-design-system-d57d331d-7bb0-47a8-a938-21e67f36e66b/tokens/spacing.css">
+<link rel="stylesheet" href="_ds/game-night-hq-design-system-d57d331d-7bb0-47a8-a938-21e67f36e66b/tokens/shape.css">
+<link rel="stylesheet" href="_ds/game-night-hq-design-system-d57d331d-7bb0-47a8-a938-21e67f36e66b/tokens/motion.css">
+<link rel="stylesheet" href="_ds/game-night-hq-design-system-d57d331d-7bb0-47a8-a938-21e67f36e66b/styles.css">
+<script src="_ds/game-night-hq-design-system-d57d331d-7bb0-47a8-a938-21e67f36e66b/_ds_bundle.js"></script>
+<style>
+  body { margin: 0; background: var(--surface-deep); }
+  a { color: var(--accent); }
+  a:hover { color: var(--accent-strong); }
+</style>
+</helmet>
+
+<div style="font-family: var(--font-sans); font-weight: 500; color: var(--ink); background: var(--surface-deep); padding: 48px; display: flex; flex-direction: column; gap: 40px; min-height: 100vh; box-sizing: border-box">
+
+  <div style="display: flex; flex-direction: column; gap: 6px; max-width: 640px">
+    <div style="font-size: 30px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.15">Achievements en badges</div>
+    <div style="font-size: 16px; line-height: 24px; color: var(--ink-muted)">Een eigen pagina binnen de groep met twee tabs, plus het detail van een badge. Namen en teksten zijn placeholders.</div>
+  </div>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 40px; align-items: flex-start">
+
+    <div data-screen-label="Badges tab" style="display: flex; flex-direction: column; gap: 12px">
+      <div style="font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.025em; color: var(--ink-subtle)">Badges tab</div>
+
+      <div style="width: 390px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; overflow: hidden">
+
+        <div style="display: flex; align-items: center; gap: 8px; padding: 14px 16px; border-bottom: 1px solid var(--line)">
+          <span style="font-size: 16px; color: var(--accent)">Terug</span>
+          <span style="flex: 1; text-align: center; font-size: 16px; font-weight: 600; margin-right: 44px">Donderdagclub</span>
+        </div>
+
+        <div style="padding: 24px 24px 48px; display: flex; flex-direction: column; gap: 24px">
+
+          <div style="font-size: 30px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.15">Badges</div>
+
+          <x-import component-from-global-scope="GameNightHQDesignSystem_d57d33.SegmentedControl" options="{{ tabs }}" value="Badges" hint-size="100%,44px"></x-import>
+
+          <div style="display: flex; flex-direction: column; gap: 12px">
+            <div style="font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.025em; color: var(--ink-subtle)">In omloop</div>
+
+            <div style="display: flex; gap: 12px">
+
+              <div style="flex: 1; min-width: 0; background: var(--surface-muted); border: 1px solid var(--accent-line); border-radius: 16px; padding: 20px 14px 16px; display: flex; flex-direction: column; align-items: center; gap: 14px">
+                <div style="width: 84px; height: 94px; background: var(--accent-line); clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); display: flex; align-items: center; justify-content: center">
+                  <div style="width: 78px; height: 87px; background: var(--surface-sunken); clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); display: flex; align-items: center; justify-content: center">
+                    <svg width="44" height="44" viewBox="0 0 32 32" fill="none" stroke="var(--accent)" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round">
+                      <path d="M8 6l1.5 7M24 6l-1.5 7"></path>
+                      <path d="M9.5 13c0-3.5 2.9-5.5 6.5-5.5s6.5 2 6.5 5.5c0 4-1.5 6-2.5 7.5-.8 1.2-1 2.5-1 4h-6c0-1.5-.2-2.8-1-4C11 19 9.5 17 9.5 13z"></path>
+                      <path d="M13.5 14.5h.01M18.5 14.5h.01" stroke-width="2.2"></path>
+                      <path d="M16 18v1.5"></path>
+                    </svg>
+                  </div>
+                </div>
+                <div style="text-align: center; display: flex; flex-direction: column; gap: 4px">
+                  <div style="font-size: 18px; font-weight: 600; line-height: 22px">Grote Daggoe</div>
+                  <div style="font-size: 14px; line-height: 20px; color: var(--ink-muted)">Laatste plaats, De Grote Dalmuti</div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px; width: 100%; padding-top: 12px; border-top: 1px solid var(--line)">
+                  <x-import component-from-global-scope="GameNightHQDesignSystem_d57d33.Avatar" display-name="Merel de Vries" size="{{ 28 }}" hint-size="28px,28px"></x-import>
+                  <div style="min-width: 0; display: flex; flex-direction: column">
+                    <span style="font-size: 14px; font-weight: 600">Merel</span>
+                    <span style="font-size: 14px; color: var(--ink-subtle); font-variant-numeric: tabular-nums">sinds 12 sep</span>
+                  </div>
+                </div>
+              </div>
+
+              <div style="flex: 1; min-width: 0; background: var(--surface-muted); border: 1px solid var(--accent-line); border-radius: 16px; padding: 20px 14px 16px; display: flex; flex-direction: column; align-items: center; gap: 14px">
+                <div style="width: 84px; height: 94px; background: var(--accent-line); clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); display: flex; align-items: center; justify-content: center">
+                  <div style="width: 78px; height: 87px; background: var(--surface-sunken); clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); display: flex; align-items: center; justify-content: center">
+                    <svg width="44" height="44" viewBox="0 0 32 32" fill="none" stroke="var(--accent)" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round">
+                      <path d="M6 12l4 3 6-8 6 8 4-3-2.5 12H8.5L6 12z"></path>
+                      <path d="M10.5 24h11"></path>
+                      <path d="M16 15v3.5"></path>
+                    </svg>
+                  </div>
+                </div>
+                <div style="text-align: center; display: flex; flex-direction: column; gap: 4px">
+                  <div style="font-size: 18px; font-weight: 600; line-height: 22px">Koning van Catan</div>
+                  <div style="font-size: 14px; line-height: 20px; color: var(--ink-muted)">Hoogste winst%, Catan</div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px; width: 100%; padding-top: 12px; border-top: 1px solid var(--line)">
+                  <x-import component-from-global-scope="GameNightHQDesignSystem_d57d33.Avatar" display-name="Tim Bakker" size="{{ 28 }}" hint-size="28px,28px"></x-import>
+                  <div style="min-width: 0; display: flex; flex-direction: column">
+                    <span style="font-size: 14px; font-weight: 600">Tim</span>
+                    <span style="font-size: 14px; color: var(--ink-subtle); font-variant-numeric: tabular-nums">64% uit 14 potjes</span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <div style="font-size: 14px; line-height: 20px; color: var(--ink-subtle)">Zeshoek: één houder tegelijk, gaat over naar de volgende speler die de voorwaarde haalt.</div>
+          </div>
+
+          <sc-if value="{{ showOtherBadges }}" hint-placeholder-val="{{ true }}">
+            <div style="display: flex; flex-direction: column; gap: 12px">
+              <div style="font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.025em; color: var(--ink-subtle)">Overige badges</div>
+              <div style="border: 1px solid var(--line); border-radius: 16px; overflow: hidden">
+
+                <div style="display: flex; align-items: center; gap: 12px; padding: 12px 16px">
+                  <div style="width: 36px; height: 40px; flex: 0 0 auto; background: var(--accent-line); clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); display: flex; align-items: center; justify-content: center">
+                    <div style="width: 32px; height: 36px; background: var(--surface-sunken); clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)"></div>
+                  </div>
+                  <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+                    <span style="font-size: 16px; font-weight: 600">Snelste potje</span>
+                    <span style="font-size: 14px; color: var(--ink-subtle)">Sanne · 22 min</span>
+                  </div>
+                  <x-import component-from-global-scope="GameNightHQDesignSystem_d57d33.Avatar" display-name="Sanne Hoek" size="{{ 28 }}" hint-size="28px,28px"></x-import>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-top: 1px solid var(--line)">
+                  <div style="width: 36px; height: 40px; flex: 0 0 auto; background: var(--accent-line); clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); display: flex; align-items: center; justify-content: center">
+                    <div style="width: 32px; height: 36px; background: var(--surface-sunken); clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)"></div>
+                  </div>
+                  <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+                    <span style="font-size: 16px; font-weight: 600">Hoogste score</span>
+                    <span style="font-size: 14px; color: var(--ink-subtle)">Jasper · 142 punten</span>
+                  </div>
+                  <x-import component-from-global-scope="GameNightHQDesignSystem_d57d33.Avatar" display-name="Jasper Versteeg" size="{{ 28 }}" hint-size="28px,28px"></x-import>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-top: 1px solid var(--line)">
+                  <div style="width: 36px; height: 40px; flex: 0 0 auto; background: var(--line); clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); display: flex; align-items: center; justify-content: center">
+                    <div style="width: 32px; height: 36px; background: var(--surface); clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)"></div>
+                  </div>
+                  <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+                    <span style="font-size: 16px; font-weight: 600; color: var(--ink-muted)">Langste reeks</span>
+                    <span style="font-size: 14px; color: var(--ink-subtle)">Nog geen houder</span>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </sc-if>
+
+        </div>
+      </div>
+    </div>
+
+    <div data-screen-label="Achievements tab" style="display: flex; flex-direction: column; gap: 12px">
+      <div style="font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.025em; color: var(--ink-subtle)">Achievements tab — gefilterd op speler</div>
+
+      <div style="width: 390px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; overflow: hidden">
+
+        <div style="display: flex; align-items: center; gap: 8px; padding: 14px 16px; border-bottom: 1px solid var(--line)">
+          <span style="font-size: 16px; color: var(--accent)">Terug</span>
+          <span style="flex: 1; text-align: center; font-size: 16px; font-weight: 600; margin-right: 44px">Donderdagclub</span>
+        </div>
+
+        <div style="padding: 24px 24px 48px; display: flex; flex-direction: column; gap: 24px">
+
+          <div style="font-size: 30px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.15">Badges</div>
+
+          <x-import component-from-global-scope="GameNightHQDesignSystem_d57d33.SegmentedControl" options="{{ tabs }}" value="Achievements" hint-size="100%,44px"></x-import>
+
+          <div style="display: flex; flex-direction: column; gap: 10px">
+            <div style="font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.025em; color: var(--ink-subtle)">Speler</div>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px">
+              <div style="display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border-radius: 999px; border: 1px solid var(--accent-line); background: var(--accent-soft)">
+                <x-import component-from-global-scope="GameNightHQDesignSystem_d57d33.Avatar" display-name="Merel de Vries" size="{{ 28 }}" hint-size="28px,28px"></x-import>
+                <span style="font-size: 14px; font-weight: 600; color: var(--accent-soft-fg)">Merel</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border-radius: 999px; border: 1px solid var(--line)">
+                <x-import component-from-global-scope="GameNightHQDesignSystem_d57d33.Avatar" display-name="Jasper Versteeg" size="{{ 28 }}" hint-size="28px,28px"></x-import>
+                <span style="font-size: 14px; color: var(--ink-muted)">Jasper</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border-radius: 999px; border: 1px solid var(--line)">
+                <x-import component-from-global-scope="GameNightHQDesignSystem_d57d33.Avatar" display-name="Tim Bakker" size="{{ 28 }}" hint-size="28px,28px"></x-import>
+                <span style="font-size: 14px; color: var(--ink-muted)">Tim</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border-radius: 999px; border: 1px solid var(--line)">
+                <x-import component-from-global-scope="GameNightHQDesignSystem_d57d33.Avatar" display-name="Sanne Hoek" size="{{ 28 }}" hint-size="28px,28px"></x-import>
+                <span style="font-size: 14px; color: var(--ink-muted)">Sanne</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border-radius: 999px; border: 1px solid var(--line)">
+                <x-import component-from-global-scope="GameNightHQDesignSystem_d57d33.Avatar" display-name="Daan Willems" size="{{ 28 }}" hint-size="28px,28px"></x-import>
+                <span style="font-size: 14px; color: var(--ink-muted)">Daan</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 10px">
+            <div style="display: flex; align-items: baseline; gap: 8px">
+              <div style="flex: 1; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.025em; color: var(--ink-subtle)">Merel</div>
+              <div style="font-size: 14px; color: var(--ink-subtle); font-variant-numeric: tabular-nums">3 van 7 gehaald</div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 12px; background: var(--surface-muted); border: 1px solid var(--accent-line); border-radius: 16px; padding: 10px 12px">
+              <div style="width: 48px; height: 48px; flex: 0 0 auto; border-radius: 14px; background: var(--surface-sunken); border: 1px solid var(--accent-line); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; letter-spacing: -0.02em">10</div>
+              <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+                <div style="font-size: 16px; font-weight: 600">10 potjes</div>
+                <div style="font-size: 14px; color: var(--ink-muted); font-variant-numeric: tabular-nums">Gehaald op 3 sep</div>
+              </div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 12px; background: var(--surface-muted); border: 1px solid var(--accent-line); border-radius: 16px; padding: 10px 12px">
+              <div style="width: 48px; height: 48px; flex: 0 0 auto; border-radius: 14px; background: var(--surface-sunken); border: 1px solid var(--accent-line); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; letter-spacing: -0.02em">3</div>
+              <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+                <div style="font-size: 16px; font-weight: 600">3 winsten op een rij</div>
+                <div style="font-size: 14px; color: var(--ink-muted); font-variant-numeric: tabular-nums">Gehaald op 12 sep</div>
+              </div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 12px; background: var(--surface-muted); border: 1px solid var(--accent-line); border-radius: 16px; padding: 10px 12px">
+              <div style="width: 48px; height: 48px; flex: 0 0 auto; border-radius: 14px; background: var(--surface-sunken); border: 1px solid var(--accent-line); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; letter-spacing: -0.02em">4</div>
+              <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+                <div style="font-size: 16px; font-weight: 600">4 speeldagen in een maand</div>
+                <div style="font-size: 14px; color: var(--ink-muted)">Gehaald in september</div>
+              </div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 12px; border: 1px solid var(--line); border-radius: 16px; padding: 10px 12px">
+              <div style="width: 48px; height: 48px; flex: 0 0 auto; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; color: var(--ink-subtle); font-variant-numeric: tabular-nums; letter-spacing: -0.02em">25</div>
+              <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px">
+                <div style="display: flex; align-items: baseline; gap: 8px">
+                  <div style="flex: 1; font-size: 16px; font-weight: 600; color: var(--ink-muted)">25 potjes</div>
+                  <div style="font-size: 14px; color: var(--ink-subtle); font-variant-numeric: tabular-nums">23 / 25</div>
+                </div>
+                <sc-if value="{{ showProgressBars }}" hint-placeholder-val="{{ true }}">
+                  <div style="height: 4px; border-radius: 999px; background: var(--surface-sunken); overflow: hidden">
+                    <div style="width: 92%; height: 100%; background: var(--accent-line)"></div>
+                  </div>
+                </sc-if>
+              </div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 12px; border: 1px solid var(--line); border-radius: 16px; padding: 10px 12px">
+              <div style="width: 48px; height: 48px; flex: 0 0 auto; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; color: var(--ink-subtle); font-variant-numeric: tabular-nums; letter-spacing: -0.02em">5</div>
+              <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px">
+                <div style="display: flex; align-items: baseline; gap: 8px">
+                  <div style="flex: 1; font-size: 16px; font-weight: 600; color: var(--ink-muted)">5 avonden op een rij</div>
+                  <div style="font-size: 14px; color: var(--ink-subtle); font-variant-numeric: tabular-nums">3 / 5</div>
+                </div>
+                <sc-if value="{{ showProgressBars }}" hint-placeholder-val="{{ true }}">
+                  <div style="height: 4px; border-radius: 999px; background: var(--surface-sunken); overflow: hidden">
+                    <div style="width: 60%; height: 100%; background: var(--accent-line)"></div>
+                  </div>
+                </sc-if>
+              </div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 12px; border: 1px solid var(--line); border-radius: 16px; padding: 10px 12px">
+              <div style="width: 48px; height: 48px; flex: 0 0 auto; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; color: var(--ink-subtle); font-variant-numeric: tabular-nums; letter-spacing: -0.02em">50</div>
+              <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px">
+                <div style="display: flex; align-items: baseline; gap: 8px">
+                  <div style="flex: 1; font-size: 16px; font-weight: 600; color: var(--ink-muted)">50 potjes</div>
+                  <div style="font-size: 14px; color: var(--ink-subtle); font-variant-numeric: tabular-nums">23 / 50</div>
+                </div>
+                <sc-if value="{{ showProgressBars }}" hint-placeholder-val="{{ true }}">
+                  <div style="height: 4px; border-radius: 999px; background: var(--surface-sunken); overflow: hidden">
+                    <div style="width: 46%; height: 100%; background: var(--accent-line)"></div>
+                  </div>
+                </sc-if>
+              </div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 12px; border: 1px solid var(--line); border-radius: 16px; padding: 10px 12px">
+              <div style="width: 48px; height: 48px; flex: 0 0 auto; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; color: var(--ink-subtle); font-variant-numeric: tabular-nums; letter-spacing: -0.02em">6</div>
+              <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px">
+                <div style="display: flex; align-items: baseline; gap: 8px">
+                  <div style="flex: 1; font-size: 16px; font-weight: 600; color: var(--ink-muted)">6 verschillende spellen</div>
+                  <div style="font-size: 14px; color: var(--ink-subtle); font-variant-numeric: tabular-nums">4 / 6</div>
+                </div>
+                <sc-if value="{{ showProgressBars }}" hint-placeholder-val="{{ true }}">
+                  <div style="height: 4px; border-radius: 999px; background: var(--surface-sunken); overflow: hidden">
+                    <div style="width: 66%; height: 100%; background: var(--accent-line)"></div>
+                  </div>
+                </sc-if>
+              </div>
+            </div>
+
+            <div style="font-size: 14px; line-height: 20px; color: var(--ink-subtle)">Achievements worden berekend uit de gespeelde potjes, er is geen moment waarop je ze verdient.</div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <div data-screen-label="Badge detail — Grote Daggoe" style="display: flex; flex-direction: column; gap: 12px">
+      <div style="font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.025em; color: var(--ink-subtle)">Badge detail</div>
+
+      <div style="width: 390px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; overflow: hidden">
+
+        <div style="display: flex; align-items: center; gap: 8px; padding: 14px 16px; border-bottom: 1px solid var(--line)">
+          <span style="font-size: 16px; color: var(--accent)">Terug</span>
+          <span style="flex: 1; text-align: center; font-size: 16px; font-weight: 600; margin-right: 44px">Badge</span>
+        </div>
+
+        <div style="padding: 24px 24px 48px; display: flex; flex-direction: column; gap: 32px">
+
+          <div style="display: flex; align-items: center; gap: 16px">
+            <div style="width: 88px; height: 98px; flex: 0 0 auto; background: var(--accent-line); clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); display: flex; align-items: center; justify-content: center">
+              <div style="width: 82px; height: 91px; background: var(--surface-sunken); clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); display: flex; align-items: center; justify-content: center">
+                <svg width="48" height="48" viewBox="0 0 32 32" fill="none" stroke="var(--accent)" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round">
+                  <path d="M8 6l1.5 7M24 6l-1.5 7"></path>
+                  <path d="M9.5 13c0-3.5 2.9-5.5 6.5-5.5s6.5 2 6.5 5.5c0 4-1.5 6-2.5 7.5-.8 1.2-1 2.5-1 4h-6c0-1.5-.2-2.8-1-4C11 19 9.5 17 9.5 13z"></path>
+                  <path d="M13.5 14.5h.01M18.5 14.5h.01" stroke-width="2.2"></path>
+                  <path d="M16 18v1.5"></path>
+                </svg>
+              </div>
+            </div>
+            <div style="min-width: 0; display: flex; flex-direction: column; gap: 6px">
+              <div style="font-size: 30px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.1">Grote Daggoe</div>
+              <div style="display: flex"><x-import component-from-global-scope="GameNightHQDesignSystem_d57d33.Badge" tone="accent" hint-size="auto,26px">In omloop</x-import></div>
+            </div>
+          </div>
+
+          <div style="font-size: 16px; line-height: 24px; color: var(--ink-muted)">Voor wie als laatste eindigde in het meest recente potje De Grote Dalmuti. Een houder tegelijk, tot iemand anders laatste wordt.</div>
+
+          <div style="display: flex; flex-direction: column; gap: 8px">
+            <x-import component-from-global-scope="GameNightHQDesignSystem_d57d33.SectionLabel" hint-size="auto,18px">Houder</x-import>
+            <div style="display: flex; align-items: center; gap: 12px; border: 1px solid var(--accent-line); border-radius: 16px; padding: 14px 16px; background: var(--surface-muted)">
+              <x-import component-from-global-scope="GameNightHQDesignSystem_d57d33.Avatar" display-name="Merel de Vries" size="{{ 44 }}" hint-size="44px,44px"></x-import>
+              <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+                <div style="font-size: 18px; font-weight: 600">Merel</div>
+                <div style="font-size: 14px; color: var(--ink-muted); font-variant-numeric: tabular-nums">sinds 12 sep, 4 potjes geleden</div>
+              </div>
+            </div>
+          </div>
+
+          <sc-if value="{{ showPreviousHolders }}" hint-placeholder-val="{{ true }}">
+            <div style="display: flex; flex-direction: column; gap: 8px">
+              <x-import component-from-global-scope="GameNightHQDesignSystem_d57d33.SectionLabel" hint-size="auto,18px">Eerdere houders</x-import>
+              <div style="border: 1px solid var(--line); border-radius: 16px; overflow: hidden">
+                <div style="display: flex; align-items: center; gap: 12px; padding: 12px 16px">
+                  <x-import component-from-global-scope="GameNightHQDesignSystem_d57d33.Avatar" display-name="Tim Bakker" size="{{ 32 }}" hint-size="32px,32px"></x-import>
+                  <span style="flex: 1; font-size: 16px">Tim</span>
+                  <span style="font-size: 14px; color: var(--ink-subtle); font-variant-numeric: tabular-nums">29 aug tot 12 sep</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-top: 1px solid var(--line)">
+                  <x-import component-from-global-scope="GameNightHQDesignSystem_d57d33.Avatar" display-name="Jasper Versteeg" size="{{ 32 }}" hint-size="32px,32px"></x-import>
+                  <span style="flex: 1; font-size: 16px">Jasper</span>
+                  <span style="font-size: 14px; color: var(--ink-subtle); font-variant-numeric: tabular-nums">15 aug tot 29 aug</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-top: 1px solid var(--line)">
+                  <x-import component-from-global-scope="GameNightHQDesignSystem_d57d33.Avatar" display-name="Sanne Hoek" size="{{ 32 }}" hint-size="32px,32px"></x-import>
+                  <span style="flex: 1; font-size: 16px">Sanne</span>
+                  <span style="font-size: 14px; color: var(--ink-subtle); font-variant-numeric: tabular-nums">1 aug tot 15 aug</span>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div style="max-width: 640px; border: 1px solid var(--line); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 8px">
+    <div style="font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.025em; color: var(--ink-subtle)">Openstaand</div>
+    <div style="font-size: 16px; line-height: 24px; color: var(--ink-muted)">De hond en de kroon zijn schetsen, geen definitieve illustraties. Pass-on badges hebben echte artwork nodig. Badgenamen en omschrijvingen zijn placeholders.</div>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;showOtherBadges&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Badges&quot;},&quot;showProgressBars&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Achievements&quot;},&quot;showPreviousHolders&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Badge detail&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      tabs: ['Badges', 'Achievements'],
+      showProgressBars: this.props.showProgressBars ?? true,
+      showPreviousHolders: this.props.showPreviousHolders ?? true,
+      showOtherBadges: this.props.showOtherBadges ?? true,
+    }
+  }
+}
+</script>
+</body>
+</html>

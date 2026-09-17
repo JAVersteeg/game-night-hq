@@ -21,20 +21,22 @@ Fun, derived-only badge layer, scoped per group (no global/cross-group badges).
 - N wins in a row (per group, across all games in that group, and also per game).
 - N sessions in a row without missing a game night (attendance streak).
 
-**Weekly player**
-- Played on 4 or more distinct days within a single calendar month, within the group.
-
 **Pass-on badges** (jokey, held by whoever most recently triggered the condition — passes to someone else next time it happens)
 - **"Grote Daggoe"** (dog picture) — awarded to the player who finished last in the most recently played De Grote Dalmuti session in the group. Held by exactly one person until the next Dalmuti session produces a new last-place finisher.
   - Text bij badge: "Balen man, jij bent de grote daggoe. Kan alleen maar afgestaan worden door de volgende keer niet te verliezen."
-- **Domination (per game)**: Highest win % *within a specific game template* in the group, not group-wide. Minimum of 8 games played for the holder. Room for more of this type later (same "pass-on" mechanic, different trigger condition) — that's the notable design pattern here, not just this one badge.
-  - For Catan: "Koning van Catan"
+  - The design for this badge can be found in `assets/badges/grote_daggoe_badge.png`
+- **Koning van Catan**: Highest "Winstfactor" for Catan in the group, not group-wide. Minimum of 8 games played for the holder.
+
+More ideas for pass-on badges:
+- Domination badges per game (similar) to "Koning van Catan". Less coveted because Catan is the highest prestige game in the group.
 
 ## Design
 
-On the GroupDashboardScreen in the top-right corner, left of the options icon, there must be a trophy icon which opens the GroupBadgesScreen.
+The UI designs for achievements and badges can be found in `design_system/project/ui_kits/app/achievements`.
 
-On the GroupBadgesScreen, there must be a prominent place for the pass-on badges, since they are the most wanted/hated (depending on the badge) badges in the group.
+On the GroupDashboardScreen in the top-right corner, left of the groupsettings icon, there must be a trophy icon which opens the GroupBadgesScreen. On this screen there are two tabs: badges and achievements.
+
+On the GroupBadgesTab, there must be a prominent place for the pass-on badges Grote Daggoe and Koning van Catan, since they are the most wanted/hated (depending on the badge) badges in the group. Underneath that must be a section with other pass-on badges.
 
 ## Design notes / open questions
 
