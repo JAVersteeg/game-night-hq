@@ -1687,13 +1687,13 @@ function GroupDetailScreen({
       padding: 'var(--space-3) var(--screen-gutter) 0'
     }
   }, /*#__PURE__*/React.createElement(SegmentedControl, {
-    options: ['Spellen', 'Geschiedenis', 'Statistieken'],
+    options: ['Spellen', 'Historie', 'Statistieken'],
     value: tab,
     onChange: setTab
   })), tab === 'Spellen' ? /*#__PURE__*/React.createElement(GamesTab, {
     onNewGame: onNewGame,
     onStart: onStart
-  }) : tab === 'Geschiedenis' ? /*#__PURE__*/React.createElement(HistoryTab, {
+  }) : tab === 'Historie' ? /*#__PURE__*/React.createElement(HistoryTab, {
     onOpen: onOpenSession
   }) : /*#__PURE__*/React.createElement(StatsTab, null));
 }

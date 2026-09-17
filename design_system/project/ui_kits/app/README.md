@@ -17,7 +17,7 @@ Drawn from the domain model, flows and permissions in `CLAUDE.md`. No screens fo
 
 | File | Screens | Follows |
 | --- | --- | --- |
-| `GroupDetailScreen.jsx` | Group detail with Spellen / Geschiedenis / Statistieken tabs | "Stats (derived, not stored)", "History & stats" flow 7 |
+| `GroupDetailScreen.jsx` | Group detail with Spellen / Historie / Statistieken tabs | "Stats (derived, not stored)", "History & stats" flow 7 |
 | `GameSetupScreens.jsx` | `GameTemplateScreen` (name, fields with sign, scoring direction, bonus rules), `SessionSetupScreen` (game, participants, scorekeeper) | Game Template + flows 3 and 4 |
 | `SessionScreens.jsx` | `LiveSessionScreen` (scorekeeper entry and read-only mirror), `SessionResultScreen` (winner, locked totals, bonus rules that fired) | Flows 5 and 6, and the scorekeeper-only write rule |
 | `data.jsx` | Demo groups, templates, sessions, trend series | Shapes follow the Supabase sketch |

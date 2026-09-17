@@ -56,7 +56,7 @@ import type { AppStackParamList } from '@/navigation/types';
 
 type Navigation = NativeStackNavigationProp<AppStackParamList>;
 
-const TABS = ['Spellen', 'Geschiedenis', 'Statistieken'] as const;
+const TABS = ['Spellen', 'Historie', 'Statistieken'] as const;
 type Tab = (typeof TABS)[number];
 
 function SettingsButton({ onPress }: { onPress: () => void }) {
@@ -213,12 +213,12 @@ function HistoryTab({ groupId }: { groupId: string }) {
         </View>
       ) : isError ? (
         <Text className="text-center text-base text-ink-muted">
-          De geschiedenis kon niet worden geladen.
+          De historie kon niet worden geladen.
         </Text>
       ) : sessions.length === 0 ? (
         <EmptyState
           title="Nog geen potjes"
-          body="Zodra jullie een avond spelen, verschijnt de geschiedenis hier."
+          body="Zodra jullie een avond spelen, verschijnt de historie hier."
         />
       ) : (
         (() => {
@@ -834,7 +834,7 @@ export function GroupDashboardScreen() {
         </View>
         {tab === 'Spellen' ? (
           <GamesTab groupId={groupId} />
-        ) : tab === 'Geschiedenis' ? (
+        ) : tab === 'Historie' ? (
           <HistoryTab groupId={groupId} />
         ) : (
           <StatsTab groupId={groupId} />

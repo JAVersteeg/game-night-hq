@@ -122,10 +122,10 @@ function GroupDetailScreen({ group, initialTab = 'Spellen', onNewGame, onStart, 
     <div style={{flex:1,display:'flex',flexDirection:'column',minHeight:0}}>
       <ScreenTitle right={<div style={{display:'flex',marginTop:6}}>{MEMBERS.slice(0, 3).map((m, i) => <div key={m.id} style={{marginLeft: i ? -10 : 0,border:'2px solid var(--surface)',borderRadius:'var(--radius-full)',display:'flex'}}><Avatar displayName={m.display_name} size={28} /></div>)}</div>}>{group}</ScreenTitle>
       <div style={{padding:'var(--space-3) var(--screen-gutter) 0'}}>
-        <SegmentedControl options={['Spellen', 'Geschiedenis', 'Statistieken']} value={tab} onChange={setTab} />
+        <SegmentedControl options={['Spellen', 'Historie', 'Statistieken']} value={tab} onChange={setTab} />
       </div>
       {tab === 'Spellen' ? <GamesTab onNewGame={onNewGame} onStart={onStart} />
-        : tab === 'Geschiedenis' ? <HistoryTab onOpen={onOpenSession} />
+        : tab === 'Historie' ? <HistoryTab onOpen={onOpenSession} />
         : <StatsTab />}
     </div>
   );
