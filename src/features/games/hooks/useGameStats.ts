@@ -59,8 +59,6 @@ export const gameStatsKeys = {
 /** Beyond this the lines stop being readable at phone width, and the leaderboard already covers
  *  the whole history. */
 const TREND_SESSIONS = 8;
-/** The design system's ceiling on lines in one trend chart. */
-const TREND_SERIES = 6;
 
 interface SessionRow {
   id: string;
@@ -268,22 +266,28 @@ function round1(value: number): number {
   return Math.round(value * 10) / 10;
 }
 
-/** The last few sessions, with a line per player who shows up most often in them — a regular who
- *  missed one keeps their line (with a gap in it), a one-off guest doesn't get one at all. */
+/** The last few sessions, with a line per player who appears in any of them — a regular who missed
+ *  one keeps their line (with a gap in it). No cap on how many lines show: a group tops out at a
+ *  handful of members anyway, and everyone who actually played belongs on their own chart. Ordered
+ *  by whoever shows up most often, ties broken by whoever played most recently, so the legend reads
+ *  regulars-first. */
 function buildTrend(sessions: SessionTotals[]): GameTrend {
   const window = sessions.slice(-TREND_SESSIONS);
 
   const appearances = new Map<string, number>();
-  for (const session of window) {
+  const lastSeenIndex = new Map<string, number>();
+  window.forEach((session, index) => {
     for (const entry of session.totals) {
       appearances.set(entry.userId, (appearances.get(entry.userId) ?? 0) + 1);
+      lastSeenIndex.set(entry.userId, index);
     }
-  }
+  });
 
-  const userIds = Array.from(appearances.entries())
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, TREND_SERIES)
-    .map(([userId]) => userId);
+  const userIds = Array.from(appearances.keys()).sort((a, b) => {
+    const byAppearances = appearances.get(b)! - appearances.get(a)!;
+    if (byAppearances !== 0) return byAppearances;
+    return lastSeenIndex.get(b)! - lastSeenIndex.get(a)!;
+  });
 
   return {
     labels: window.map((session) => format(new Date(session.playedAt), 'd MMM', { locale: nl })),
