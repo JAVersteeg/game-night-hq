@@ -60,8 +60,10 @@ export function useSessionScores(sessionId: string) {
  *  already entered without caring whether a row exists yet. */
 export function useSetScore(sessionId: string) {
   const queryClient = useQueryClient();
+  const queryKey = sessionScoreKeys.detail(sessionId);
 
   return useMutation({
+    mutationKey: queryKey,
     mutationFn: async (input: { userId: string; fieldKey: string; value: number }) => {
       const { error } = await supabase.from('session_scores').upsert({
         session_id: sessionId,
@@ -72,8 +74,27 @@ export function useSetScore(sessionId: string) {
 
       if (error) throw error;
     },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: sessionScoreKeys.detail(sessionId) });
+    // Totals are derived from this cache, so writing into it up front makes them update instantly
+    // instead of after the upsert plus a refetch. Cancelling first stops an in-flight refetch from
+    // landing afterwards with an older value.
+    onMutate: async (input) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<ScoresByUser>(queryKey);
+      queryClient.setQueryData<ScoresByUser>(queryKey, (current = {}) => ({
+        ...current,
+        [input.userId]: { ...current[input.userId], [input.fieldKey]: input.value },
+      }));
+      return { previous };
+    },
+    onError: (_error, _input, context) => {
+      if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
+    },
+    onSettled: () => {
+      // Skipped while other score writes are still in flight, so an early refetch can't briefly
+      // overwrite their optimistic values; the last write to settle does the sync.
+      if (queryClient.isMutating({ mutationKey: queryKey }) <= 1) {
+        void queryClient.invalidateQueries({ queryKey });
+      }
     },
   });
 }

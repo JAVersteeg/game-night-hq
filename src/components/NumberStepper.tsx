@@ -28,6 +28,16 @@ export function NumberStepper({ label, value, onChange, sign = 1, step = 1, test
     onChange(parsed);
   }
 
+  /** Propagates every keystroke, not just the value on blur, so the total on screen tracks what's
+   *  being typed instead of jumping only once the field loses focus (and `onEndEditing` isn't the
+   *  only way focus is lost, so relying on it alone left the total stale on some blur paths too). */
+  function handleChangeText(nextText: string) {
+    setText(nextText);
+    const parsed = Number(nextText.replace(/[^\d-]/g, ''));
+    if (nextText.trim().length === 0 || Number.isNaN(parsed)) return;
+    onChange(parsed);
+  }
+
   function step_(delta: number) {
     const next = value + delta;
     setText(String(next));
@@ -52,8 +62,9 @@ export function NumberStepper({ label, value, onChange, sign = 1, step = 1, test
         </Pressable>
         <TextInput
           value={text}
-          onChangeText={setText}
+          onChangeText={handleChangeText}
           onEndEditing={(event) => commit(event.nativeEvent.text)}
+          onBlur={() => commit(text)}
           keyboardType="numeric"
           selectTextOnFocus
           placeholderTextColor={theme.inkSubtle}
