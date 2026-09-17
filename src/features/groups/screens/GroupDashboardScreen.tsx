@@ -80,7 +80,7 @@ function BadgesButton({ onPress }: { onPress: () => void }) {
       onPress={onPress}
       hitSlop={12}
       accessibilityRole="button"
-      accessibilityLabel="Badges en achievements"
+      accessibilityLabel="Badges en milestones"
       className="active:opacity-70"
       testID="group-badges-button"
     >

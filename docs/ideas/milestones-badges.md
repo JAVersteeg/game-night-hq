@@ -1,4 +1,4 @@
-# Achievements / Badges
+# Milestones / Badges
 
 Fun, derived-only badge layer, scoped per group (no global/cross-group badges).
 
@@ -32,9 +32,9 @@ More ideas for pass-on badges:
 
 ## Design
 
-The UI designs for achievements and badges can be found in `design_system/project/ui_kits/app/achievements`.
+The UI designs for milestones and badges can be found in `design_system/project/ui_kits/app/achievements`.
 
-On the GroupDashboardScreen in the top-right corner, left of the groupsettings icon, there must be a trophy icon which opens the GroupBadgesScreen. On this screen there are two tabs: badges and achievements.
+On the GroupDashboardScreen in the top-right corner, left of the groupsettings icon, there must be a trophy icon which opens the GroupBadgesScreen. On this screen there are two tabs: badges and milestones.
 
 On the GroupBadgesTab, there must be a prominent place for the pass-on badges Grote Daggoe and Koning van Catan, since they are the most wanted/hated (depending on the badge) badges in the group. Underneath that must be a section with other pass-on badges.
 

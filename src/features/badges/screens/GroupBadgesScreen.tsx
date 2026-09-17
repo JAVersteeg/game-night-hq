@@ -12,8 +12,8 @@ import { SegmentedControl } from '@/components/SegmentedControl';
 import { Text } from '@/components/Text';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { AvatarMarksProvider } from '@/features/badges/avatarMarks';
-import type { Achievement } from '@/features/badges/achievements';
-import { computeAchievements } from '@/features/badges/achievements';
+import type { Milestone } from '@/features/badges/milestones';
+import { computeMilestones } from '@/features/badges/milestones';
 import type { GroupBadge, GroupBadges } from '@/features/badges/hooks/useGroupBadges';
 import { useGroupBadges } from '@/features/badges/hooks/useGroupBadges';
 import { MemberAvatar } from '@/features/groups/components/MemberAvatar';
@@ -24,7 +24,7 @@ import type { AppStackParamList } from '@/navigation/types';
 
 type Navigation = NativeStackNavigationProp<AppStackParamList>;
 
-const TABS = ['Badges', 'Achievements'] as const;
+const TABS = ['Badges', 'Milestones'] as const;
 type Tab = (typeof TABS)[number];
 
 /** The first name is what every avatar sits next to — full names don't fit a chip or a card footer. */
@@ -61,7 +61,7 @@ function FeaturedBadgeCard({
           {badge.name}
         </Text>
       </View>
-      <View className="w-full flex-row items-center gap-2 border-t border-line pt-3">
+      <View className="w-full flex-row items-center gap-2 border-t border-line pt-4">
         {badge.holder ? (
           <>
             <MemberAvatar member={holder} size={28} hideMarkOf={badge.id} />
@@ -218,9 +218,9 @@ function PlayerChip({
   );
 }
 
-function AchievementRow({ achievement }: { achievement: Achievement }) {
-  const achieved = Boolean(achievement.achievedLabel);
-  const progress = Math.min(1, achievement.current / achievement.target);
+function MilestoneRow({ milestone }: { milestone: Milestone }) {
+  const achieved = Boolean(milestone.achievedLabel);
+  const progress = Math.min(1, milestone.current / milestone.target);
 
   return (
     <View
@@ -237,25 +237,23 @@ function AchievementRow({ achievement }: { achievement: Achievement }) {
           className={`text-lg font-bold ${achieved ? 'text-accent' : 'text-ink-subtle'}`}
           style={{ letterSpacing: -0.36, fontVariant: ['tabular-nums'] }}
         >
-          {achievement.target}
+          {milestone.target}
         </Text>
       </View>
 
       {achieved ? (
         <View className="min-w-0 flex-1 gap-0.5">
-          <Text className="text-base font-semibold text-ink">{achievement.name}</Text>
+          <Text className="text-base font-semibold text-ink">{milestone.name}</Text>
           <Text className="text-sm text-ink-muted" style={{ fontVariant: ['tabular-nums'] }}>
-            {achievement.achievedLabel}
+            {milestone.achievedLabel}
           </Text>
         </View>
       ) : (
         <View className="min-w-0 flex-1 gap-1.5">
           <View className="flex-row items-baseline gap-2">
-            <Text className="flex-1 text-base font-semibold text-ink-muted">
-              {achievement.name}
-            </Text>
+            <Text className="flex-1 text-base font-semibold text-ink-muted">{milestone.name}</Text>
             <Text className="text-sm text-ink-subtle" style={{ fontVariant: ['tabular-nums'] }}>
-              {achievement.current} / {achievement.target}
+              {milestone.current} / {milestone.target}
             </Text>
           </View>
           <View className="h-1 overflow-hidden rounded-full bg-surface-sunken">
@@ -270,7 +268,7 @@ function AchievementRow({ achievement }: { achievement: Achievement }) {
   );
 }
 
-function AchievementsTab({
+function MilestonesTab({
   data,
   members,
   selectedPlayerId,
@@ -282,20 +280,20 @@ function AchievementsTab({
   onSelectPlayer: (userId: string) => void;
 }) {
   const selected = members.find((member) => member.userId === selectedPlayerId) ?? members[0];
-  const achievements = useMemo(
-    () => (selected ? computeAchievements(selected.userId, data.sessions) : []),
+  const milestones = useMemo(
+    () => (selected ? computeMilestones(selected.userId, data.sessions) : []),
     [selected, data.sessions],
   );
 
   if (!selected) {
     return (
       <Text className="text-sm leading-5 text-ink-subtle">
-        Zodra er leden in de groep zitten, verschijnen hier hun achievements.
+        Zodra er leden in de groep zitten, verschijnen hier hun milestones.
       </Text>
     );
   }
 
-  const reached = achievements.filter((achievement) => achievement.achievedLabel).length;
+  const reached = milestones.filter((milestone) => milestone.achievedLabel).length;
 
   return (
     <View className="gap-6">
@@ -319,16 +317,16 @@ function AchievementsTab({
             <SectionLabel>{firstNameOf(selected)}</SectionLabel>
           </View>
           <Text className="text-sm text-ink-subtle" style={{ fontVariant: ['tabular-nums'] }}>
-            {reached} van {achievements.length} gehaald
+            {reached} van {milestones.length} gehaald
           </Text>
         </View>
 
-        {achievements.map((achievement) => (
-          <AchievementRow key={achievement.id} achievement={achievement} />
+        {milestones.map((milestone) => (
+          <MilestoneRow key={milestone.id} milestone={milestone} />
         ))}
 
         <Text className="text-sm leading-5 text-ink-subtle">
-          Achievements worden berekend uit de gespeelde potjes, er is geen moment waarop je ze
+          Milestones worden berekend uit de gespeelde potjes, er is geen moment waarop je ze
           verdient.
         </Text>
       </View>
@@ -337,8 +335,8 @@ function AchievementsTab({
 }
 
 /**
- * A group's badges and achievements. Two deliberately different things in one place: pass-on
- * badges, which have exactly one holder at a time, and achievements, which are per player and
+ * A group's badges and milestones. Two deliberately different things in one place: pass-on
+ * badges, which have exactly one holder at a time, and milestones, which are per player and
  * never lost. Both are derived from the group's session history on every read — nothing here is
  * stored, so there is no unlock moment to celebrate.
  */
@@ -388,7 +386,7 @@ export function GroupBadgesScreen() {
             onOpenBadge={(badgeId) => navigation.navigate('BadgeDetail', { groupId, badgeId })}
           />
         ) : (
-          <AchievementsTab
+          <MilestonesTab
             data={data}
             members={members ?? []}
             selectedPlayerId={selectedPlayerId}

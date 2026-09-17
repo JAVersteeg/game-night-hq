@@ -5,11 +5,11 @@ import type { DerivedSession } from '@/features/badges/passOnBadges';
 import { sessionDayKey } from '@/features/badges/passOnBadges';
 
 /**
- * Achievements: per-player milestones, cumulative and never lost — the counterpart to the pass-on
+ * Milestones: per-player goals, cumulative and never lost — the counterpart to the pass-on
  * badges, which only ever have one holder. Like everything else here they're derived on read from
  * the group's session history, so there is no "you earned this" moment to fire.
  */
-export interface Achievement {
+export interface Milestone {
   id: string;
   name: string;
   target: number;
@@ -19,7 +19,7 @@ export interface Achievement {
   achievedLabel: string | null;
 }
 
-interface AchievementDefinition {
+interface MilestoneDefinition {
   id: string;
   name: string;
   target: number;
@@ -115,7 +115,7 @@ function distinctGames({ played, target }: PlayerHistory) {
   return { current: templateIds.size, achievedLabel: reachedAt ? onDate(reachedAt) : null };
 }
 
-const ACHIEVEMENTS: AchievementDefinition[] = [
+const MILESTONES: MilestoneDefinition[] = [
   { id: 'potjes-10', name: '10 potjes', target: 10, measure: sessionCount },
   { id: 'potjes-25', name: '25 potjes', target: 25, measure: sessionCount },
   { id: 'potjes-50', name: '50 potjes', target: 50, measure: sessionCount },
@@ -126,11 +126,11 @@ const ACHIEVEMENTS: AchievementDefinition[] = [
 ];
 
 /**
- * One player's achievements, in the order `ACHIEVEMENTS` defines them — the list reads the same
+ * One player's milestones, in the order `MILESTONES` defines them — the list reads the same
  * for everyone, so the row a player is looking for sits in the same place on every profile rather
  * than moving as they progress. That order is set above, not here.
  */
-export function computeAchievements(userId: string, sessions: DerivedSession[]): Achievement[] {
+export function computeMilestones(userId: string, sessions: DerivedSession[]): Milestone[] {
   const played = sessions.filter((session) => session.participantIds.includes(userId));
 
   const groupNights = Array.from(
@@ -138,7 +138,7 @@ export function computeAchievements(userId: string, sessions: DerivedSession[]):
   );
   const attendedNights = new Set(played.map((session) => sessionDayKey(session.playedAt)));
 
-  return ACHIEVEMENTS.map((definition) => {
+  return MILESTONES.map((definition) => {
     const { current, achievedLabel } = definition.measure({
       userId,
       played,

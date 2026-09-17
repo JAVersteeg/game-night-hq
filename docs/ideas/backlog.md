@@ -2,7 +2,7 @@
 
 Unscheduled ideas for future stages. Not committed to — see CLAUDE.md for what's already in scope (v1 flows, Non-Goals, Deferred Features).
 
-1. **Achievements/badges** — per-group, fully derived badges (milestones, streaks, per-game domination, weekly player, pass-on badges like "Grote Daggoe"). See [achievements-badges.md](achievements-badges.md).
+1. **Milestones/badges** — per-group, fully derived badges (milestones, streaks, per-game domination, weekly player, pass-on badges like "Grote Daggoe"). See [milestones-badges.md](milestones-badges.md).
 2. **Rematch/quick restart button** — from a finished session, start a new one pre-filled with the same template, group, and participants.
 3. **Team/partnership games** — support 2v2-style team play. Real domain model change (a team concept alongside participants), bigger lift — needs an Open Decision if pursued.
 4. **Shareable session result image** — export a finished session's scoreboard as an image to share outside the app.

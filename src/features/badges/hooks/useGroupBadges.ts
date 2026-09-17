@@ -39,7 +39,7 @@ export interface GroupBadge {
 
 export interface GroupBadges {
   badges: GroupBadge[];
-  /** Every finished session in the group, oldest first — what the achievements are measured from. */
+  /** Every finished session in the group, oldest first — what the milestones are measured from. */
   sessions: DerivedSession[];
 }
 
@@ -59,7 +59,7 @@ interface SessionRow {
 }
 
 /**
- * Every badge and achievement in one group, derived on read — no badge rows are ever written, in
+ * Every badge and milestone in one group, derived on read — no badge rows are ever written, in
  * line with how the rest of the app treats stats.
  *
  * Same two-query split as `useSessionHistory` (session_scores has no direct foreign key to
