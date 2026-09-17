@@ -15,7 +15,14 @@ interface NumberStepperProps {
 }
 
 /** Numeric score field: tappable +/- for one-thumb entry during play, typing for bigger jumps. */
-export function NumberStepper({ label, value, onChange, sign = 1, step = 1, testID }: NumberStepperProps) {
+export function NumberStepper({
+  label,
+  value,
+  onChange,
+  sign = 1,
+  step = 1,
+  testID,
+}: NumberStepperProps) {
   const [text, setText] = useState(String(value));
 
   function commit(nextText: string) {
@@ -29,8 +36,14 @@ export function NumberStepper({ label, value, onChange, sign = 1, step = 1, test
   }
 
   /** Propagates every keystroke, not just the value on blur, so the total on screen tracks what's
-   *  being typed instead of jumping only once the field loses focus (and `onEndEditing` isn't the
-   *  only way focus is lost, so relying on it alone left the total stale on some blur paths too). */
+   *  being typed instead of jumping only once the field loses focus. `commit` still runs on blur —
+   *  to reset an empty/invalid field back to its last real value, and to reformat what's on screen
+   *  (e.g. "007" → "7") — but only from `onBlur`: `onEndEditing` used to be wired to the same
+   *  `commit` too, and for a numeric keypad (no submit key of its own) it fires for the same
+   *  "tapped away" gesture `onBlur` does, so both firing sent the same value to the server twice in
+   *  a row. Two close-together writes for one field could commit to the database out of order —
+   *  whichever request the server happened to finish second won, even if it was the *first*
+   *  keystroke's — which is what made the total flicker to the right value and then back. */
   function handleChangeText(nextText: string) {
     setText(nextText);
     const parsed = Number(nextText.replace(/[^\d-]/g, ''));
@@ -63,7 +76,6 @@ export function NumberStepper({ label, value, onChange, sign = 1, step = 1, test
         <TextInput
           value={text}
           onChangeText={handleChangeText}
-          onEndEditing={(event) => commit(event.nativeEvent.text)}
           onBlur={() => commit(text)}
           keyboardType="numeric"
           selectTextOnFocus

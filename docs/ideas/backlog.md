@@ -4,7 +4,7 @@ Unscheduled ideas for future stages. Not committed to — see CLAUDE.md for what
 
 1. **Milestones/badges** — per-group, fully derived badges (milestones, streaks, per-game domination, weekly player, pass-on badges like "Grote Daggoe"). See [milestones-badges.md](milestones-badges.md).
 2. **Rematch/quick restart button** — from a finished session, start a new one pre-filled with the same template, group, and participants.
-3. **Team/partnership games** — support 2v2-style team play. Real domain model change (a team concept alongside participants), bigger lift — needs an Open Decision if pursued.
+3. **Team/partnership games** — support 2v2-style team play. Real domain model change (a team concept alongside participants). Choose teams before starting a session, only one of the two teams wins. No points. Secret Hitler style game.
 4. **Shareable session result image** — export a finished session's scoreboard as an image to share outside the app.
 
 ## Late stage

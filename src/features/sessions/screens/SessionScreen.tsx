@@ -23,9 +23,11 @@ import { AvatarMarksProvider } from '@/features/badges/avatarMarks';
 import { MemberAvatar } from '@/features/groups/components/MemberAvatar';
 import { useGroupMembers, type GroupMember } from '@/features/groups/hooks/useGroupMembers';
 import { CoverThumbnail } from '@/components/CoverThumbnail';
+import { PencilIcon } from '@/components/PencilIcon';
 import { gameColorForTemplate } from '@/features/games/colors';
 import { coverImageForTemplate } from '@/features/games/covers';
 import { useGameTemplate } from '@/features/games/hooks/useGameTemplates';
+import { theme } from '@/lib/theme';
 import {
   RANK_FIELD_KEY,
   computeBreakdown,
@@ -40,7 +42,12 @@ import {
   type SessionNote,
 } from '@/features/sessions/hooks/useSessionNotes';
 import { useSessionParticipants } from '@/features/sessions/hooks/useSessionParticipants';
-import { useSetScore, useSessionScores } from '@/features/sessions/hooks/useSessionScores';
+import {
+  useSetScore,
+  useSetScores,
+  useSessionScores,
+  type ScoresByUser,
+} from '@/features/sessions/hooks/useSessionScores';
 import type { RoundFieldValues } from '@/features/sessions/hooks/useSessions';
 import {
   useCommitRound,
@@ -52,6 +59,17 @@ import {
 import type { AppStackParamList } from '@/navigation/types';
 
 type Navigation = NativeStackNavigationProp<AppStackParamList>;
+
+/** How long a finished session's scores (and notes) stay writable after `completed_at` — mirrors
+ *  the window `private.can_write_scores`/`can_write_session_notes` enforce server-side. Kept as one
+ *  constant so the two can't quietly drift apart. */
+const EDIT_GRACE_WINDOW_MS = 2 * 60 * 60 * 1000;
+
+function isWithinGraceWindow(completedAt: string | null): boolean {
+  return (
+    completedAt !== null && Date.now() - new Date(completedAt).getTime() < EDIT_GRACE_WINDOW_MS
+  );
+}
 
 interface PlayerCardProps {
   member: GroupMember;
@@ -168,6 +186,40 @@ function PlayerCard({
         </View>
       ) : null}
     </View>
+  );
+}
+
+/** The one header affordance for a finished session still inside its edit window — see
+ *  `canEditCompletedSession` in `SessionScreen`. Toggles straight to "Klaar" once tapped rather
+ *  than showing a second icon: the pencil only ever means "this can still change", not "editing is
+ *  on", so a mid-edit session needs different wording, not a different glyph. */
+function EditSessionButton({
+  isEditing,
+  isPending,
+  onPress,
+}: {
+  isEditing: boolean;
+  /** True only while entering edit mode on a rounds template involves undoing its last round on
+   *  the server — a plain toggle otherwise, with nothing to wait for. */
+  isPending: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={isPending}
+      hitSlop={12}
+      accessibilityRole="button"
+      accessibilityLabel={isEditing ? 'Klaar met corrigeren' : 'Potje corrigeren'}
+      className={`active:opacity-70 ${isPending ? 'opacity-50' : ''}`}
+      testID="edit-completed-session-button"
+    >
+      {isEditing ? (
+        <Text className="text-base font-semibold text-accent">Klaar</Text>
+      ) : (
+        <PencilIcon size={20} color={theme.ink} />
+      )}
+    </Pressable>
   );
 }
 
@@ -605,11 +657,17 @@ export function SessionScreen() {
     isPending: isSessionPending,
     isError: isSessionError,
   } = useSession(sessionId);
-  const { data: members } = useGroupMembers(sessionData?.group_id ?? '');
-  const { data: participantIds } = useSessionParticipants(sessionId);
-  const { data: template } = useGameTemplate(sessionData?.template_id ?? '');
-  const { data: scoresByUser } = useSessionScores(sessionId);
+  const { data: members, isPending: isMembersPending } = useGroupMembers(
+    sessionData?.group_id ?? '',
+  );
+  const { data: participantIds, isPending: isParticipantsPending } =
+    useSessionParticipants(sessionId);
+  const { data: template, isPending: isTemplatePending } = useGameTemplate(
+    sessionData?.template_id ?? '',
+  );
+  const { data: scoresByUser, isPending: isScoresPending } = useSessionScores(sessionId);
   const setScore = useSetScore(sessionId);
+  const setScores = useSetScores(sessionId);
   const finalizeSession = useFinalizeSession(sessionId, sessionData?.group_id ?? '');
   const deleteSession = useDeleteSession(sessionId, sessionData?.group_id ?? '');
   const commitRound = useCommitRound(sessionId);
@@ -638,12 +696,98 @@ export function SessionScreen() {
   const [fieldRoundDraft, setFieldRoundDraft] = useState<RoundFieldValues>({});
   const [isFinishRoundsVisible, setIsFinishRoundsVisible] = useState(false);
   const [countsCurrentRound, setCountsCurrentRound] = useState(true);
+  // True while a finished session is being edited via the header pencil — the one state that
+  // swaps the always-shown completed summary for the same entry form live play uses. For a rounds
+  // template, entering this state has already popped the last round back into roundOrder/
+  // fieldRoundDraft (see handleToggleEditCompletedSession below).
+  const [isEditingCompletedSession, setIsEditingCompletedSession] = useState(false);
+  // A single-round (non-rounds) template's edit draft: seeded from the saved scores on entering
+  // edit mode, edited purely locally while typing, and only written back — once, per changed field
+  // — when the scorekeeper taps "Klaar". A finished session has no one else watching it live, so
+  // there's no reason to round-trip every keystroke through the server the way live play does; that
+  // round-tripping is exactly what let two close-together writes for the same field race each
+  // other and leave the wrong one persisted. Null whenever this isn't the active mode.
+  const [completedScoresDraft, setCompletedScoresDraft] = useState<ScoresByUser | null>(null);
   // Measured so a focused field scrolls clear of the pinned footer, which sits above the keyboard.
   const [footerHeight, setFooterHeight] = useState(0);
 
+  // Whether the header pencil shows at all: the scorekeeper, and only while the 2-hour edit window
+  // (`private.can_write_scores`'s completed branch) is still open. Computed with optional chaining
+  // — unlike `canEdit` further down, this has to be safe to read before the pending/error guard
+  // below, since setting the header is itself a hook that must run unconditionally on every render.
+  const canEditCompletedSession =
+    sessionData?.status === 'completed' &&
+    currentUserId === sessionData?.scorekeeper_id &&
+    isWithinGraceWindow(sessionData?.completed_at ?? null);
+
+  // Same reasoning as `canEditCompletedSession`: declared up here, before the guard, purely so the
+  // header effect below can reach it. A rounds template has no scores to edit directly — only its
+  // last round is recoverable — so entering edit mode there first pops that round back into the
+  // draft, same mechanic as "Ronde terugdraaien" during live play; anything else just flips the view.
+  function handleToggleEditCompletedSession() {
+    if (isEditingCompletedSession) {
+      // Flush the whole draft as one request — the only write this edit makes. One request rather
+      // than one per field: firing a dozen-odd independent writes here reintroduced the same
+      // multi-write coordination that made per-keystroke live writes flicker in the first place,
+      // just moved from every keystroke to this one tap.
+      if (completedScoresDraft) {
+        setScores.mutate(
+          Object.entries(completedScoresDraft).flatMap(([userId, fieldValues]) =>
+            Object.entries(fieldValues).map(([fieldKey, value]) => ({ userId, fieldKey, value })),
+          ),
+        );
+      }
+      setCompletedScoresDraft(null);
+      setIsEditingCompletedSession(false);
+      return;
+    }
+    if (sessionData?.game_templates.rounds) {
+      undoRound.mutate(undefined, {
+        onSuccess: (result) => {
+          if ('order' in result) setRoundOrder(result.order);
+          else setFieldRoundDraft(result.values);
+          setIsEditingCompletedSession(true);
+        },
+      });
+      return;
+    }
+    // A shallow copy per participant: handleCompletedFieldChange always replaces a participant's
+    // whole field map rather than mutating it in place, so that's enough to keep edits here from
+    // also touching the snapshot still held in `scoresByUser`.
+    setCompletedScoresDraft(
+      Object.fromEntries(
+        Object.entries(scoresByUser ?? {}).map(([userId, values]) => [userId, { ...values }]),
+      ),
+    );
+    setIsEditingCompletedSession(true);
+  }
+
   useLayoutEffect(() => {
-    navigation.setOptions({ title: sessionData?.game_templates.name ?? 'Potje' });
-  }, [navigation, sessionData?.game_templates.name]);
+    navigation.setOptions({
+      title: sessionData?.game_templates.name ?? 'Potje',
+      headerRight: canEditCompletedSession
+        ? () => (
+            <EditSessionButton
+              isEditing={isEditingCompletedSession}
+              isPending={undoRound.isPending}
+              onPress={handleToggleEditCompletedSession}
+            />
+          )
+        : undefined,
+    });
+  }, [
+    navigation,
+    sessionData?.game_templates.name,
+    canEditCompletedSession,
+    isEditingCompletedSession,
+    undoRound.isPending,
+    // `handleToggleEditCompletedSession` reads `completedScoresDraft` to know what "Klaar" should
+    // flush, and `scoresByUser` to seed a fresh draft when the pencil is next tapped. Without these,
+    // the header keeps whichever closure it last had — "Klaar" would flush a stale, un-edited
+    // snapshot instead of the actual edits, and a later "edit" would seed from an outdated save.
+    completedScoresDraft,
+    scoresByUser,
+  ]);
 
   // Covers the header back button, the swipe gesture, and Android's hardware back button alike —
   // all of them dispatch a GO_BACK action that fires this event before the screen is removed.
@@ -772,16 +916,43 @@ export function SessionScreen() {
     });
   }
 
+  /** Same exclusivity rule as `handleFieldChange`, but against `completedScoresDraft` rather than
+   *  the server-synced scores — nothing here is written until "Klaar" flushes the whole draft. */
+  function handleCompletedFieldChange(userId: string, fieldKey: string, value: number) {
+    const field = fields.find((candidate) => candidate.key === fieldKey);
+    setCompletedScoresDraft((current) => {
+      const next: ScoresByUser = { ...(current ?? {}) };
+      if (field?.exclusive && value !== 0) {
+        for (const member of participants) {
+          if (member.userId === userId) continue;
+          if ((next[member.userId]?.[fieldKey] ?? 0) !== 0) {
+            next[member.userId] = { ...next[member.userId], [fieldKey]: 0 };
+          }
+        }
+      }
+      next[userId] = { ...next[userId], [fieldKey]: value };
+      return next;
+    });
+  }
+
+  // What the totals and every field on screen are actually computed from: the completed-session
+  // draft while it's active, the server-synced scores otherwise. The draft is only ever non-null
+  // during non-rounds completed editing, and the read-only summary (the only other place scores
+  // are shown) never renders while that's true, so there's no case where the two need separating.
+  const displayedScoresByUser = completedScoresDraft ?? scoresByUser ?? {};
+
   const isScorekeeper = currentUserId === sessionData.scorekeeper_id;
   const isInProgress = sessionData.status === 'in_progress';
-  const canEdit = isScorekeeper && isInProgress;
+  const isCompletedSession = sessionData.status === 'completed';
+  // Mirrors `private.can_write_scores`: the scorekeeper can still fix a mis-entered score for a
+  // couple hours after finishing, same as they could while the session was live. Participants,
+  // the scorekeeper role, and the rounds structure stay locked the moment the session completes —
+  // this is scores only.
+  const canEdit = isScorekeeper && (isInProgress || isWithinGraceWindow(sessionData.completed_at));
   // Mirrors `can_write_session_notes`: notes are everyone's, not just the scorekeeper's — any
-  // group member can add one while the session is live, plus a 2-hour grace window after
-  // finalising so the table can still write up what happened. Same window RLS enforces.
-  const canWriteNotes =
-    isInProgress ||
-    (sessionData.completed_at !== null &&
-      Date.now() - new Date(sessionData.completed_at).getTime() < 2 * 60 * 60 * 1000);
+  // group member can add one while the session is live, plus the same grace window after
+  // finalising so the table can still write up what happened.
+  const canWriteNotes = isInProgress || isWithinGraceWindow(sessionData.completed_at);
   // Keyed off group members, not participants: someone who sat this one out can still comment.
   const authorNameById = new Map(
     (members ?? []).map((member) => [member.userId, member.displayName]),
@@ -832,7 +1003,7 @@ export function SessionScreen() {
     participants.map((member) => member.userId),
     fields,
     template?.bonus_rules ?? [],
-    scoresByUser ?? {},
+    displayedScoresByUser,
     sessionData.game_templates.scoring_direction,
     isRounds,
   );
@@ -881,8 +1052,11 @@ export function SessionScreen() {
     );
   }
 
-  /** Reverses the last banked round and drops the scorekeeper back into it to correct, whichever
-   *  shape it was. */
+  /** Reverses the last banked round of a *live* session and drops the scorekeeper back into it to
+   *  correct, whichever shape it was. The equivalent for a completed session is
+   *  `handleToggleEditCompletedSession` above, which also has to flip `isEditingCompletedSession`
+   *  — something this can't do without duplicating that function's checks, since by the time this
+   *  runs the "Ronde terugdraaien" button that calls it is only ever visible on a live session. */
   function handleUndoRound() {
     undoRound.mutate(undefined, {
       onSuccess: (result) => {
@@ -890,6 +1064,31 @@ export function SessionScreen() {
         else setFieldRoundDraft(result.values);
       },
     });
+  }
+
+  /** Re-banks the round `handleToggleEditCompletedSession` popped back into the draft, once the
+   *  scorekeeper has fixed it. Deliberately not `handleNextRound`: that also checks `round_count`
+   *  and can open the finish-rounds dialog, which would call `finalizeSession` again on an
+   *  already-completed session and reset `completed_at` — silently restarting the edit window on
+   *  every correction. */
+  function handleSaveRoundCorrection() {
+    if (isRankedRounds) {
+      if (!roundOrder || roundOrder.length === 0) return;
+      commitRound.mutate(
+        { order: roundOrder },
+        { onSuccess: () => setIsEditingCompletedSession(false) },
+      );
+      return;
+    }
+    commitRound.mutate(
+      { values: fieldRoundDraft },
+      {
+        onSuccess: () => {
+          setFieldRoundDraft({});
+          setIsEditingCompletedSession(false);
+        },
+      },
+    );
   }
 
   function confirmFinishRounds() {
@@ -925,7 +1124,20 @@ export function SessionScreen() {
     finalize();
   }
 
-  if (sessionData.status === 'completed') {
+  // A finished session always shows this summary first, whether or not it's still editable — the
+  // header pencil (see `canEditCompletedSession` above) is the only way into editing it, via
+  // `isEditingCompletedSession`.
+  const showCompletedSummary = isCompletedSession && !isEditingCompletedSession;
+
+  // The session row loads on its own, well before the four queries the result is actually computed
+  // from — so without this the summary would first paint a winner-less card and an empty standings
+  // list, then snap to the real result a moment later. Everything below waits on all four: the
+  // winner is only knowable once totals are, and totals need the fields, the bonus rules, who
+  // played, and their scores.
+  const isResultPending =
+    isMembersPending || isParticipantsPending || isTemplatePending || isScoresPending;
+
+  if (showCompletedSummary) {
     const scoringDirection = sessionData.game_templates.scoring_direction;
     const gameName = sessionData.game_templates.name;
     const coverKey = sessionData.game_templates.cover_key;
@@ -939,7 +1151,7 @@ export function SessionScreen() {
           breakdown: computeBreakdown(
             fields,
             template?.bonus_rules ?? [],
-            (scoresByUser ?? {})[member.userId] ?? {},
+            displayedScoresByUser[member.userId] ?? {},
           ),
         };
       })
@@ -984,29 +1196,39 @@ export function SessionScreen() {
               </View>
 
               <View className="flex-row items-center gap-3 border-t border-line pt-4">
-                <View className="relative flex-row">
-                  {winners.map((member, index) => (
-                    // A tie stacks the winners' avatars, each ringed in the card colour so the
-                    // overlap reads as separate faces.
-                    <View
-                      key={member.userId}
-                      className="rounded-full border-2 border-surface"
-                      style={{ marginLeft: index === 0 ? 0 : -14 }}
-                    >
-                      <MemberAvatar member={member} size={48} />
-                    </View>
-                  ))}
-                  {/* Trophy badge overlaps the last (topmost) avatar's corner, like a notification
-                    dot, instead of spelling "Winnaar" out as a separate pill next to the name. */}
-                  <View className="absolute -bottom-1 -right-1 h-6 w-6 items-center justify-center rounded-full border-2 border-surface bg-surface-muted">
-                    <Text className="text-xs leading-none">🏆</Text>
+                {isResultPending ? (
+                  // Sized to the winner avatar so the card doesn't jump once the result lands.
+                  <View className="h-12 flex-1 items-center justify-center">
+                    <ActivityIndicator />
                   </View>
-                </View>
-                <View className="min-w-0 flex-1 items-start">
-                  <Text className="text-xl font-bold text-ink" numberOfLines={2}>
-                    {winners.map((member) => member.displayName).join(' & ')}
-                  </Text>
-                </View>
+                ) : (
+                  <>
+                    <View className="relative flex-row">
+                      {winners.map((member, index) => (
+                        // A tie stacks the winners' avatars, each ringed in the card colour so the
+                        // overlap reads as separate faces.
+                        <View
+                          key={member.userId}
+                          className="rounded-full border-2 border-surface"
+                          style={{ marginLeft: index === 0 ? 0 : -14 }}
+                        >
+                          <MemberAvatar member={member} size={48} />
+                        </View>
+                      ))}
+                      {/* Trophy badge overlaps the last (topmost) avatar's corner, like a
+                        notification dot, instead of spelling "Winnaar" out as a separate pill next
+                        to the name. */}
+                      <View className="absolute -bottom-1 -right-1 h-6 w-6 items-center justify-center rounded-full border-2 border-surface bg-surface-muted">
+                        <Text className="text-xs leading-none">🏆</Text>
+                      </View>
+                    </View>
+                    <View className="min-w-0 flex-1 items-start">
+                      <Text className="text-xl font-bold text-ink" numberOfLines={2}>
+                        {winners.map((member) => member.displayName).join(' & ')}
+                      </Text>
+                    </View>
+                  </>
+                )}
               </View>
             </Card>
 
@@ -1015,7 +1237,11 @@ export function SessionScreen() {
               {/* A plain ranked template has only a finish position to show; ranked-and-rounds
                 (Dalmuti) banked real points round by round, so it gets the same points bar as a
                 field-based template rather than an ordinal list. */}
-              {isRanked && !isRounds ? (
+              {isResultPending ? (
+                <Card className="mt-2 items-center justify-center py-8">
+                  <ActivityIndicator />
+                </Card>
+              ) : isRanked && !isRounds ? (
                 <View className="mt-2">
                   <RankedOrderList members={orderedMembers} />
                 </View>
@@ -1051,15 +1277,23 @@ export function SessionScreen() {
     );
   }
 
+  // Reaching here while completed only ever means one of two things: a single-round session inside
+  // its edit window (footer would just re-finalise an already-finished session — nothing to press),
+  // or a rounds session mid-correction (footer needs its own "Correctie opslaan", not "Volgende
+  // ronde" / "Potje afronden"). Both are handled below; only a live session keeps the original
+  // footer.
+  const hasFooter = canEdit && !(isCompletedSession && !isRounds);
+
   return (
     <AvatarMarksProvider groupId={sessionData.group_id}>
       <View className="flex-1 bg-surface">
         <KeyboardAwareScrollView
           className="flex-1"
           contentContainerClassName="gap-8 px-6 pt-6"
-          // Without the pinned footer (a read-only viewer), the scroll content itself is the last
-          // thing above the bottom of the screen and needs the inset added directly.
-          contentContainerStyle={{ paddingBottom: canEdit ? 24 : 24 + insets.bottom }}
+          // Without the pinned footer (a read-only viewer, or a completed single-round session
+          // that saves inline with no footer at all), the scroll content itself is the last thing
+          // above the bottom of the screen and needs the inset added directly.
+          contentContainerStyle={{ paddingBottom: hasFooter ? 24 : 24 + insets.bottom }}
           // The footer rides above the keyboard (KeyboardStickyView below), so a focused field has
           // to clear it. Only part of the footer is visible there: the sticky offset pulls its
           // safe-area padding down behind the keyboard, so that part doesn't count.
@@ -1172,12 +1406,25 @@ export function SessionScreen() {
                   <View className="mt-2">
                     <RankedEntryList
                       participants={participants}
-                      scoresByUser={scoresByUser ?? {}}
-                      onReorder={(userIds) =>
+                      scoresByUser={displayedScoresByUser}
+                      onReorder={(userIds) => {
+                        // Same reasoning as handleCompletedFieldChange: a finished session's
+                        // reorder is edited locally and only sent once "Klaar" flushes the draft,
+                        // rather than writing every participant's rank on every drag.
+                        if (isCompletedSession) {
+                          setCompletedScoresDraft((current) => {
+                            const next: ScoresByUser = { ...(current ?? {}) };
+                            userIds.forEach((userId, index) => {
+                              next[userId] = { ...next[userId], [RANK_FIELD_KEY]: index + 1 };
+                            });
+                            return next;
+                          });
+                          return;
+                        }
                         userIds.forEach((userId, index) =>
                           setScore.mutate({ userId, fieldKey: RANK_FIELD_KEY, value: index + 1 }),
-                        )
-                      }
+                        );
+                      }}
                     />
                   </View>
                 ) : (
@@ -1199,7 +1446,7 @@ export function SessionScreen() {
                       member={member}
                       isScorekeeper={member.userId === sessionData.scorekeeper_id}
                       fields={fields}
-                      values={(scoresByUser ?? {})[member.userId] ?? {}}
+                      values={displayedScoresByUser[member.userId] ?? {}}
                       total={totalByUserId.get(member.userId)?.total ?? 0}
                       canEdit={canEdit}
                       isOpen={openParticipantId === member.userId}
@@ -1209,7 +1456,9 @@ export function SessionScreen() {
                         )
                       }
                       onChangeField={(fieldKey, value) =>
-                        handleFieldChange(member.userId, fieldKey, value)
+                        isCompletedSession
+                          ? handleCompletedFieldChange(member.userId, fieldKey, value)
+                          : handleFieldChange(member.userId, fieldKey, value)
                       }
                     />
                   ))}
@@ -1231,7 +1480,7 @@ export function SessionScreen() {
           />
         </KeyboardAwareScrollView>
 
-        {canEdit ? (
+        {hasFooter ? (
           // Pinned rather than appended to the scroll content, the way GamesTab pins "Spel
           // toevoegen": ending the session should stay reachable and in a fixed spot regardless of
           // participant count or which card is expanded. KeyboardStickyView lifts it on top of the
@@ -1243,7 +1492,19 @@ export function SessionScreen() {
               style={{ paddingBottom: 16 + insets.bottom }}
               onLayout={(event) => setFooterHeight(event.nativeEvent.layout.height)}
             >
-              {isRounds ? (
+              {isCompletedSession ? (
+                // Reaching here while completed only happens via the header pencil, on a rounds
+                // template — the session is already finished, so this saves the correction and
+                // nothing else; there's no "Volgende ronde" (no next round exists) and no "Potje
+                // afronden" (it already is one, and calling finalizeSession again would reset
+                // completed_at, silently restarting the edit window).
+                <Button
+                  label="Correctie opslaan"
+                  onPress={handleSaveRoundCorrection}
+                  isLoading={commitRound.isPending}
+                  testID="round-correction-submit"
+                />
+              ) : isRounds ? (
                 <View className="gap-2">
                   <Button
                     label="Volgende ronde"

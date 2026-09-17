@@ -22,6 +22,8 @@ export const GAME_LIBRARY: GameLibraryEntry[] = [
   { id: 'arschmallows', name: 'Arschmallows' },
   { id: 'dalmuti', name: 'De Grote Dalmuti' },
   { id: 'terraforming_mars', name: 'Terraforming Mars' },
+  { id: 'secret_hitler', name: 'Secret Hitler' },
+  { id: 'wingspan', name: 'Wingspan' },
 ];
 
 const BY_NORMALIZED_NAME = new Map(

@@ -1,4 +1,5 @@
 import { format } from 'date-fns';
+import { DOMINATION_BADGE_ART } from '@/features/badges/badgeArt';
 
 /**
  * Pass-on badges: "badge X is held by whoever most recently satisfied condition Y". One holder at
@@ -87,6 +88,9 @@ const MIN_WIN_FACTOR_FOR_DOMINATION = 1;
 const MIN_WIN_STREAK = 2;
 /** Same reasoning for showing up: one avond is not a reeks. */
 const MIN_ATTENDANCE_STREAK = 2;
+/** De Grote Dalmuti is only really De Grote Dalmuti at a full table — last place in a potje of
+ *  four is bad luck, not daggoe-worthy — so smaller potjes leave the badge where it was. */
+const MIN_PARTICIPANTS_FOR_DAGGOE = 6;
 
 /** A speelavond is a date, not a session — a night where the group played three potjes is one
  *  avond, and being there for any of them counts as showing up. */
@@ -94,21 +98,26 @@ export function sessionDayKey(playedAt: string): string {
   return format(new Date(playedAt), 'yyyy-MM-dd');
 }
 
-/** "Grote Daggoe" and its kin: held by whoever came last in the most recent potje of one game. */
+/** "Grote Daggoe" and its kin: held by whoever came last in the most recent potje of one game —
+ *  for the Daggoe itself, only counting potjes at a table of `MIN_PARTICIPANTS_FOR_DAGGOE` or more. */
 function lastPlaceBadge(template: BadgeTemplate): PassOnBadgeDefinition {
   const isDaggoe = template.gameKey === 'dalmuti';
 
   return {
     id: `laatste-${template.id}`,
     name: isDaggoe ? 'Grote Daggoe' : `Rode lantaarn ${template.name}`,
-    condition: `Laatste plaats, ${template.name}`,
+    condition: isDaggoe
+      ? `Laatste plaats, ${template.name} met ${MIN_PARTICIPANTS_FOR_DAGGOE}+ spelers`
+      : `Laatste plaats, ${template.name}`,
     description: isDaggoe
-      ? 'Balen man, jij bent de grote daggoe. Kan alleen maar afgestaan worden door de volgende keer niet te verliezen.'
+      ? `Balen man, jij bent de grote daggoe. Kan alleen maar afgestaan worden door de volgende keer niet te verliezen. Telt alleen bij potjes met ${MIN_PARTICIPANTS_FOR_DAGGOE} spelers of meer.`
       : `Voor wie als laatste eindigde in het meest recente potje ${template.name}. Een houder tegelijk, tot iemand anders laatste wordt.`,
     artKey: isDaggoe ? 'grote_daggoe' : null,
     featured: isDaggoe,
     avatarMark: isDaggoe,
-    qualifies: (session) => session.templateId === template.id,
+    qualifies: (session) =>
+      session.templateId === template.id &&
+      (!isDaggoe || session.participantIds.length >= MIN_PARTICIPANTS_FOR_DAGGOE),
     // Walks back rather than reading the last session: a potje that ended in a tie for last has no
     // single loser, so it leaves the badge where it was instead of taking it off the board.
     resolve: (qualifying) => {
@@ -140,12 +149,7 @@ function dominationName(template: BadgeTemplate): string {
   return named ?? `${template.name} Dominantie`;
 }
 
-/** Art key into `BADGE_ART`, keyed by game library key — same pattern as `DOMINATION_BADGE_NAMES`.
- *  Most domination badges have no drawing, so this only lists the ones that do. */
-const DOMINATION_BADGE_ART: Record<string, string> = {
-  catan: 'koning_van_catan',
-  heat: 'domination_heat',
-};
+
 
 function dominationArtKey(template: BadgeTemplate): string | null {
   return (template.gameKey ? DOMINATION_BADGE_ART[template.gameKey] : undefined) ?? null;

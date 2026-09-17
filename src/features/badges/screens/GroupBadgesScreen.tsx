@@ -324,11 +324,6 @@ function MilestonesTab({
         {milestones.map((milestone) => (
           <MilestoneRow key={milestone.id} milestone={milestone} />
         ))}
-
-        <Text className="text-sm leading-5 text-ink-subtle">
-          Milestones worden berekend uit de gespeelde potjes, er is geen moment waarop je ze
-          verdient.
-        </Text>
       </View>
     </View>
   );

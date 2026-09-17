@@ -22,7 +22,7 @@ Fun, derived-only badge layer, scoped per group (no global/cross-group badges).
 - N sessions in a row without missing a game night (attendance streak).
 
 **Pass-on badges** (jokey, held by whoever most recently triggered the condition — passes to someone else next time it happens)
-- **"Grote Daggoe"** (dog picture) — awarded to the player who finished last in the most recently played De Grote Dalmuti session in the group. Held by exactly one person until the next Dalmuti session produces a new last-place finisher.
+- **"Grote Daggoe"** (dog picture) — awarded to the player who finished last in the most recently played De Grote Dalmuti session in the group *with 6 or more players*. Held by exactly one person until the next such Dalmuti session produces a new last-place finisher; smaller potjes leave the badge where it is.
   - Text bij badge: "Balen man, jij bent de grote daggoe. Kan alleen maar afgestaan worden door de volgende keer niet te verliezen."
   - The design for this badge can be found in `assets/badges/grote_daggoe_badge.png`
 - **Koning van Catan**: Highest "Winstfactor" for Catan in the group, not group-wide. Minimum of 8 games played for the holder.

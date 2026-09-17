@@ -1,4 +1,5 @@
 import { Image, View, type ImageSourcePropType } from 'react-native';
+import { BadgeHex } from '@/components/BadgeHex';
 import { Text } from '@/components/Text';
 
 import { getPlayerColor, type PlayerColor } from '@/lib/playerColors';
@@ -13,13 +14,18 @@ interface AvatarProps {
    *  screen's own avatar, which has no single colour across groups) — falls back to the generic
    *  accent look. */
   color?: PlayerColor;
-  /** Badge artwork worn in the bottom-left corner. Pass it through `MemberAvatar` rather than
-   *  directly, so which badge that is stays decided in one place. */
+  /** Badge artwork worn in the bottom-left corner, inside the same hexagon the badge wears on the
+   *  badges tab. Pass it through `MemberAvatar` rather than directly, so which badge that is stays
+   *  decided in one place. */
   mark?: ImageSourcePropType | null;
 }
 
-/** The mark's diameter as a share of the avatar's, so it reads the same at 28px and at 96px. */
-export const AVATAR_MARK_SCALE = 0.46;
+/**
+ * The mark's width as a share of the avatar's, so it reads the same at 28px and at 96px. Wider than
+ * the bare artwork used to be: the hexagon only fills itself to `ART_SCALE`, so the drawing inside
+ * lands at roughly its old size rather than shrinking to make room for the ring.
+ */
+export const AVATAR_MARK_SCALE = 0.56;
 /** How far the mark hangs past the avatar's edge, as a share of the avatar's diameter. */
 const MARK_OVERHANG = 0.08;
 
@@ -81,18 +87,9 @@ export function Avatar({ displayName, size = 40, avatarUrl, color, mark }: Avata
   return (
     <View style={{ width: size, height: size }}>
       <AvatarFace displayName={displayName} size={size} avatarUrl={avatarUrl} color={color} />
-      <Image
-        source={mark}
-        style={{
-          position: 'absolute',
-          left: -overhang,
-          bottom: -overhang,
-          width: markSize,
-          height: markSize,
-        }}
-        resizeMode="contain"
-        accessibilityIgnoresInvertColors
-      />
+      <View style={{ position: 'absolute', left: -overhang, bottom: -overhang }}>
+        <BadgeHex size={markSize} art={mark} />
+      </View>
     </View>
   );
 }

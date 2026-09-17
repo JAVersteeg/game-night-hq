@@ -13,6 +13,8 @@ export const GAME_COVERS: Record<string, ImageSourcePropType> = {
   arschmallows: require('../../../assets/game_covers/arschmallows_cover.png'),
   dalmuti: require('../../../assets/game_covers/dalmuti_cover.jpg'),
   terraforming_mars: require('../../../assets/game_covers/terraformingmars_cover.jpg'),
+  secret_hitler: require('../../../assets/game_covers/secrethitler_cover.jpg'),
+  wingspan: require('../../../assets/game_covers/wingspan_cover.jpg'),
 };
 
 export function coverImageForKey(coverKey: string | null | undefined): ImageSourcePropType | undefined {

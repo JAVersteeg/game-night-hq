@@ -1,6 +1,7 @@
-import { Image } from 'react-native';
+import { View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
+import { BadgeHex } from '@/components/BadgeHex';
 import { useAvatarMark } from '@/features/badges/avatarMarks';
 import type { GroupMember } from '@/features/groups/hooks/useGroupMembers';
 
@@ -41,12 +42,8 @@ export function MemberMark({ userId, size }: { userId: string; size: number }) {
   if (!mark) return null;
 
   return (
-    <Image
-      source={mark.art}
-      style={{ width: size, height: size }}
-      resizeMode="contain"
-      accessibilityLabel={mark.badgeName}
-      accessibilityIgnoresInvertColors
-    />
+    <View accessible accessibilityLabel={mark.badgeName}>
+      <BadgeHex size={size} art={mark.art} />
+    </View>
   );
 }

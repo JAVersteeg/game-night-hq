@@ -1,7 +1,7 @@
 import type { RouteProp } from '@react-navigation/native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { format } from 'date-fns';
+import { format, subMonths, subYears } from 'date-fns';
 import { nl } from 'date-fns/locale';
 import { useLayoutEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
@@ -221,25 +221,49 @@ function HistoryTab({ groupId }: { groupId: string }) {
           body="Zodra jullie een avond spelen, verschijnt de geschiedenis hier."
         />
       ) : (
-        sessions.map((session) => {
-          const date = format(new Date(session.playedAt), 'd MMMM yyyy', { locale: nl });
-          const winnerNames = session.winnerIds
-            .map((userId) => displayNameById.get(userId))
-            .filter((name): name is string => Boolean(name));
-          const winnerLabel = winnerNames.length > 1 ? 'Winnaars' : 'Winnaar';
-          const meta =
-            winnerNames.length > 0 ? `${date} · ${winnerLabel}: ${winnerNames.join(' & ')}` : date;
+        (() => {
+          // Sessions arrive newest first, so each threshold is crossed at most once — the header
+          // goes in front of the first session older than it.
+          const now = new Date();
+          const oneMonthAgo = subMonths(now, 1);
+          const oneYearAgo = subYears(now, 1);
+          let monthHeaderShown = false;
+          let yearHeaderShown = false;
 
-          return (
-            <HistoryRow
-              key={session.id}
-              gameName={session.gameName}
-              coverKey={session.coverKey}
-              meta={meta}
-              onPress={() => navigation.navigate('Session', { sessionId: session.id })}
-            />
-          );
-        })
+          return sessions.map((session) => {
+            const playedAt = new Date(session.playedAt);
+            const date = format(playedAt, 'd MMMM yyyy', { locale: nl });
+            const winnerNames = session.winnerIds
+              .map((userId) => displayNameById.get(userId))
+              .filter((name): name is string => Boolean(name));
+            const winnerLabel = winnerNames.length > 1 ? 'Winnaars' : 'Winnaar';
+            const meta =
+              winnerNames.length > 0
+                ? `${date} · ${winnerLabel}: ${winnerNames.join(' & ')}`
+                : date;
+
+            let header: string | null = null;
+            if (!yearHeaderShown && playedAt < oneYearAgo) {
+              header = 'Meer dan 1 jaar geleden';
+              yearHeaderShown = true;
+            } else if (!monthHeaderShown && playedAt < oneMonthAgo) {
+              header = 'Meer dan 1 maand geleden';
+              monthHeaderShown = true;
+            }
+
+            return (
+              <View key={session.id} className="gap-3">
+                {header ? <SectionLabel>{header}</SectionLabel> : null}
+                <HistoryRow
+                  gameName={session.gameName}
+                  coverKey={session.coverKey}
+                  meta={meta}
+                  onPress={() => navigation.navigate('Session', { sessionId: session.id })}
+                />
+              </View>
+            );
+          });
+        })()
       )}
     </ScrollView>
   );
