@@ -8,10 +8,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { ChoiceRow } from '@/components/ChoiceRow';
+import { CoverThumbnail } from '@/components/CoverThumbnail';
 import { SectionLabel } from '@/components/SectionLabel';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { AvatarMarksProvider } from '@/features/badges/avatarMarks';
 import { MemberAvatar } from '@/features/groups/components/MemberAvatar';
+import { gameColorForTemplate } from '@/features/games/colors';
+import { coverImageForTemplate } from '@/features/games/covers';
 import { useGameTemplates } from '@/features/games/hooks/useGameTemplates';
 import { useGroupMembers } from '@/features/groups/hooks/useGroupMembers';
 import { useCreateSession } from '@/features/sessions/hooks/useSessions';
@@ -85,9 +88,17 @@ export function StartSessionScreen() {
         contentContainerClassName="gap-8 px-6 pt-6"
         contentContainerStyle={{ paddingBottom: 48 + insets.bottom }}
       >
-        <View>
-          <SectionLabel>Spel</SectionLabel>
-          <Text className="mt-2 text-xl font-bold text-ink">{template?.name ?? '…'}</Text>
+        <View className="flex-row items-center gap-4">
+          <CoverThumbnail
+            source={coverImageForTemplate(template?.cover_key, template?.name)}
+            color={gameColorForTemplate(template?.cover_key, template?.name)}
+            size={56}
+          />
+          <View className="min-w-0 flex-1">
+            <Text className="text-xl font-bold text-ink" numberOfLines={2}>
+              {template?.name ?? '…'}
+            </Text>
+          </View>
         </View>
 
         <View>

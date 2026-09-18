@@ -5,7 +5,7 @@ import { Text } from '@/components/Text';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/Avatar';
-import { Badge } from '@/components/Badge';
+import { LiveDot } from '@/components/LiveDot';
 import { Button } from '@/components/Button';
 import { useProfile } from '@/features/auth/hooks/useProfile';
 import { useGroups, type Group } from '@/features/groups/hooks/useGroups';
@@ -34,7 +34,7 @@ function GroupRow({
       <Text className="shrink text-lg font-semibold text-ink" numberOfLines={1}>
         {group.name}
       </Text>
-      {isLive ? <Badge tone="success">Nu bezig</Badge> : null}
+      {isLive ? <LiveDot /> : null}
       {/* A chevron drawn as text: nothing in the app pulls in an icon set yet, and one glyph is not
           reason enough to add one. */}
       <Text className="ml-auto text-xl text-ink-subtle">›</Text>

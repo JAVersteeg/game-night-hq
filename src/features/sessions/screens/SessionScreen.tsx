@@ -1,4 +1,4 @@
-import type { RouteProp } from '@react-navigation/native';
+import type { NavigationAction, RouteProp } from '@react-navigation/native';
 import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -201,7 +201,7 @@ function PlayerCard({
           ) : null}
         </View>
         <View className="items-end">
-          <PoppingTotal value={total} className="text-2xl font-bold text-ink" />
+          <PoppingTotal value={total} className="text-3xl font-bold tracking-tight text-ink" />
           {roundDelta !== undefined ? (
             <Text className="text-xs font-semibold text-accent">
               {roundDelta >= 0 ? `+${roundDelta}` : roundDelta}
@@ -458,7 +458,7 @@ function RoundScore({ total, delta }: { total: number; delta: number }) {
           totalHeight.value = event.nativeEvent.layout.height;
         }}
       >
-        <Text className="text-base font-bold text-ink">{shownTotal}</Text>
+        <Text className="text-lg font-bold tracking-tight text-ink">{shownTotal}</Text>
       </Animated.View>
       <Animated.View
         style={deltaStyle}
@@ -642,7 +642,7 @@ function RoundsStandingsList({
           <Text className="min-w-0 flex-1 text-base font-semibold text-ink" numberOfLines={1}>
             {member.displayName}
           </Text>
-          <Text className="text-xl font-bold text-ink">
+          <Text className="text-2xl font-bold tracking-tight text-ink">
             {totalByUserId.get(member.userId) ?? 0}
           </Text>
         </View>
@@ -762,9 +762,9 @@ interface DeleteSessionConfirmModalProps {
   isPending: boolean;
 }
 
-/** Throwing a live session away is the scorekeeper's explicit choice now, not a side effect of
- *  leaving the screen: a live session stays reachable from the group dashboard, so backing out
- *  just leaves it running. */
+/** Throwing a live session away from inside the session itself — the deliberate route, reached
+ *  from the button at the end of the scroll. Backing out of the screen offers the same thing
+ *  through `LeaveSessionSheet`, which also has "later verder" to leave it running. */
 function DeleteSessionConfirmModal({
   onCancel,
   onConfirm,
@@ -794,6 +794,74 @@ function DeleteSessionConfirmModal({
         </Pressable>
       </Pressable>
     </Modal>
+  );
+}
+
+interface LeaveSessionSheetProps {
+  onStay: () => void;
+  onLeave: () => void;
+  onDiscard: () => void;
+  isPending: boolean;
+}
+
+/** Shown when the scorekeeper backs out of a live session that already holds something. Leaving it
+ *  running is a legitimate choice — a game night gets interrupted — but so is throwing it away, and
+ *  the back button alone can't tell the two apart. A session with nothing in it never gets here: it
+ *  is deleted silently, since a mis-tap and a real abandon look identical at that point. */
+function LeaveSessionSheet({ onStay, onLeave, onDiscard, isPending }: LeaveSessionSheetProps) {
+  return (
+    <Modal visible transparent animationType="fade" onRequestClose={onStay}>
+      <Pressable
+        className="flex-1 items-center justify-center bg-surface-deep/70 px-6"
+        onPress={onStay}
+        accessibilityLabel="Sluit"
+      >
+        <Pressable className="w-full max-w-sm gap-4 rounded-3xl border border-line bg-surface p-6">
+          <View>
+            <Text className="text-xl font-bold text-ink">Potje verlaten?</Text>
+            <Text className="mt-1 text-sm text-ink-muted">
+              Het potje loopt door en blijft bovenaan de groep staan, zodat je er later verder mee
+              kunt. Spelen jullie niet verder? Gooi het dan weg.
+            </Text>
+          </View>
+          <Button label="Later verder" onPress={onLeave} />
+          <Button
+            label="Potje weggooien"
+            variant="secondary"
+            onPress={onDiscard}
+            isLoading={isPending}
+          />
+          <Button label="Doorgaan met potje" variant="ghost" onPress={onStay} />
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+/** Whether a live session holds anything a scorekeeper would mind losing.
+ *
+ *  Not simply "are there score rows": `create_session` seeds a single-round template's non-zero
+ *  field defaults as real rows, so a Catan session has scores the instant it starts. What counts is
+ *  a value that differs from where the session began — plus any banked round, and any note, neither
+ *  of which exists until someone does something. */
+function hasRecordedProgress(
+  roundsPlayed: number,
+  fields: { key: string; defaultValue: number; exclusive: boolean }[],
+  isRounds: boolean,
+  scoresByUser: ScoresByUser | undefined,
+  noteCount: number,
+): boolean {
+  if (roundsPlayed > 0 || noteCount > 0) return true;
+
+  // The value each field starts at, mirroring what create_session seeds: an exclusive field's
+  // default is the award for holding it rather than a starting value, and a rounds template is
+  // never seeded at all because each round adds onto the total.
+  const baselineByKey = new Map(
+    fields.map((field) => [field.key, isRounds || field.exclusive ? 0 : field.defaultValue]),
+  );
+
+  return Object.values(scoresByUser ?? {}).some((values) =>
+    Object.entries(values).some(([fieldKey, value]) => value !== (baselineByKey.get(fieldKey) ?? 0)),
   );
 }
 
@@ -917,6 +985,15 @@ export function SessionScreen() {
 
   const [isDeleteConfirmVisible, setIsDeleteConfirmVisible] = useState(false);
 
+  // The back-navigation that `beforeRemove` blocked, held until the scorekeeper says what should
+  // happen to the session they're leaving — re-dispatched as-is so "back" still means whatever it
+  // meant (a swipe, the header button, a deep link popping the stack).
+  const [pendingLeaveAction, setPendingLeaveAction] = useState<NavigationAction | null>(null);
+  // Set the moment leaving is agreed on, so the listener waves through the dispatch it makes itself
+  // instead of intercepting it a second time. A ref, not state: it has to be readable by the
+  // listener synchronously, within the same tick it's set.
+  const isLeavingRef = useRef(false);
+
   // The finish order of the round being played, as ids. Local until "Volgende ronde" banks it:
   // nothing about an unfinished round is written to the server, which is also why a spectator sees
   // standings rather than a live order. Only relevant for a ranked-and-rounds template.
@@ -991,6 +1068,71 @@ export function SessionScreen() {
       ),
     );
     setIsEditingCompletedSession(true);
+  }
+
+  // Backing out is where live sessions pile up: the scorekeeper taps back, the potje stays "nu
+  // bezig" on everyone's dashboard, and nobody clears it because the person who walked away is the
+  // one who'd have to. So back is the decision point rather than a no-op. Only for the scorekeeper
+  // — a spectator leaving the read-only view is just leaving.
+  useEffect(() => {
+    if (sessionData?.status !== 'in_progress' || currentUserId !== sessionData.scorekeeper_id) {
+      return;
+    }
+
+    return navigation.addListener('beforeRemove', (event) => {
+      // The dispatch made below, once leaving has been settled — not a fresh back press.
+      if (isLeavingRef.current) return;
+
+      const templateFields = (template?.game_template_fields ?? []).map((field) => ({
+        key: field.key,
+        defaultValue: field.default_value,
+        exclusive: field.exclusive,
+      }));
+
+      if (
+        hasRecordedProgress(
+          sessionData.rounds_played,
+          templateFields,
+          sessionData.game_templates.rounds,
+          scoresByUser,
+          notes?.length ?? 0,
+        )
+      ) {
+        event.preventDefault();
+        // Reset first, so an earlier failed delete doesn't greet them with a stale error.
+        deleteSession.reset();
+        setPendingLeaveAction(event.data.action);
+        return;
+      }
+
+      // Nothing was ever entered, so there's nothing to ask about and nothing to lose: a mis-tap
+      // into a session and a deliberate abandon are the same thing at this point.
+      event.preventDefault();
+      isLeavingRef.current = true;
+      deleteSession.mutate(undefined, {
+        // Leaving either way — a session that couldn't be deleted is a smaller problem than a
+        // screen that won't let go of whoever is trying to leave it.
+        onSettled: () => navigation.dispatch(event.data.action),
+      });
+    });
+  }, [navigation, sessionData, template, scoresByUser, notes, currentUserId, deleteSession]);
+
+  function leaveSessionRunning() {
+    if (!pendingLeaveAction) return;
+    isLeavingRef.current = true;
+    setPendingLeaveAction(null);
+    navigation.dispatch(pendingLeaveAction);
+  }
+
+  function discardSessionAndLeave() {
+    if (!pendingLeaveAction) return;
+    deleteSession.mutate(undefined, {
+      onSuccess: () => {
+        isLeavingRef.current = true;
+        setPendingLeaveAction(null);
+        navigation.dispatch(pendingLeaveAction);
+      },
+    });
   }
 
   useLayoutEffect(() => {
@@ -1794,7 +1936,19 @@ export function SessionScreen() {
           />
         ) : null}
 
-        {pendingDeleteNoteId && !isFinishRoundsVisible && !isDeleteConfirmVisible ? (
+        {pendingLeaveAction && !isFinishRoundsVisible && !isDeleteConfirmVisible ? (
+          <LeaveSessionSheet
+            onStay={() => setPendingLeaveAction(null)}
+            onLeave={leaveSessionRunning}
+            onDiscard={discardSessionAndLeave}
+            isPending={deleteSession.isPending}
+          />
+        ) : null}
+
+        {pendingDeleteNoteId &&
+        !isFinishRoundsVisible &&
+        !isDeleteConfirmVisible &&
+        !pendingLeaveAction ? (
           <DeleteNoteConfirmModal
             onCancel={() => setPendingDeleteNoteId(null)}
             onConfirm={confirmDeleteNote}

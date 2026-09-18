@@ -4,15 +4,21 @@ import { Text } from '@/components/Text';
 
 interface CardProps {
   children: ReactNode;
-  tone?: 'plain' | 'muted';
+  tone?: 'plain' | 'muted' | 'accent';
   onPress?: () => void;
   className?: string;
   accessibilityLabel?: string;
 }
 
+/** Three levels, so a surface says what kind of thing it holds:
+ *  - `plain`: a standalone container (a row, a field, a result) — hairline border on the page.
+ *  - `muted`: an aside (explanations, empty states, notes) — a tinted fill, same hairline.
+ *  - `accent`: what is happening right now (a live potje) — the one clay-edged surface, with the
+ *    larger 24px radius. At most one kind of thing per screen gets it. */
 const TONE_CLASS = {
-  plain: 'bg-surface',
-  muted: 'bg-surface-muted',
+  plain: 'rounded-2xl border border-line bg-surface',
+  muted: 'rounded-2xl border border-line bg-surface-muted',
+  accent: 'rounded-3xl border border-accent-line bg-accent-soft',
 } as const;
 
 /** The bordered, unshadowed container behind every row, field and panel. */
@@ -23,7 +29,7 @@ export function Card({
   className = '',
   accessibilityLabel,
 }: CardProps) {
-  const container = `rounded-2xl border border-line px-4 py-3.5 ${TONE_CLASS[tone]} ${className}`;
+  const container = `px-4 py-3.5 ${TONE_CLASS[tone]} ${className}`;
 
   if (onPress) {
     return (

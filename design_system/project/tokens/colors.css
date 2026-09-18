@@ -57,6 +57,11 @@
   --accent-strong: var(--clay-500);
   --accent-line: var(--clay-700, #7c4426);
 
+  /* The live indicator's dot. Deliberately outside the resource ramps: every other red in the
+     system is brick (muted, warm) because it carries an error, while this one only has to shout
+     "right now". */
+  --live: #ff3b30;
+
   /* surface.* — three steps, all warm dark */
   --surface: var(--night-900);
   --surface-muted: var(--night-850);

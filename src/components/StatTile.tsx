@@ -13,9 +13,9 @@ interface StatTileProps {
 export function StatTile({ value, unit, label }: StatTileProps) {
   return (
     <View className="flex-1 items-center gap-1 rounded-2xl border border-line bg-surface px-2 py-4">
-      <Text className="text-2xl font-bold tracking-tight text-ink">
+      <Text className="text-4xl font-bold tracking-tight text-ink">
         {value}
-        {unit ? <Text className="text-lg font-semibold text-ink-muted">{unit}</Text> : null}
+        {unit ? <Text className="text-xl font-semibold text-ink-muted">{unit}</Text> : null}
       </Text>
       <Text className="text-center text-xs font-medium text-ink-subtle" numberOfLines={2}>
         {label}

@@ -4,11 +4,10 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { format } from 'date-fns';
 import { nl } from 'date-fns/locale';
 import { useLayoutEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, View } from 'react-native';
 import { Text } from '@/components/Text';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Badge } from '@/components/Badge';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { BarList } from '@/components/charts/BarList';
@@ -18,6 +17,7 @@ import { TrendChart } from '@/components/charts/TrendChart';
 import { ColorPickerModal } from '@/components/ColorPickerModal';
 import { CoverThumbnail } from '@/components/CoverThumbnail';
 import { EmptyState } from '@/components/EmptyState';
+import { LiveDot } from '@/components/LiveDot';
 import { GearIcon } from '@/components/GearIcon';
 import { TrophyIcon } from '@/components/TrophyIcon';
 import { InfoIcon } from '@/components/InfoIcon';
@@ -32,6 +32,7 @@ import {
   type GamePalette,
 } from '@/features/games/colors';
 import { coverImageForTemplate } from '@/features/games/covers';
+import { gameKeyForTemplate } from '@/features/games/presets';
 
 import type { GameStats, LeaderboardEntry } from '@/features/games/hooks/useGameStats';
 import { useGameStats } from '@/features/games/hooks/useGameStats';
@@ -50,6 +51,7 @@ import {
 } from '@/features/groups/hooks/useGroupMembers';
 import { useGroup } from '@/features/groups/hooks/useGroups';
 import { useLiveSessions, type LiveSession } from '@/features/sessions/hooks/useLiveSessions';
+import { useDeleteSession } from '@/features/sessions/hooks/useSessions';
 import { useSessionHistory } from '@/features/sessions/hooks/useSessionHistory';
 import { higherTotalIsBetter } from '@/features/sessions/scoring';
 import { getPlayerColor } from '@/lib/playerColors';
@@ -153,10 +155,12 @@ function LiveSessionCard({
   session,
   scorekeeperName,
   onPress,
+  onDiscard,
 }: {
   session: LiveSession;
   scorekeeperName: string | null;
   onPress: () => void;
+  onDiscard: () => void;
 }) {
   const roundNumber = session.roundsPlayed + 1;
   const round = session.rounds
@@ -172,6 +176,7 @@ function LiveSessionCard({
   return (
     <Card
       onPress={onPress}
+      tone="accent"
       className="flex-row items-center gap-4"
       accessibilityLabel={`Bekijk het lopende potje ${session.gameName}`}
     >
@@ -185,13 +190,59 @@ function LiveSessionCard({
           <Text className="shrink text-lg font-semibold text-ink" numberOfLines={1}>
             {session.gameName}
           </Text>
-          <Badge tone="success">Nu bezig</Badge>
+          <LiveDot />
         </View>
         <Text className="mt-0.5 text-sm font-medium text-ink-muted" numberOfLines={1}>
           {meta}
         </Text>
       </View>
+      {/* Any member can clear a live session, not just its scorekeeper — an abandoned potje is
+          usually abandoned precisely because the scorekeeper isn't coming back to tidy it up.
+          Deliberately small and quiet: it's the rare action next to "tap to rejoin the game". */}
+      <Pressable
+        onPress={onDiscard}
+        hitSlop={12}
+        accessibilityRole="button"
+        accessibilityLabel={`Potje ${session.gameName} weggooien`}
+      >
+        <Text className="px-1 text-xl leading-none text-ink-faint">×</Text>
+      </Pressable>
     </Card>
+  );
+}
+
+/** Confirming a live session away from the dashboard. Same reckoning as the one inside the session
+ *  screen: what's lost is the scores so far, and none of it comes back. */
+function DiscardLiveSessionModal({
+  gameName,
+  onCancel,
+  onConfirm,
+  isPending,
+}: {
+  gameName: string;
+  onCancel: () => void;
+  onConfirm: () => void;
+  isPending: boolean;
+}) {
+  return (
+    <Modal visible transparent animationType="fade" onRequestClose={onCancel}>
+      <Pressable
+        className="flex-1 items-center justify-center bg-surface-deep/70 px-6"
+        onPress={onCancel}
+        accessibilityLabel="Sluit"
+      >
+        <Pressable className="w-full max-w-sm gap-4 rounded-3xl border border-line bg-surface p-6">
+          <View>
+            <Text className="text-xl font-bold text-ink">{gameName} weggooien?</Text>
+            <Text className="mt-1 text-sm text-ink-muted">
+              Het potje en alle scores tot nu toe worden verwijderd. Dit kun je niet ongedaan maken.
+            </Text>
+          </View>
+          <Button label="Weggooien" variant="secondary" onPress={onConfirm} isLoading={isPending} />
+          <Button label="Laten staan" onPress={onCancel} />
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
 
@@ -507,7 +558,7 @@ function LeaderboardRow({
             {meta}
           </Text>
         </View>
-        <Text className={`text-lg font-bold ${isWeak ? 'text-ink-faint' : 'text-ink'}`}>
+        <Text className={`text-xl font-bold tracking-tight ${isWeak ? 'text-ink-faint' : 'text-ink'}`}>
           {value}
         </Text>
       </View>
@@ -681,6 +732,10 @@ function GameStatsSection({
   // this applies the same way regardless of rounds.
   const isRanked = template?.scoring_direction === 'ranked';
   const isRounds = template?.rounds ?? false;
+  // Catan has a known scoring range — two settlement points at the start, ten to win — so its axis
+  // is pinned to it rather than auto-scaled. Every game reads against the same scale that way, and
+  // a session where nobody got far doesn't stretch a two-point spread across the whole chart.
+  const isCatan = gameKeyForTemplate(template?.cover_key, template?.name) === 'catan';
   // Each player's own chosen colour (group settings → Leden), not an arbitrary per-chart ramp —
   // so a player is the same colour here as their avatar everywhere else, and a colour change shows
   // up the moment `members` refetches. Falls back to the old index-based ramp for a userId this
@@ -733,7 +788,13 @@ function GameStatsSection({
               <TrendChart
                 labels={stats.trend.labels}
                 inverted={isRanked}
-                domain={isRanked ? [1, Math.max(2, stats.maxParticipants)] : undefined}
+                domain={
+                  isRanked
+                    ? [1, Math.max(2, stats.maxParticipants)]
+                    : isCatan
+                      ? [2, 12]
+                      : undefined
+                }
                 // Ranked always plots a finish rank here (1 = best), even for a ranked-and-rounds
                 // template — see the comment above on `isRanked`. Otherwise it's whichever
                 // direction the template scores by.
@@ -842,6 +903,14 @@ export function GroupDashboardScreen() {
   const { data: members } = useGroupMembers(groupId);
   const { data: liveSessions } = useLiveSessions();
   const groupLiveSessions = (liveSessions ?? []).filter((live) => live.groupId === groupId);
+  // The live session waiting on a "weggooien?" confirmation, if any. The name is kept alongside the
+  // id so the modal can still say what it's throwing away while the row is being removed.
+  const [pendingDiscard, setPendingDiscard] = useState<{ id: string; gameName: string } | null>(
+    null,
+  );
+  // Hook order can't depend on which session is pending, so it's bound to the id currently under
+  // confirmation — harmless while that's null, since nothing runs until the confirm button does.
+  const discardSession = useDeleteSession(pendingDiscard?.id ?? '', groupId);
   const setColor = useSetMemberColor(groupId);
   const me = members?.find((member) => member.userId === session?.user.id);
 
@@ -885,7 +954,7 @@ export function GroupDashboardScreen() {
     <AvatarMarksProvider groupId={groupId}>
       <SafeAreaView className="flex-1 bg-surface" edges={['bottom']}>
         {groupLiveSessions.length > 0 ? (
-          <View className="gap-2 px-6 pb-3 pt-2">
+          <View className="gap-2 px-6 pb-2 pt-2">
             {groupLiveSessions.map((live) => (
               <LiveSessionCard
                 key={live.id}
@@ -895,9 +964,24 @@ export function GroupDashboardScreen() {
                   null
                 }
                 onPress={() => navigation.navigate('Session', { sessionId: live.id })}
+                onDiscard={() => {
+                  discardSession.reset();
+                  setPendingDiscard({ id: live.id, gameName: live.gameName });
+                }}
               />
             ))}
           </View>
+        ) : null}
+
+        {pendingDiscard && !colorModalOpen ? (
+          <DiscardLiveSessionModal
+            gameName={pendingDiscard.gameName}
+            onCancel={() => setPendingDiscard(null)}
+            onConfirm={() =>
+              discardSession.mutate(undefined, { onSuccess: () => setPendingDiscard(null) })
+            }
+            isPending={discardSession.isPending}
+          />
         ) : null}
         <View className="px-6 pt-2">
           <SegmentedControl options={TABS} value={tab} onChange={setTab} />

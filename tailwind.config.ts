@@ -21,6 +21,9 @@ const config: Config = {
           strong: '#c25a2b',
           line: '#7c4426',
         },
+        // The live indicator's dot — a pure broadcast red, brighter than the brick-based `danger`
+        // that every other red in the app uses for errors.
+        live: '#ff3b30',
         surface: {
           DEFAULT: '#1c1813',
           muted: '#221d17',

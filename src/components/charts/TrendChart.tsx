@@ -23,6 +23,9 @@ interface TrendChartProps {
   inverted?: boolean;
   /** Overrides the padded auto-scale, for axes with a real fixed range (1..n finish positions). */
   domain?: [number, number];
+  /** A horizontal line the series is read against — "1,0× is toeval" on a Winstfactor chart.
+   *  Drawn dashed under the lines, with its label riding just above the right-hand end. */
+  reference?: { value: number; label: string };
   /** Whether a bigger value is the better one — decides the rank order the hold-to-inspect
    *  tooltip sorts by. Independent of `inverted`, which is purely about axis direction: a
    *  lowest-total-wins chart still plots low at the bottom, but low is what wins. */
@@ -70,8 +73,9 @@ function segmentsOf(points: (number | null)[]): { index: number; value: number }
   return segments;
 }
 
+/** Dutch decimals, like every other number in the app. */
 function formatValue(value: number): string {
-  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+  return Number.isInteger(value) ? String(value) : value.toFixed(1).replace('.', ',');
 }
 
 /**
@@ -88,6 +92,7 @@ export function TrendChart({
   height = 168,
   inverted = false,
   domain,
+  reference,
   higherIsBetter = true,
 }: TrendChartProps) {
   const [width, setWidth] = useState(0);
@@ -101,8 +106,10 @@ export function TrendChart({
   if (domain) {
     [min, max] = domain;
   } else if (hasData) {
-    const rawMin = Math.min(...values);
-    const rawMax = Math.max(...values);
+    // The reference joins the extremes: a line drawn outside the plotted range would be clipped
+    // off the chart, taking the only thing the series is supposed to be read against with it.
+    const rawMin = Math.min(...values, reference?.value ?? Infinity);
+    const rawMax = Math.max(...values, reference?.value ?? -Infinity);
     const span = Math.max(1, rawMax - rawMin);
     min = Math.floor((rawMin - span * 0.15) / 2) * 2;
     max = Math.ceil((rawMax + span * 0.15) / 2) * 2;
@@ -204,6 +211,30 @@ export function TrendChart({
                   {Math.round(tick)}
                 </SvgText>
               ))}
+
+              {reference ? (
+                <>
+                  <Line
+                    x1={PAD.left}
+                    x2={width - PAD.right}
+                    y1={y(reference.value)}
+                    y2={y(reference.value)}
+                    stroke={theme.inkSubtle}
+                    strokeWidth={1}
+                    strokeDasharray="4,4"
+                  />
+                  <SvgText
+                    x={width - PAD.right}
+                    y={y(reference.value) - 4}
+                    textAnchor="end"
+                    fontSize={10}
+                    fontWeight="500"
+                    fill={theme.inkSubtle}
+                  >
+                    {reference.label}
+                  </SvgText>
+                </>
+              ) : null}
 
               {series.map((entry) =>
                 segmentsOf(entry.points).map((segment, segmentIndex) => (

@@ -6,6 +6,9 @@ import type { Tables } from '@/types/database';
 
 export type Profile = Tables<'profiles'>;
 
+/** Long enough for a real name, short enough to still fit a scoreboard row. */
+export const MAX_DISPLAY_NAME_LENGTH = 40;
+
 export const profileKeys = {
   all: ['profile'] as const,
   byUser: (userId: string) => ['profile', userId] as const,

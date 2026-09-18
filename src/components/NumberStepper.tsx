@@ -81,6 +81,10 @@ export function NumberStepper({
           selectTextOnFocus
           placeholderTextColor={theme.inkSubtle}
           className="h-11 w-14 rounded-lg border border-line bg-surface text-center text-lg font-semibold text-ink"
+          // Sits the digits on the middle of the box, level with the − and + beside it. Android
+          // gives a single-line TextInput top-aligned text plus its own vertical padding and font
+          // padding, all of which push the number up; height alone can't correct that.
+          style={{ paddingVertical: 0, textAlignVertical: 'center', includeFontPadding: false }}
           testID={testID}
         />
         <Pressable

@@ -5,10 +5,8 @@ import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
-import { useSetDisplayName } from '@/features/auth/hooks/useProfile';
+import { MAX_DISPLAY_NAME_LENGTH, useSetDisplayName } from '@/features/auth/hooks/useProfile';
 import { theme } from '@/lib/theme';
-
-const MAX_DISPLAY_NAME_LENGTH = 40;
 
 /**
  * The one and only onboarding prompt. It asks "who are you", not "create an account" — by the time

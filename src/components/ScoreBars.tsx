@@ -79,7 +79,7 @@ export function ScoreBars({ rows }: { rows: ScoreBarRow[] }) {
                   {row.name}
                 </Text>
                 <View className="flex-row items-baseline gap-1.5">
-                  <Text className="text-lg font-bold text-ink">{row.total}</Text>
+                  <Text className="text-2xl font-bold tracking-tight text-ink">{row.total}</Text>
                   {canExpand ? (
                     <Text className={`text-xs ${isOpen ? 'text-ink' : 'text-ink-subtle'}`}>
                       {isOpen ? '▴' : '▾'}
