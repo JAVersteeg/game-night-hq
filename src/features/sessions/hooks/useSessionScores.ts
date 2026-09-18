@@ -33,7 +33,12 @@ export function useSessionScores(sessionId: string) {
       .channel(`session-scores-${sessionId}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'session_scores', filter: `session_id=eq.${sessionId}` },
+        {
+          event: '*',
+          schema: 'public',
+          table: 'session_scores',
+          filter: `session_id=eq.${sessionId}`,
+        },
         () => void queryClient.invalidateQueries({ queryKey }),
       )
       .subscribe();
@@ -69,6 +74,34 @@ export function useSetScore(sessionId: string) {
         field_key: input.fieldKey,
         value: input.value,
       });
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: sessionScoreKeys.detail(sessionId) });
+    },
+  });
+}
+
+/** The same write, but for a whole set of entries at once. Reordering a ranked list rewrites the
+ *  position of everyone the dragged player moved past, and sending those one at a time meant a
+ *  burst of upserts — each with its own invalidate and refetch — landing while the drop animation
+ *  was still running. One round-trip, one invalidation. */
+export function useSetScores(sessionId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (entries: { userId: string; fieldKey: string; value: number }[]) => {
+      if (entries.length === 0) return;
+
+      const { error } = await supabase.from('session_scores').upsert(
+        entries.map((entry) => ({
+          session_id: sessionId,
+          user_id: entry.userId,
+          field_key: entry.fieldKey,
+          value: entry.value,
+        })),
+      );
 
       if (error) throw error;
     },
