@@ -5,24 +5,36 @@ import { Text } from '@/components/Text';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/Avatar';
+import { Badge } from '@/components/Badge';
 import { Button } from '@/components/Button';
 import { useProfile } from '@/features/auth/hooks/useProfile';
 import { useGroups, type Group } from '@/features/groups/hooks/useGroups';
+import { useLiveSessions } from '@/features/sessions/hooks/useLiveSessions';
 import type { AppStackParamList } from '@/navigation/types';
 
 type Navigation = NativeStackNavigationProp<AppStackParamList>;
 
-function GroupRow({ group, onPress }: { group: Group; onPress: () => void }) {
+function GroupRow({
+  group,
+  isLive,
+  onPress,
+}: {
+  group: Group;
+  /** A session is being played in this group right now. */
+  isLive: boolean;
+  onPress: () => void;
+}) {
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`Open groep ${group.name}`}
+      accessibilityLabel={`Open groep ${group.name}${isLive ? ', er is een potje bezig' : ''}`}
       className="flex-row items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-4 active:opacity-70"
     >
       <Text className="shrink text-lg font-semibold text-ink" numberOfLines={1}>
         {group.name}
       </Text>
+      {isLive ? <Badge tone="success">Nu bezig</Badge> : null}
       {/* A chevron drawn as text: nothing in the app pulls in an icon set yet, and one glyph is not
           reason enough to add one. */}
       <Text className="ml-auto text-xl text-ink-subtle">›</Text>
@@ -46,6 +58,8 @@ export function GroupListScreen() {
   const navigation = useNavigation<Navigation>();
   const { data: profile } = useProfile();
   const { data: groups, isPending, isError, refetch, isRefetching } = useGroups();
+  const { data: liveSessions } = useLiveSessions();
+  const liveGroupIds = new Set((liveSessions ?? []).map((live) => live.groupId));
 
   return (
     <SafeAreaView className="flex-1 bg-surface" edges={['top', 'bottom']}>
@@ -85,6 +99,7 @@ export function GroupListScreen() {
           renderItem={({ item }) => (
             <GroupRow
               group={item}
+              isLive={liveGroupIds.has(item.id)}
               onPress={() => navigation.navigate('GroupDashboard', { groupId: item.id })}
             />
           )}

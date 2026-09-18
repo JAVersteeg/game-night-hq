@@ -15,6 +15,7 @@ export const theme = {
   inkSubtle: '#8a7e71',
   inkFaint: '#5f5549',
   accentFg: '#16120e',
+  warning: '#e0a736',
 } as const;
 
 /**

@@ -7,6 +7,7 @@ interface CardProps {
   tone?: 'plain' | 'muted';
   onPress?: () => void;
   className?: string;
+  accessibilityLabel?: string;
 }
 
 const TONE_CLASS = {
@@ -15,12 +16,23 @@ const TONE_CLASS = {
 } as const;
 
 /** The bordered, unshadowed container behind every row, field and panel. */
-export function Card({ children, tone = 'plain', onPress, className = '' }: CardProps) {
+export function Card({
+  children,
+  tone = 'plain',
+  onPress,
+  className = '',
+  accessibilityLabel,
+}: CardProps) {
   const container = `rounded-2xl border border-line px-4 py-3.5 ${TONE_CLASS[tone]} ${className}`;
 
   if (onPress) {
     return (
-      <Pressable onPress={onPress} className={`${container} active:opacity-70`}>
+      <Pressable
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel}
+        className={`${container} active:opacity-70`}
+      >
         {children}
       </Pressable>
     );

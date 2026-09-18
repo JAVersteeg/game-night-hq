@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { profileKeys } from '@/features/auth/hooks/useProfile';
 import { gameKeys } from '@/features/games/hooks/useGameTemplates';
 import { groupKeys } from '@/features/groups/hooks/useGroups';
+import { liveSessionKeys } from '@/features/sessions/hooks/useLiveSessions';
 import { sessionHistoryKeys } from '@/features/sessions/hooks/useSessionHistory';
 import { sessionScoreKeys } from '@/features/sessions/hooks/useSessionScores';
 import { supabase } from '@/lib/supabase';
@@ -49,6 +50,7 @@ export function useCreateSession(groupId: string) {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: groupKeys.dashboard(groupId) });
+      void queryClient.invalidateQueries({ queryKey: liveSessionKeys.all });
     },
   });
 }
@@ -112,6 +114,7 @@ export function useFinalizeSession(sessionId: string, groupId: string) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) });
       void queryClient.invalidateQueries({ queryKey: groupKeys.dashboard(groupId) });
+      void queryClient.invalidateQueries({ queryKey: liveSessionKeys.all });
       void queryClient.invalidateQueries({ queryKey: sessionHistoryKeys.list(groupId) });
       // A finished potje can move a pass-on badge or complete an milestone, both derived from
       // exactly this list of sessions.
@@ -206,6 +209,7 @@ export function useDeleteSession(sessionId: string, groupId: string) {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: groupKeys.dashboard(groupId) });
+      void queryClient.invalidateQueries({ queryKey: liveSessionKeys.all });
     },
   });
 }

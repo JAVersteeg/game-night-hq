@@ -1,4 +1,4 @@
-import type { NavigationAction, RouteProp } from '@react-navigation/native';
+import type { RouteProp } from '@react-navigation/native';
 import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -36,6 +36,7 @@ import { MemberAvatar } from '@/features/groups/components/MemberAvatar';
 import { useGroupMembers, type GroupMember } from '@/features/groups/hooks/useGroupMembers';
 import { CoverThumbnail } from '@/components/CoverThumbnail';
 import { PencilIcon } from '@/components/PencilIcon';
+import { TrophyIcon } from '@/components/TrophyIcon';
 import { ReorderList } from '@/components/ReorderList';
 import { gameColorForTemplate } from '@/features/games/colors';
 import { coverImageForTemplate } from '@/features/games/covers';
@@ -96,8 +97,24 @@ interface PlayerCardProps {
   roundDelta?: number;
   canEdit: boolean;
   isOpen: boolean;
+  /** Lists the field values under the name while collapsed. Off for a rounds game, whose `values`
+   *  are the unbanked round draft rather than anything the running total is made of. */
+  showSummary?: boolean;
   onToggleOpen: () => void;
   onChangeField: (fieldKey: string, value: number) => void;
+}
+
+/** One line per field: each numeric field with its value, and an exclusive field (at its award
+ *  value) only when this participant holds it. */
+function fieldSummary(
+  fields: PlayerCardProps['fields'],
+  values: Record<string, number>,
+): { key: string; label: string; value: number }[] {
+  return fields.flatMap((field) => {
+    const value = values[field.key] ?? (field.exclusive ? 0 : field.defaultValue);
+    if (field.exclusive && value === 0) return [];
+    return [{ key: field.key, label: field.label, value }];
+  });
 }
 
 /** A field at most one participant may hold per session — Catan's longest trade route, largest
@@ -146,22 +163,42 @@ function PlayerCard({
   roundDelta,
   canEdit,
   isOpen,
+  showSummary = false,
   onToggleOpen,
   onChangeField,
 }: PlayerCardProps) {
+  // The collapsed card's only view of the fields — spectators can never expand it, so without this
+  // they'd see a total with no way to tell where it came from.
+  const summary = showSummary && !(canEdit && isOpen) ? fieldSummary(fields, values) : [];
+
   return (
     <View className="overflow-hidden rounded-2xl border border-line bg-surface">
       <Pressable
         onPress={canEdit ? onToggleOpen : undefined}
         accessibilityRole={canEdit ? 'button' : undefined}
+        accessibilityState={canEdit ? { expanded: isOpen } : undefined}
         className={`flex-row items-center gap-3 px-4 py-3 ${canEdit ? 'active:opacity-70' : ''}`}
       >
         <MemberAvatar member={member} size={36} />
-        <View className="min-w-0 flex-1 flex-row items-center gap-2">
-          <Text className="min-w-0 flex-1 text-base font-semibold text-ink" numberOfLines={1}>
-            {member.displayName}
-          </Text>
-          {isScorekeeper ? <Badge tone="accent">Scorebijhouder</Badge> : null}
+        <View className="min-w-0 flex-1">
+          <View className="flex-row items-center gap-2">
+            <Text className="min-w-0 shrink text-base font-semibold text-ink" numberOfLines={1}>
+              {member.displayName}
+            </Text>
+            {isScorekeeper ? <Badge tone="accent">Scorebijhouder</Badge> : null}
+          </View>
+          {summary.length > 0 ? (
+            <View className="mt-1 gap-0.5">
+              {summary.map((line) => (
+                <View key={line.key} className="flex-row items-baseline gap-3">
+                  <Text className="min-w-0 flex-1 text-sm text-ink-muted" numberOfLines={1}>
+                    {line.label}
+                  </Text>
+                  <Text className="text-sm font-semibold text-ink-muted">{line.value}</Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
         </View>
         <View className="items-end">
           <PoppingTotal value={total} className="text-2xl font-bold text-ink" />
@@ -171,6 +208,15 @@ function PlayerCard({
             </Text>
           ) : null}
         </View>
+        {canEdit ? (
+          // Same text chevron as the group list rows, turned down while the fields are showing.
+          <Text
+            className="text-xl text-ink-subtle"
+            style={{ transform: [{ rotate: isOpen ? '-90deg' : '90deg' }] }}
+          >
+            ›
+          </Text>
+        ) : null}
       </Pressable>
 
       {canEdit && isOpen ? (
@@ -233,6 +279,38 @@ function EditSessionButton({
         <PencilIcon size={20} color={theme.ink} />
       )}
     </Pressable>
+  );
+}
+
+/** "Ronde 3 van 6", with the scorekeeper's undo for the last banked round beside it. The button is
+ *  sized up to the 44px tap floor with hitSlop, since it's used mid-game at arm's length. */
+function RoundHeader({
+  label,
+  canUndo,
+  isUndoing,
+  onUndo,
+}: {
+  label: string;
+  canUndo: boolean;
+  isUndoing: boolean;
+  onUndo: () => void;
+}) {
+  return (
+    <View className="flex-row items-center justify-between">
+      <SectionLabel>{label}</SectionLabel>
+      {canUndo ? (
+        <Pressable
+          onPress={onUndo}
+          disabled={isUndoing}
+          hitSlop={12}
+          accessibilityRole="button"
+          className={`active:opacity-70 ${isUndoing ? 'opacity-50' : ''}`}
+          testID="undo-round-button"
+        >
+          <Text className="text-sm font-semibold text-accent">Ronde terugdraaien</Text>
+        </Pressable>
+      ) : null}
+    </View>
   );
 }
 
@@ -678,16 +756,20 @@ function DeleteNoteConfirmModal({ onCancel, onConfirm, isPending }: DeleteNoteCo
   );
 }
 
-interface LeaveConfirmModalProps {
+interface DeleteSessionConfirmModalProps {
   onCancel: () => void;
   onConfirm: () => void;
+  isPending: boolean;
 }
 
-/** Guards the scorekeeper against abandoning a live session by accident — the back gesture, the
- *  header back button, and Android's hardware back button all funnel through the same
- *  `beforeRemove` event. Confirming deletes the session: there's no "in progress but nobody's
- *  keeping score" state to leave it in, so backing out has to mean throwing it away. */
-function LeaveConfirmModal({ onCancel, onConfirm }: LeaveConfirmModalProps) {
+/** Throwing a live session away is the scorekeeper's explicit choice now, not a side effect of
+ *  leaving the screen: a live session stays reachable from the group dashboard, so backing out
+ *  just leaves it running. */
+function DeleteSessionConfirmModal({
+  onCancel,
+  onConfirm,
+  isPending,
+}: DeleteSessionConfirmModalProps) {
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onCancel}>
       <Pressable
@@ -699,10 +781,15 @@ function LeaveConfirmModal({ onCancel, onConfirm }: LeaveConfirmModalProps) {
           <View>
             <Text className="text-xl font-bold text-ink">Potje verwijderen?</Text>
             <Text className="mt-1 text-sm text-ink-muted">
-              Als je nu teruggaat, wordt dit lopende potje verwijderd. Alle scores gaan verloren.
+              Het potje en alle scores tot nu toe worden verwijderd. Dit kun je niet ongedaan maken.
             </Text>
           </View>
-          <Button label="Verwijderen" variant="secondary" onPress={onConfirm} />
+          <Button
+            label="Verwijderen"
+            variant="secondary"
+            onPress={onConfirm}
+            isLoading={isPending}
+          />
           <Button label="Terug naar potje" onPress={onCancel} />
         </Pressable>
       </Pressable>
@@ -828,11 +915,7 @@ export function SessionScreen() {
   const [noteDraft, setNoteDraft] = useState('');
   const [pendingDeleteNoteId, setPendingDeleteNoteId] = useState<string | null>(null);
 
-  const [isLeaveConfirmVisible, setIsLeaveConfirmVisible] = useState(false);
-  const pendingLeaveActionRef = useRef<NavigationAction | null>(null);
-  // Leaving is normally a destructive accident worth guarding, but the finish flow deletes a
-  // roundless session on purpose and then navigates away — this lets that one case through.
-  const skipLeaveGuardRef = useRef(false);
+  const [isDeleteConfirmVisible, setIsDeleteConfirmVisible] = useState(false);
 
   // The finish order of the round being played, as ids. Local until "Volgende ronde" banks it:
   // nothing about an unfinished round is written to the server, which is also why a spectator sees
@@ -937,22 +1020,6 @@ export function SessionScreen() {
     scoresByUser,
   ]);
 
-  // Covers the header back button, the swipe gesture, and Android's hardware back button alike —
-  // all of them dispatch a GO_BACK action that fires this event before the screen is removed.
-  // Only the scorekeeper backing out is destructive (it deletes the session), so that's the only
-  // case this intercepts — a spectator leaving the live view has nothing to lose.
-  useEffect(() => {
-    return navigation.addListener('beforeRemove', (event) => {
-      const isScorekeeper = currentUserId === sessionData?.scorekeeper_id;
-      if (sessionData?.status !== 'in_progress' || !isScorekeeper) return;
-      if (skipLeaveGuardRef.current) return;
-
-      event.preventDefault();
-      pendingLeaveActionRef.current = event.data.action;
-      setIsLeaveConfirmVisible(true);
-    });
-  }, [navigation, sessionData?.status, sessionData?.scorekeeper_id, currentUserId]);
-
   // A new round starts in the order the previous one finished in — that's how the game actually
   // plays, and it saves re-dragging the whole table when only two players swapped. Round one has no
   // predecessor, so it falls back to the participant order chosen when the session was created.
@@ -986,17 +1053,13 @@ export function SessionScreen() {
     });
   }, [participantIds]);
 
-  function confirmLeave() {
-    setIsLeaveConfirmVisible(false);
-    const action = pendingLeaveActionRef.current;
-    pendingLeaveActionRef.current = null;
-    deleteSession.mutate();
-    if (action) navigation.dispatch(action);
-  }
-
-  function cancelLeave() {
-    setIsLeaveConfirmVisible(false);
-    pendingLeaveActionRef.current = null;
+  function confirmDeleteSession() {
+    deleteSession.mutate(undefined, {
+      onSuccess: () => {
+        setIsDeleteConfirmVisible(false);
+        navigation.goBack();
+      },
+    });
   }
 
   if (isSessionPending) {
@@ -1165,6 +1228,15 @@ export function SessionScreen() {
   const standingsMembers = [...participants].sort(
     (a, b) => (pointsByUserId.get(b.userId) ?? 0) - (pointsByUserId.get(a.userId) ?? 0),
   );
+  // Same, for a single-round field game, where "best" depends on the scoring direction.
+  const fieldStandingsMembers = [...participants].sort((a, b) => {
+    const difference = (pointsByUserId.get(b.userId) ?? 0) - (pointsByUserId.get(a.userId) ?? 0);
+    return higherTotalIsBetter(sessionData.game_templates.scoring_direction, isRounds)
+      ? difference
+      : -difference;
+  });
+  const scorekeeperName =
+    members?.find((member) => member.userId === sessionData.scorekeeper_id)?.displayName ?? null;
 
   /** Once round_count rounds have been banked, the finish dialog opens on its own — but the round
    *  now on screen is a fresh, untouched one, so "count it too" starts unchecked rather than the
@@ -1251,7 +1323,6 @@ export function SessionScreen() {
     // Nothing was ever played, so there's no result worth filing — the session is thrown away
     // instead of landing in the history as a table of zeroes.
     if (bankedRounds === 0) {
-      skipLeaveGuardRef.current = true;
       deleteSession.mutate(undefined, { onSuccess: () => navigation.goBack() });
       return;
     }
@@ -1367,7 +1438,7 @@ export function SessionScreen() {
                         notification dot, instead of spelling "Winnaar" out as a separate pill next
                         to the name. */}
                       <View className="absolute -bottom-1 -right-1 h-6 w-6 items-center justify-center rounded-full border-2 border-surface bg-surface-muted">
-                        <Text className="text-xs leading-none">🏆</Text>
+                        <TrophyIcon size={13} color={theme.warning} />
                       </View>
                     </View>
                     <View className="min-w-0 flex-1 items-start">
@@ -1448,22 +1519,23 @@ export function SessionScreen() {
           bottomOffset={8 + Math.max(footerHeight - insets.bottom, 0)}
           keyboardShouldPersistTaps="handled"
         >
+          {/* A spectator's only cue that the screen is live and why nothing on it is tappable. */}
+          {isInProgress && !canEdit && scorekeeperName ? (
+            <Card tone="muted">
+              <Text className="text-sm text-ink-muted">
+                Je kijkt live mee. {scorekeeperName} houdt de score bij.
+              </Text>
+            </Card>
+          ) : null}
+
           {isRankedRounds ? (
             <View>
-              <View className="flex-row items-center justify-between">
-                <SectionLabel>{roundLabel}</SectionLabel>
-                {canEdit && canUndoRound ? (
-                  <Pressable
-                    onPress={handleUndoRound}
-                    disabled={undoRound.isPending}
-                    accessibilityRole="button"
-                    className="active:opacity-70"
-                    testID="undo-round-button"
-                  >
-                    <Text className="text-sm font-semibold text-accent">Ronde terugdraaien</Text>
-                  </Pressable>
-                ) : null}
-              </View>
+              <RoundHeader
+                label={roundLabel}
+                canUndo={canEdit && canUndoRound}
+                isUndoing={undoRound.isPending}
+                onUndo={handleUndoRound}
+              />
               <View className="mt-2">
                 {canEdit ? (
                   <RoundsEntryList
@@ -1478,20 +1550,12 @@ export function SessionScreen() {
             </View>
           ) : isFieldRounds ? (
             <View>
-              <View className="flex-row items-center justify-between">
-                <SectionLabel>{roundLabel}</SectionLabel>
-                {canEdit && canUndoRound ? (
-                  <Pressable
-                    onPress={handleUndoRound}
-                    disabled={undoRound.isPending}
-                    accessibilityRole="button"
-                    className="active:opacity-70"
-                    testID="undo-round-button"
-                  >
-                    <Text className="text-sm font-semibold text-accent">Ronde terugdraaien</Text>
-                  </Pressable>
-                ) : null}
-              </View>
+              <RoundHeader
+                label={roundLabel}
+                canUndo={canEdit && canUndoRound}
+                isUndoing={undoRound.isPending}
+                onUndo={handleUndoRound}
+              />
               <View className="mt-2 gap-2">
                 {participants.map((member) => {
                   // Every unset field reads as 0 here explicitly (rather than a field's
@@ -1589,7 +1653,9 @@ export function SessionScreen() {
                 )
               ) : (
                 <View className="mt-2 gap-2">
-                  {participants.map((member) => (
+                  {/* The scorekeeper keeps a fixed order so a card never jumps out from under
+                      their thumb mid-entry; everyone watching gets the live standings instead. */}
+                  {(canEdit ? participants : fieldStandingsMembers).map((member) => (
                     <PlayerCard
                       key={member.userId}
                       member={member}
@@ -1599,6 +1665,7 @@ export function SessionScreen() {
                       total={totalByUserId.get(member.userId)?.total ?? 0}
                       canEdit={canEdit}
                       isOpen={openParticipantId === member.userId}
+                      showSummary
                       onToggleOpen={() =>
                         setOpenParticipantId((current) =>
                           current === member.userId ? null : member.userId,
@@ -1627,6 +1694,20 @@ export function SessionScreen() {
             onDelete={setPendingDeleteNoteId}
             isAdding={addNote.isPending}
           />
+
+          {/* Out of the pinned footer on purpose: it's the rare, destructive action, so it sits at
+              the end of the scroll rather than next to "Potje afronden". */}
+          {isInProgress && isScorekeeper ? (
+            <Button
+              label="Potje verwijderen"
+              variant="ghost"
+              onPress={() => {
+                deleteSession.reset();
+                setIsDeleteConfirmVisible(true);
+              }}
+              testID="delete-session-button"
+            />
+          ) : null}
         </KeyboardAwareScrollView>
 
         {hasFooter ? (
@@ -1705,11 +1786,15 @@ export function SessionScreen() {
           />
         ) : null}
 
-        {isLeaveConfirmVisible ? (
-          <LeaveConfirmModal onCancel={cancelLeave} onConfirm={confirmLeave} />
+        {isDeleteConfirmVisible ? (
+          <DeleteSessionConfirmModal
+            onCancel={() => setIsDeleteConfirmVisible(false)}
+            onConfirm={confirmDeleteSession}
+            isPending={deleteSession.isPending}
+          />
         ) : null}
 
-        {pendingDeleteNoteId && !isFinishRoundsVisible && !isLeaveConfirmVisible ? (
+        {pendingDeleteNoteId && !isFinishRoundsVisible && !isDeleteConfirmVisible ? (
           <DeleteNoteConfirmModal
             onCancel={() => setPendingDeleteNoteId(null)}
             onConfirm={confirmDeleteNote}

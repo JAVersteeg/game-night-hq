@@ -69,7 +69,7 @@ export function NumberStepper({
         <Pressable
           onPress={() => step_(-step)}
           accessibilityLabel="minder"
-          className="h-10 w-10 items-center justify-center rounded-lg border border-line-strong bg-surface active:opacity-70"
+          className="h-11 w-11 items-center justify-center rounded-lg border border-line-strong bg-surface active:opacity-70"
         >
           <Text className="text-xl font-semibold text-ink">−</Text>
         </Pressable>
@@ -80,13 +80,13 @@ export function NumberStepper({
           keyboardType="numeric"
           selectTextOnFocus
           placeholderTextColor={theme.inkSubtle}
-          className="w-14 rounded-lg border border-line bg-surface py-2 text-center text-lg font-semibold text-ink"
+          className="h-11 w-14 rounded-lg border border-line bg-surface text-center text-lg font-semibold text-ink"
           testID={testID}
         />
         <Pressable
           onPress={() => step_(step)}
           accessibilityLabel="meer"
-          className="h-10 w-10 items-center justify-center rounded-lg border border-line-strong bg-surface active:opacity-70"
+          className="h-11 w-11 items-center justify-center rounded-lg border border-line-strong bg-surface active:opacity-70"
         >
           <Text className="text-xl font-semibold text-ink">+</Text>
         </Pressable>

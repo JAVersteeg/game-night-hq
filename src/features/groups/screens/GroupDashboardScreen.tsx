@@ -1,13 +1,14 @@
 import type { RouteProp } from '@react-navigation/native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { format, subMonths, subYears } from 'date-fns';
+import { format } from 'date-fns';
 import { nl } from 'date-fns/locale';
 import { useLayoutEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { Text } from '@/components/Text';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Badge } from '@/components/Badge';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { BarList } from '@/components/charts/BarList';
@@ -48,6 +49,7 @@ import {
   type PlayerColor,
 } from '@/features/groups/hooks/useGroupMembers';
 import { useGroup } from '@/features/groups/hooks/useGroups';
+import { useLiveSessions, type LiveSession } from '@/features/sessions/hooks/useLiveSessions';
 import { useSessionHistory } from '@/features/sessions/hooks/useSessionHistory';
 import { higherTotalIsBetter } from '@/features/sessions/scoring';
 import { getPlayerColor } from '@/lib/playerColors';
@@ -144,6 +146,55 @@ function HistoryRow({
   );
 }
 
+/** A session being played right now. Pinned above the tabs so it's the first thing anyone opening
+ *  the group sees — it's the only way into the live view for everyone but the person who started
+ *  it, and the way back in for the scorekeeper after stepping away. */
+function LiveSessionCard({
+  session,
+  scorekeeperName,
+  onPress,
+}: {
+  session: LiveSession;
+  scorekeeperName: string | null;
+  onPress: () => void;
+}) {
+  const roundNumber = session.roundsPlayed + 1;
+  const round = session.rounds
+    ? session.roundCount
+      ? `Ronde ${roundNumber} van ${session.roundCount}`
+      : `Ronde ${roundNumber}`
+    : null;
+  const players = `${session.participantIds.length} spelers`;
+  const meta = [scorekeeperName ? `${scorekeeperName} houdt de score bij` : players, round]
+    .filter(Boolean)
+    .join(' · ');
+
+  return (
+    <Card
+      onPress={onPress}
+      className="flex-row items-center gap-4"
+      accessibilityLabel={`Bekijk het lopende potje ${session.gameName}`}
+    >
+      <CoverThumbnail
+        source={coverImageForTemplate(session.coverKey, session.gameName)}
+        color={gameColorForTemplate(session.coverKey, session.gameName)}
+        size={40}
+      />
+      <View className="min-w-0 flex-1">
+        <View className="flex-row items-center gap-2">
+          <Text className="shrink text-lg font-semibold text-ink" numberOfLines={1}>
+            {session.gameName}
+          </Text>
+          <Badge tone="success">Nu bezig</Badge>
+        </View>
+        <Text className="mt-0.5 text-sm font-medium text-ink-muted" numberOfLines={1}>
+          {meta}
+        </Text>
+      </View>
+    </Card>
+  );
+}
+
 /** The group's game templates: tap one to start a session, or add a new one. */
 function GamesTab({ groupId }: { groupId: string }) {
   const navigation = useNavigation<Navigation>();
@@ -222,17 +273,21 @@ function HistoryTab({ groupId }: { groupId: string }) {
         />
       ) : (
         (() => {
-          // Sessions arrive newest first, so each threshold is crossed at most once — the header
-          // goes in front of the first session older than it.
-          const now = new Date();
-          const oneMonthAgo = subMonths(now, 1);
-          const oneYearAgo = subYears(now, 1);
-          let monthHeaderShown = false;
-          let yearHeaderShown = false;
+          // Sessions arrive newest first, so a month header goes in front of the first session of
+          // each month. A game night is remembered as "that time in March", which a month header
+          // finds faster than scanning full dates row by row.
+          const currentYear = new Date().getFullYear();
+          let previousMonth: string | null = null;
 
-          return sessions.map((session) => {
+          return sessions.map((session, index) => {
             const playedAt = new Date(session.playedAt);
-            const date = format(playedAt, 'd MMMM yyyy', { locale: nl });
+            // The year only when it isn't this one — the header already carries it otherwise.
+            const date = format(playedAt, 'EEEE d MMMM', { locale: nl });
+            const month = format(
+              playedAt,
+              playedAt.getFullYear() === currentYear ? 'MMMM' : 'MMMM yyyy',
+              { locale: nl },
+            );
             const winnerNames = session.winnerIds
               .map((userId) => displayNameById.get(userId))
               .filter((name): name is string => Boolean(name));
@@ -242,17 +297,11 @@ function HistoryTab({ groupId }: { groupId: string }) {
                 ? `${date} · ${winnerLabel}: ${winnerNames.join(' & ')}`
                 : date;
 
-            let header: string | null = null;
-            if (!yearHeaderShown && playedAt < oneYearAgo) {
-              header = 'Meer dan 1 jaar geleden';
-              yearHeaderShown = true;
-            } else if (!monthHeaderShown && playedAt < oneMonthAgo) {
-              header = 'Meer dan 1 maand geleden';
-              monthHeaderShown = true;
-            }
+            const header = month === previousMonth ? null : month;
+            previousMonth = month;
 
             return (
-              <View key={session.id} className="gap-3">
+              <View key={session.id} className={`gap-3 ${header && index > 0 ? 'mt-3' : ''}`}>
                 {header ? <SectionLabel>{header}</SectionLabel> : null}
                 <HistoryRow
                   gameName={session.gameName}
@@ -720,10 +769,14 @@ function StatsTab({ groupId }: { groupId: string }) {
 
   return (
     <ScrollView className="flex-1" contentContainerClassName="px-6 pb-8 pt-4">
-      <View className="flex-row gap-3">
-        <StatTile value={stats?.gamesCount ?? 0} label="Spellen" />
-        <StatTile value={stats?.sessionsPlayedCount ?? 0} label="Potjes gespeeld" />
-      </View>
+      {/* Held back until loaded: a "0" standing in for a number that hasn't arrived yet reads as a
+          real count. The spinner below already covers the wait. */}
+      {stats ? (
+        <View className="flex-row gap-3">
+          <StatTile value={stats.gamesCount} label="Spellen" />
+          <StatTile value={stats.sessionsPlayedCount} label="Potjes gespeeld" />
+        </View>
+      ) : null}
 
       {stats?.lastPlayedAt ? (
         <Text className="mt-3 text-center text-sm text-ink-subtle">
@@ -787,6 +840,8 @@ export function GroupDashboardScreen() {
   // an immediate, obvious chance to swap it for one they'd rather have.
   const [colorModalOpen, setColorModalOpen] = useState(justJoined === true);
   const { data: members } = useGroupMembers(groupId);
+  const { data: liveSessions } = useLiveSessions();
+  const groupLiveSessions = (liveSessions ?? []).filter((live) => live.groupId === groupId);
   const setColor = useSetMemberColor(groupId);
   const me = members?.find((member) => member.userId === session?.user.id);
 
@@ -829,6 +884,21 @@ export function GroupDashboardScreen() {
     // GamesTab's pinned "Spel toevoegen" button would otherwise sit under Android's gesture bar.
     <AvatarMarksProvider groupId={groupId}>
       <SafeAreaView className="flex-1 bg-surface" edges={['bottom']}>
+        {groupLiveSessions.length > 0 ? (
+          <View className="gap-2 px-6 pb-3 pt-2">
+            {groupLiveSessions.map((live) => (
+              <LiveSessionCard
+                key={live.id}
+                session={live}
+                scorekeeperName={
+                  members?.find((member) => member.userId === live.scorekeeperId)?.displayName ??
+                  null
+                }
+                onPress={() => navigation.navigate('Session', { sessionId: live.id })}
+              />
+            ))}
+          </View>
+        ) : null}
         <View className="px-6 pt-2">
           <SegmentedControl options={TABS} value={tab} onChange={setTab} />
         </View>
