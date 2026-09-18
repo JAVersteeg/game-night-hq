@@ -1,5 +1,5 @@
 import type { NavigationAction, RouteProp } from '@react-navigation/native';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ActivityIndicator, Modal, Pressable, View } from 'react-native';
@@ -252,10 +252,53 @@ function RankedOrderList({ members }: { members: GroupMember[] }) {
   );
 }
 
-function RankedEntryRow({
+/** Row spacing for the drag lists, applied as a uniform bottom margin on the row itself rather
+ *  than through `ItemSeparatorComponent`. FlatList renders a separator *inside* the cell that
+ *  react-native-draggable-flatlist measures, and the last row never gets one — so cell heights
+ *  differed by 8px depending on where a row sat, and the drag maths built on those heights put the
+ *  dropped row down in the wrong place before the list settled. `containerStyle` below takes the
+ *  trailing margin back off so the surrounding layout is unchanged. */
+const ROW_GAP = 8;
+
+/** How long a row has to be held before it picks up. The platform default (500ms) is tuned for
+ *  "reveal a hidden menu", not for a list whose entire purpose is reordering — this is short
+ *  enough that the row feels glued to the finger, while still leaving a flick to scroll the page
+ *  rather than grab a player. */
+const DRAG_HOLD_MS = 150;
+
+/** Snappier and clamped compared to the library default, which is soft enough that the drop reads
+ *  as a wobble rather than a placement. */
+const DRAG_ANIMATION_CONFIG = {
+  damping: 30,
+  mass: 0.35,
+  stiffness: 320,
+  overshootClamping: true,
+  restDisplacementThreshold: 0.5,
+  restSpeedThreshold: 2,
+};
+
+/** Shared by both drag lists so the two behave identically under the finger. */
+const dragListProps = {
+  scrollEnabled: false,
+  // Cancels the trailing ROW_GAP that the last row's margin adds, so the list occupies exactly
+  // the space it did when the gap came from a separator.
+  containerStyle: { marginBottom: -ROW_GAP },
+  animationConfig: DRAG_ANIMATION_CONFIG,
+} as const;
+
+/** True when both lists hold the same people in the same places — identity is no use here, since
+ *  the member objects are rebuilt on every render of the screen. */
+function isSameOrder(a: GroupMember[], b: GroupMember[]) {
+  return a.length === b.length && a.every((member, index) => member.userId === b[index]?.userId);
+}
+
+/** Memoised on primitive props: a live session re-renders the whole screen on every realtime echo,
+ *  and re-rendering every row underneath an in-progress drag is what made it stutter. */
+const RankedEntryRow = memo(function RankedEntryRow({
   position,
   member,
-  score,
+  scoreTotal,
+  scoreDelta,
   drag,
   isActive,
 }: {
@@ -263,16 +306,19 @@ function RankedEntryRow({
   member: GroupMember;
   /** Only rounds games have anything to show here: the points banked so far and what this place
    *  would add. A plain ranked game has no running score at all. */
-  score?: { total: number; delta: number };
+  scoreTotal?: number;
+  scoreDelta?: number;
   drag: () => void;
   isActive: boolean;
 }) {
   return (
     <Pressable
       onLongPress={drag}
+      delayLongPress={DRAG_HOLD_MS}
       disabled={isActive}
       accessibilityRole="button"
       accessibilityLabel={`Sleep ${member.displayName} naar een andere plek`}
+      style={{ marginBottom: ROW_GAP }}
       className={`flex-row items-center gap-3 rounded-2xl border px-4 py-3 ${
         isActive ? 'border-accent-line bg-accent-soft' : 'border-line bg-surface'
       }`}
@@ -282,16 +328,16 @@ function RankedEntryRow({
       <Text className="min-w-0 flex-1 text-base font-semibold text-ink" numberOfLines={1}>
         {member.displayName}
       </Text>
-      {score ? (
+      {scoreTotal !== undefined ? (
         <View className="items-end">
-          <Text className="text-base font-bold text-ink">{score.total}</Text>
-          <Text className="text-xs font-semibold text-accent">+{score.delta}</Text>
+          <Text className="text-base font-bold text-ink">{scoreTotal}</Text>
+          <Text className="text-xs font-semibold text-accent">+{scoreDelta}</Text>
         </View>
       ) : null}
       <Text className="text-lg text-ink-subtle">≡</Text>
     </Pressable>
   );
-}
+});
 
 /** Drag-to-reorder finish order for a ranked template — there are no fields to enter, only who
  *  finished where. Local `order` is the source of truth while dragging: it starts from whatever
@@ -333,21 +379,27 @@ function RankedEntryList({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [participants]);
 
+  const renderItem = useCallback(
+    ({ item, getIndex, drag, isActive }: RenderItemParams<GroupMember>) => (
+      <RankedEntryRow
+        position={(getIndex() ?? 0) + 1}
+        member={item}
+        drag={drag}
+        isActive={isActive}
+      />
+    ),
+    [],
+  );
+
   return (
     <DraggableFlatList
+      {...dragListProps}
       data={order}
       keyExtractor={(member) => member.userId}
-      scrollEnabled={false}
-      ItemSeparatorComponent={() => <View className="h-2" />}
-      renderItem={({ item, getIndex, drag, isActive }: RenderItemParams<GroupMember>) => (
-        <RankedEntryRow
-          position={(getIndex() ?? 0) + 1}
-          member={item}
-          drag={drag}
-          isActive={isActive}
-        />
-      )}
+      renderItem={renderItem}
       onDragEnd={({ data }) => {
+        // Reorders on the spot rather than waiting for the write to come back, so the row lands
+        // where it was dropped in the same frame the finger lifts.
         setOrder(data);
         onReorder(data.map((member) => member.userId));
       }}
@@ -368,28 +420,45 @@ function RoundsEntryList({
   totalByUserId: Map<string, number>;
   onOrderChange: (userIds: string[]) => void;
 }) {
+  // A drop reorders this copy immediately instead of waiting for the parent's state to come back
+  // down as a new `order` prop. The parent re-renders the entire screen on that update — totals,
+  // standings, footer — and hanging the dropped row's resting place off that render is what made
+  // it flick back to where it came from before landing.
+  const [localOrder, setLocalOrder] = useState(order);
+
+  // The parent still owns the order: an undo, or a change in who's playing, replaces it from
+  // above. After a drop of our own the two already agree, so this is a no-op then.
+  useEffect(() => {
+    setLocalOrder((current) => (isSameOrder(current, order) ? current : order));
+  }, [order]);
+
+  const renderItem = useCallback(
+    ({ item, getIndex, drag, isActive }: RenderItemParams<GroupMember>) => {
+      const position = (getIndex() ?? 0) + 1;
+      return (
+        <RankedEntryRow
+          position={position}
+          member={item}
+          scoreTotal={totalByUserId.get(item.userId) ?? 0}
+          scoreDelta={roundRankPoints(position, localOrder.length)}
+          drag={drag}
+          isActive={isActive}
+        />
+      );
+    },
+    [totalByUserId, localOrder.length],
+  );
+
   return (
     <DraggableFlatList
-      data={order}
+      {...dragListProps}
+      data={localOrder}
       keyExtractor={(member) => member.userId}
-      scrollEnabled={false}
-      ItemSeparatorComponent={() => <View className="h-2" />}
-      renderItem={({ item, getIndex, drag, isActive }: RenderItemParams<GroupMember>) => {
-        const position = (getIndex() ?? 0) + 1;
-        return (
-          <RankedEntryRow
-            position={position}
-            member={item}
-            score={{
-              total: totalByUserId.get(item.userId) ?? 0,
-              delta: roundRankPoints(position, order.length),
-            }}
-            drag={drag}
-            isActive={isActive}
-          />
-        );
+      renderItem={renderItem}
+      onDragEnd={({ data }) => {
+        setLocalOrder(data);
+        onOrderChange(data.map((member) => member.userId));
       }}
-      onDragEnd={({ data }) => onOrderChange(data.map((member) => member.userId))}
     />
   );
 }
@@ -1421,8 +1490,15 @@ export function SessionScreen() {
                           });
                           return;
                         }
-                        userIds.forEach((userId, index) =>
-                          setScore.mutate({ userId, fieldKey: RANK_FIELD_KEY, value: index + 1 }),
+                        // One write for the whole order: a drop past two players rewrites three
+                        // ranks, and three separate upserts each triggered their own refetch right
+                        // as the row was settling.
+                        setScores.mutate(
+                          userIds.map((userId, index) => ({
+                            userId,
+                            fieldKey: RANK_FIELD_KEY,
+                            value: index + 1,
+                          })),
                         );
                       }}
                     />

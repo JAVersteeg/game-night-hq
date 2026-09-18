@@ -128,13 +128,15 @@ export function useSetScore(sessionId: string) {
 }
 
 /**
- * Writes every field in `inputs` as one request, for flushing a whole batch of local edits at once
- * (see `SessionScreen`'s completed-session correction, which edits a draft locally and only saves
- * it here). Deliberately not a loop of `useSetScore` calls: that fires one independent mutation per
+ * Writes every field in `inputs` as one request, for the two places that change a whole batch of
+ * values at once: `SessionScreen`'s completed-session correction (which edits a draft locally and
+ * only saves it here) and a ranked drag, where dropping a player past two others rewrites three
+ * ranks. Deliberately not a loop of `useSetScore` calls: that fires one independent mutation per
  * field, and a dozen-odd of those sharing one mutation key is exactly the kind of concurrent,
  * order-sensitive writes `useSetScore`'s `scope`/`isMutating` coordination exists to referee in the
  * first place — correct in principle, but more moving parts than a single "save everything" action
- * needs. One request, one optimistic update, one confirmation: nothing left to referee.
+ * needs. One request, one optimistic update, one confirmation: nothing left to referee. For the
+ * drag that also means the drop animation isn't competing with a burst of refetches.
  */
 export function useSetScores(sessionId: string) {
   const queryClient = useQueryClient();
@@ -175,8 +177,10 @@ export function useSetScores(sessionId: string) {
     },
     onSettled: () => {
       // Same guard as `useSetScore`, for the same reason — belt and braces, since the two never
-      // actually run for the same session at once (`useSetScore` is live play only, this is
-      // completed-session editing only), but sharing a mutation key makes it free to check anyway.
+      // actually run for the same session at once (`useSetScore` only ever writes fields, and the
+      // two callers here are a ranked drag, which has no fields, and completed-session editing),
+      // but sharing a mutation key makes it free to check anyway. It does matter between two
+      // batches of its own: a quick second drag before the first write settles.
       if (queryClient.isMutating({ mutationKey: queryKey }) <= 1) {
         void queryClient.invalidateQueries({ queryKey });
       }
