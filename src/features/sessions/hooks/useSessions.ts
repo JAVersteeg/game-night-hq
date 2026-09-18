@@ -62,18 +62,20 @@ export function useSession(sessionId: string) {
   const queryClient = useQueryClient();
   const queryKey = sessionKeys.detail(sessionId);
 
+  // Keyed on `sessionId`, not `queryKey`: the key is a fresh array every render, so depending on it
+  // tore the channel down and resubscribed on every render, stacking handlers under the same topic.
   useEffect(() => {
     const channel = supabase
       .channel(`session-${sessionId}`)
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'sessions', filter: `id=eq.${sessionId}` },
-        () => void queryClient.invalidateQueries({ queryKey }),
+        () => void queryClient.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) }),
       )
       .subscribe();
 
     return () => void supabase.removeChannel(channel);
-  }, [sessionId, queryClient, queryKey]);
+  }, [sessionId, queryClient]);
 
   return useQuery({
     queryKey,

@@ -30,12 +30,13 @@ export function useSessionNotes(sessionId: string) {
           table: 'session_notes',
           filter: `session_id=eq.${sessionId}`,
         },
-        () => void queryClient.invalidateQueries({ queryKey }),
+        () => void queryClient.invalidateQueries({ queryKey: sessionNoteKeys.detail(sessionId) }),
       )
       .subscribe();
 
     return () => void supabase.removeChannel(channel);
-  }, [sessionId, queryClient, queryKey]);
+    // Not `queryKey`: it's a fresh array every render and would resubscribe on each one.
+  }, [sessionId, queryClient]);
 
   return useQuery({
     queryKey,

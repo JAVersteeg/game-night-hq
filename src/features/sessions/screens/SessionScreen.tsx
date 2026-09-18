@@ -8,6 +8,18 @@ import { KeyboardAwareScrollView, KeyboardStickyView } from 'react-native-keyboa
 import { format } from 'date-fns';
 import { nl } from 'date-fns/locale';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, {
+  Easing,
+  cancelAnimation,
+  interpolate,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withSequence,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { Badge } from '@/components/Badge';
 import { Button } from '@/components/Button';
@@ -255,6 +267,109 @@ function RankedOrderList({ members }: { members: GroupMember[] }) {
 /** Space between rows in the drag lists. */
 const ROW_GAP = 8;
 
+const FLY_MS = 380;
+const POP_UP_MS = 110;
+const DELTA_RETURN_DELAY_MS = 220;
+const POP_SPRING = { damping: 9, stiffness: 260, mass: 0.6 };
+
+/** A rounds row's running total with this place's "+X" underneath. When a banked round raises the
+ *  total, the "+X" floats up into it, and only on arrival does the number tick over and pop — the
+ *  old total stays on screen until then so the two read as one motion. A drop (undoing a round)
+ *  just snaps, since there's nothing being added. */
+function RoundScore({ total, delta }: { total: number; delta: number }) {
+  const [shownTotal, setShownTotal] = useState(total);
+  const [flyingDelta, setFlyingDelta] = useState<number | null>(null);
+  const previousTotal = useRef(total);
+
+  const flight = useSharedValue(0);
+  const totalScale = useSharedValue(1);
+  const deltaOpacity = useSharedValue(1);
+  const totalHeight = useSharedValue(24);
+  const deltaHeight = useSharedValue(16);
+
+  useEffect(() => {
+    const previous = previousTotal.current;
+    previousTotal.current = total;
+    if (total === previous) return;
+
+    cancelAnimation(flight);
+    cancelAnimation(totalScale);
+    cancelAnimation(deltaOpacity);
+
+    if (total < previous) {
+      setFlyingDelta(null);
+      setShownTotal(total);
+      flight.value = 0;
+      totalScale.value = 1;
+      deltaOpacity.value = 1;
+      return;
+    }
+
+    setFlyingDelta(total - previous);
+    flight.value = 0;
+    deltaOpacity.value = 0;
+    flight.value = withTiming(
+      1,
+      { duration: FLY_MS, easing: Easing.bezier(0.33, 0, 0.2, 1) },
+      (finished) => {
+        if (!finished) return;
+        scheduleOnRN(setShownTotal, total);
+        scheduleOnRN(setFlyingDelta, null);
+        totalScale.value = withSequence(
+          withTiming(1.35, { duration: POP_UP_MS, easing: Easing.out(Easing.quad) }),
+          withSpring(1, POP_SPRING),
+        );
+        deltaOpacity.value = withDelay(DELTA_RETURN_DELAY_MS, withTiming(1, { duration: 200 }));
+      },
+    );
+    // Shared values are stable refs; only a new total should start a flight.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [total]);
+
+  const totalStyle = useAnimatedStyle(() => ({ transform: [{ scale: totalScale.value }] }));
+  const deltaStyle = useAnimatedStyle(() => ({ opacity: deltaOpacity.value }));
+  const flyerStyle = useAnimatedStyle(() => {
+    // Centre of the "+X" line to centre of the total line.
+    const travel = (totalHeight.value + deltaHeight.value) / 2;
+    return {
+      opacity: interpolate(flight.value, [0, 0.6, 1], [1, 1, 0]),
+      transform: [
+        { translateY: -travel * flight.value },
+        { scale: interpolate(flight.value, [0, 0.5, 1], [1, 1.15, 0.8]) },
+      ],
+    };
+  });
+
+  return (
+    <View className="items-end">
+      <Animated.View
+        style={totalStyle}
+        onLayout={(event) => {
+          totalHeight.value = event.nativeEvent.layout.height;
+        }}
+      >
+        <Text className="text-base font-bold text-ink">{shownTotal}</Text>
+      </Animated.View>
+      <Animated.View
+        style={deltaStyle}
+        onLayout={(event) => {
+          deltaHeight.value = event.nativeEvent.layout.height;
+        }}
+      >
+        <Text className="text-xs font-semibold text-accent">+{delta}</Text>
+      </Animated.View>
+      {flyingDelta !== null ? (
+        <Animated.View
+          pointerEvents="none"
+          style={[{ position: 'absolute', right: 0, bottom: 0 }, flyerStyle]}
+        >
+          <Text className="text-xs font-semibold text-accent">+{flyingDelta}</Text>
+        </Animated.View>
+      ) : null}
+    </View>
+  );
+}
+
 /** Memoised on primitive props: a live session re-renders the whole screen on every realtime echo,
  *  and there's no reason for every row to follow along. Picking up and dropping is handled by
  *  `ReorderList` around it, which is why this is a plain view rather than something pressable. */
@@ -286,12 +401,7 @@ const RankedEntryRow = memo(function RankedEntryRow({
       <Text className="min-w-0 flex-1 text-base font-semibold text-ink" numberOfLines={1}>
         {member.displayName}
       </Text>
-      {scoreTotal !== undefined ? (
-        <View className="items-end">
-          <Text className="text-base font-bold text-ink">{scoreTotal}</Text>
-          <Text className="text-xs font-semibold text-accent">+{scoreDelta}</Text>
-        </View>
-      ) : null}
+      {scoreTotal !== undefined ? <RoundScore total={scoreTotal} delta={scoreDelta ?? 0} /> : null}
       <Text className="text-lg text-ink-subtle">≡</Text>
     </View>
   );

@@ -49,14 +49,16 @@ export function useSessionScores(sessionId: string) {
           // pending leaves that write's own onSettled to invalidate once it's actually done;
           // everyone else's changes (or this client's, once nothing of its own is still in flight)
           // still come through immediately.
-          if (queryClient.isMutating({ mutationKey: queryKey }) > 0) return;
-          void queryClient.invalidateQueries({ queryKey });
+          const key = sessionScoreKeys.detail(sessionId);
+          if (queryClient.isMutating({ mutationKey: key }) > 0) return;
+          void queryClient.invalidateQueries({ queryKey: key });
         },
       )
       .subscribe();
 
     return () => void supabase.removeChannel(channel);
-  }, [sessionId, queryClient, queryKey]);
+    // Not `queryKey`: it's a fresh array every render and would resubscribe on each one.
+  }, [sessionId, queryClient]);
 
   return useQuery({
     queryKey,
