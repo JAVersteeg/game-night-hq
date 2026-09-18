@@ -319,7 +319,7 @@ function decimal(value: number): string {
 
 /** Below this, Winstfactor swings so hard on a single evening that it says more about the sample
  *  than the player — the rows are dimmed and the explanation says why. */
-const MIN_GAMES_FOR_WIN_FACTOR = 10;
+const MIN_GAMES_FOR_WIN_FACTOR = 8;
 
 type MetricKey = 'overwicht' | 'winstfactor' | 'puntensaldo';
 
@@ -377,7 +377,7 @@ const METRICS: MetricDefinition[] = [
     key: 'winstfactor',
     label: 'Winstfactor',
     explanation: () =>
-      'Hoe vaak je wint vergeleken met wat puur toeval zou opleveren bij deze tafelgroottes; 1,0× is toeval. Let op: onder de 10 potjes zegt dit getal nog weinig, één avond kan het al bijna verdubbelen.',
+      `Hoe vaak je wint vergeleken met wat puur toeval zou opleveren bij deze tafelgroottes; 1,0× is toeval. Let op: onder de ${MIN_GAMES_FOR_WIN_FACTOR} potjes zegt dit getal nog weinig, één avond kan het al bijna verdubbelen.`,
     format: (entry) => `${decimal(entry.winFactor)}×`,
     bar: (entry, scale) => ({
       kind: 'fill',
