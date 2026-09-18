@@ -18,6 +18,7 @@ import Animated, {
   withSequence,
   withSpring,
   withTiming,
+  type SharedValue,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
@@ -163,7 +164,7 @@ function PlayerCard({
           {isScorekeeper ? <Badge tone="accent">Scorebijhouder</Badge> : null}
         </View>
         <View className="items-end">
-          <Text className="text-2xl font-bold text-ink">{total}</Text>
+          <PoppingTotal value={total} className="text-2xl font-bold text-ink" />
           {roundDelta !== undefined ? (
             <Text className="text-xs font-semibold text-accent">
               {roundDelta >= 0 ? `+${roundDelta}` : roundDelta}
@@ -272,6 +273,40 @@ const POP_UP_MS = 110;
 const DELTA_RETURN_DELAY_MS = 220;
 const POP_SPRING = { damping: 9, stiffness: 260, mass: 0.6 };
 
+/** The "points just landed" pop: a quick swell to `peak`, then a springy settle back to 1. Runs on
+ *  either thread, so it can fire from an animation's completion callback as well as from React. */
+function popScale(scale: SharedValue<number>, peak: number) {
+  'worklet';
+  scale.value = withSequence(
+    withTiming(peak, { duration: POP_UP_MS, easing: Easing.out(Easing.quad) }),
+    withSpring(1, POP_SPRING),
+  );
+}
+
+/** A total that pops whenever its value changes — every stepper tap for a single-round game, every
+ *  banked (or undone) round for a rounds game, and the same for spectators via realtime. The first
+ *  render doesn't count as a change. */
+function PoppingTotal({ value, className }: { value: number; className: string }) {
+  const scale = useSharedValue(1);
+  const previousValue = useRef(value);
+
+  useEffect(() => {
+    if (previousValue.current === value) return;
+    previousValue.current = value;
+    popScale(scale, 1.2);
+    // `scale` is a stable ref; only a new value should pop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+
+  const style = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+
+  return (
+    <Animated.View style={style}>
+      <Text className={className}>{value}</Text>
+    </Animated.View>
+  );
+}
+
 /** A rounds row's running total with this place's "+X" underneath. When a banked round raises the
  *  total, the "+X" floats up into it, and only on arrival does the number tick over and pop — the
  *  old total stays on screen until then so the two read as one motion. A drop (undoing a round)
@@ -315,10 +350,7 @@ function RoundScore({ total, delta }: { total: number; delta: number }) {
         if (!finished) return;
         scheduleOnRN(setShownTotal, total);
         scheduleOnRN(setFlyingDelta, null);
-        totalScale.value = withSequence(
-          withTiming(1.35, { duration: POP_UP_MS, easing: Easing.out(Easing.quad) }),
-          withSpring(1, POP_SPRING),
-        );
+        popScale(totalScale, 1.35);
         deltaOpacity.value = withDelay(DELTA_RETURN_DELAY_MS, withTiming(1, { duration: 200 }));
       },
     );

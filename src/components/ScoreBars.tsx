@@ -16,6 +16,39 @@ function formatSigned(value: number): string {
   return value >= 0 ? `+${value}` : `${value}`;
 }
 
+function valueColor(value: number): string {
+  if (value > 0) return 'text-success-softFg';
+  if (value < 0) return 'text-danger-softFg';
+  return 'text-ink-subtle';
+}
+
+/** How one player's total is made up: a line per field (and bonus), signed and tinted by whether
+ *  it added or cost points. */
+function Breakdown({ lines }: { lines: ScoreBreakdownLine[] }) {
+  return (
+    <View className="mt-2.5 overflow-hidden rounded-xl border border-line bg-surface-muted">
+      {lines.map((line, index) => (
+        <View
+          key={line.label}
+          className={`flex-row items-center justify-between gap-3 px-3.5 py-2 ${
+            index > 0 ? 'border-t border-line' : ''
+          }`}
+        >
+          <Text className="min-w-0 flex-1 text-sm text-ink-muted" numberOfLines={1}>
+            {line.label}
+          </Text>
+          <Text
+            className={`text-sm font-semibold ${valueColor(line.value)}`}
+            style={{ fontVariant: ['tabular-nums'] }}
+          >
+            {line.value === 0 ? '0' : formatSigned(line.value)}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 /** Final totals for one session, as horizontal bars in leaderboard order. Tapping a row whose
  *  `breakdown` has more than one line expands it to show how that total is made up field by
  *  field. */
@@ -38,13 +71,21 @@ export function ScoreBars({ rows }: { rows: ScoreBarRow[] }) {
                   : undefined
               }
               accessibilityRole={canExpand ? 'button' : undefined}
+              accessibilityState={canExpand ? { expanded: isOpen } : undefined}
               className={canExpand ? 'active:opacity-70' : undefined}
             >
               <View className="flex-row items-baseline justify-between gap-3">
                 <Text className="min-w-0 flex-1 text-base font-semibold text-ink" numberOfLines={1}>
                   {row.name}
                 </Text>
-                <Text className="text-lg font-bold text-ink">{row.total}</Text>
+                <View className="flex-row items-baseline gap-1.5">
+                  <Text className="text-lg font-bold text-ink">{row.total}</Text>
+                  {canExpand ? (
+                    <Text className={`text-xs ${isOpen ? 'text-ink' : 'text-ink-subtle'}`}>
+                      {isOpen ? '▴' : '▾'}
+                    </Text>
+                  ) : null}
+                </View>
               </View>
               <View className="mt-1.5 h-2 overflow-hidden rounded-full bg-surface-sunken">
                 <View
@@ -54,18 +95,7 @@ export function ScoreBars({ rows }: { rows: ScoreBarRow[] }) {
               </View>
             </Pressable>
 
-            {isOpen ? (
-              <View className="mt-2 gap-1 rounded-xl bg-surface-sunken px-3 py-2">
-                {row.breakdown!.map((line) => (
-                  <View key={line.label} className="flex-row items-center justify-between gap-3">
-                    <Text className="min-w-0 flex-1 text-sm text-ink-muted" numberOfLines={1}>
-                      {line.label}
-                    </Text>
-                    <Text className="text-sm font-semibold text-ink">{formatSigned(line.value)}</Text>
-                  </View>
-                ))}
-              </View>
-            ) : null}
+            {isOpen ? <Breakdown lines={row.breakdown!} /> : null}
           </View>
         );
       })}
