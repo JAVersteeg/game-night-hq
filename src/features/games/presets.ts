@@ -87,7 +87,8 @@ export const GAME_TEMPLATE_PRESETS: GameTemplatePreset[] = [
     name: 'Catan',
     scoringDirection: 'highest_total_wins',
     fields: [
-      { key: 'nederzettingen', label: 'Nederzettingen', sign: 1 },
+      // Every player starts with two settlements on the board, one point each.
+      { key: 'nederzettingen', label: 'Nederzettingen', sign: 1, default: 2 },
       { key: 'ontwikkelingskaarten', label: 'Punten uit ontwikkelingskaarten', sign: 1 },
       {
         key: 'langste_handelsroute',
