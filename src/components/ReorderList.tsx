@@ -186,7 +186,12 @@ const ReorderRow = memo(function ReorderRow({
       if (activeKey.value === rowKey) return;
       const target = current.position * current.size;
       if (!previous || previous.size !== current.size) top.value = target;
-      else if (previous.position !== current.position) top.value = withSpring(target, SPRING);
+      else if (previous.position !== current.position) {
+        // This cancels a pending drop spring before its callback can lower the row, so lower it
+        // here — the row being dragged past it is the one that belongs on top now.
+        raised.value = false;
+        top.value = withSpring(target, SPRING);
+      }
     },
   );
 

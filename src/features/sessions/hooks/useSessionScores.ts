@@ -148,6 +148,9 @@ export function useSetScores(sessionId: string) {
     // Same key as `useSetScore`, so the realtime subscription's self-echo guard (which checks
     // `isMutating` against this key) also holds off while this batch write is in flight.
     mutationKey: queryKey,
+    // Same scope too: two quick drags each send a full batch, and without queueing them the
+    // server could finish the older one last and keep a ranking that's no longer on screen.
+    scope: { id: `session-scores-${sessionId}` },
     mutationFn: async (inputs: { userId: string; fieldKey: string; value: number }[]) => {
       if (inputs.length === 0) return;
       const { error } = await supabase.from('session_scores').upsert(
