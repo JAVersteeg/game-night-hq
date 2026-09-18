@@ -3,6 +3,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useState } from 'react';
 import { Modal, Pressable, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text, TextInput } from '@/components/Text';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 
@@ -162,6 +163,8 @@ function FieldRow({
 
 /** Define a game for this group: a name, numeric fields with a sign, and a scoring direction. */
 export function CreateGameTemplateScreen() {
+  // Edge-to-edge on Android: the last row would otherwise sit behind the navigation bar.
+  const insets = useSafeAreaInsets();
   const { groupId } = useRoute<RouteProp<AppStackParamList, 'CreateGameTemplate'>>().params;
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const createGameTemplate = useCreateGameTemplate(groupId);
@@ -278,7 +281,8 @@ export function CreateGameTemplateScreen() {
     <>
       <KeyboardAwareScrollView
         className="flex-1 bg-surface"
-        contentContainerClassName="gap-8 px-6 pb-12 pt-6"
+        contentContainerClassName="gap-8 px-6 pt-6"
+        contentContainerStyle={{ paddingBottom: 48 + insets.bottom }}
         bottomOffset={24}
         keyboardShouldPersistTaps="handled"
       >

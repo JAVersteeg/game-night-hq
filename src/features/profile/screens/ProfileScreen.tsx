@@ -1,4 +1,5 @@
 import { ActivityIndicator, ScrollView, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '@/components/Text';
 
 import { Avatar } from '@/components/Avatar';
@@ -86,6 +87,8 @@ function PersonalStatsSection({ stats }: { stats: PersonalStats }) {
  * to — as opposed to the per-group stats on a group's own dashboard.
  */
 export function ProfileScreen() {
+  // Edge-to-edge on Android: the last row would otherwise sit behind the navigation bar.
+  const insets = useSafeAreaInsets();
   const { data: profile, isPending, isError } = useProfile();
   const { data: stats, isPending: statsPending, isError: statsError } = usePersonalStats();
 
@@ -108,7 +111,8 @@ export function ProfileScreen() {
   }
 
   return (
-    <ScrollView className="flex-1 bg-surface" contentContainerClassName="px-6 pb-12 pt-6">
+    <ScrollView className="flex-1 bg-surface" contentContainerClassName="px-6 pt-6"
+        contentContainerStyle={{ paddingBottom: 48 + insets.bottom }}>
       <View className="items-center">
         <Avatar displayName={profile.display_name} avatarUrl={profile.avatar_url} size={96} />
         {/* The avatar field is a placeholder: `profiles.avatar_url` exists in the schema but

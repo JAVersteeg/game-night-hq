@@ -2,6 +2,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useState } from 'react';
 import { View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text, TextInput } from '@/components/Text';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 
@@ -14,6 +15,8 @@ import type { AppStackParamList } from '@/navigation/types';
 const INVITE_CODE_LENGTH = 6;
 
 export function JoinGroupScreen() {
+  // Edge-to-edge on Android: the last row would otherwise sit behind the navigation bar.
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const [code, setCode] = useState('');
   const joinGroup = useJoinGroup();
@@ -34,7 +37,8 @@ export function JoinGroupScreen() {
   return (
     <KeyboardAwareScrollView
       className="flex-1 bg-surface"
-      contentContainerClassName="px-6 pb-12 pt-8"
+      contentContainerClassName="px-6 pt-8"
+        contentContainerStyle={{ paddingBottom: 48 + insets.bottom }}
       bottomOffset={24}
       keyboardShouldPersistTaps="handled"
     >

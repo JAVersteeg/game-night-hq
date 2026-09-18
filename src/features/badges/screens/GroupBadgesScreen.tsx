@@ -5,6 +5,7 @@ import { format } from 'date-fns';
 import { nl } from 'date-fns/locale';
 import { useLayoutEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BadgeHex } from '@/components/BadgeHex';
 import { SectionLabel } from '@/components/SectionLabel';
@@ -336,6 +337,8 @@ function MilestonesTab({
  * stored, so there is no unlock moment to celebrate.
  */
 export function GroupBadgesScreen() {
+  // Edge-to-edge on Android: the last row would otherwise sit behind the navigation bar.
+  const insets = useSafeAreaInsets();
   const { groupId } = useRoute<RouteProp<AppStackParamList, 'GroupBadges'>>().params;
   const navigation = useNavigation<Navigation>();
   const { session } = useAuth();
@@ -371,7 +374,8 @@ export function GroupBadgesScreen() {
 
   return (
     <AvatarMarksProvider groupId={groupId}>
-      <ScrollView className="flex-1 bg-surface" contentContainerClassName="gap-6 px-6 pb-12 pt-2">
+      <ScrollView className="flex-1 bg-surface" contentContainerClassName="gap-6 px-6 pt-2"
+        contentContainerStyle={{ paddingBottom: 48 + insets.bottom }}>
         <SegmentedControl options={TABS} value={tab} onChange={setTab} />
 
         {tab === 'Badges' ? (

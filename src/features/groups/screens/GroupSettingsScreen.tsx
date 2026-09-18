@@ -2,6 +2,7 @@ import type { RouteProp } from '@react-navigation/native';
 import { useRoute } from '@react-navigation/native';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Share, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '@/components/Text';
 
 import { Button } from '@/components/Button';
@@ -85,6 +86,8 @@ function MemberRow({
 /** Setup-time concerns for a group: the invite code and who's in it. Reached from the dashboard's
  *  gear button, not the primary destination for opening a group. */
 export function GroupSettingsScreen() {
+  // Edge-to-edge on Android: the last row would otherwise sit behind the navigation bar.
+  const insets = useSafeAreaInsets();
   const { groupId } = useRoute<RouteProp<AppStackParamList, 'GroupSettings'>>().params;
   const { session } = useAuth();
   const { data: group } = useGroup(groupId);
@@ -117,7 +120,8 @@ export function GroupSettingsScreen() {
 
   return (
     <AvatarMarksProvider groupId={groupId}>
-      <ScrollView className="flex-1 bg-surface" contentContainerClassName="px-6 pb-12 pt-6">
+      <ScrollView className="flex-1 bg-surface" contentContainerClassName="px-6 pt-6"
+        contentContainerStyle={{ paddingBottom: 48 + insets.bottom }}>
         <SectionLabel>Uitnodigingscode</SectionLabel>
         <InviteCodeCard group={group} />
 
