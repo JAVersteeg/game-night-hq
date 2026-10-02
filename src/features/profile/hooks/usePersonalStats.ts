@@ -34,8 +34,9 @@ export interface PersonalStats {
   /** Too few potjes for the factor to mean much yet. */
   isWinFactorWeak: boolean;
   /** Winstfactor after each session, oldest first — the running figure, not a per-session spike,
-   *  so a single night doesn't swing the line. */
-  form: { labels: string[]; points: number[] };
+   *  so a single night doesn't swing the line. `beatShares` is the running Overwicht (0-100) at
+   *  the same sessions, `null` until a potje with more than one player has been played. */
+  form: { labels: string[]; points: number[]; beatShares: (number | null)[] };
   /** Per game, only ones played often enough for a record to mean anything, strongest first. */
   gameRecords: PersonalGameRecord[];
 }
@@ -72,7 +73,7 @@ const EMPTY_STATS: PersonalStats = {
   wins: 0,
   winFactor: 0,
   isWinFactorWeak: true,
-  form: { labels: [], points: [] },
+  form: { labels: [], points: [], beatShares: [] },
   gameRecords: [],
 };
 
@@ -159,8 +160,11 @@ export function usePersonalStats() {
       >();
       const formLabels: string[] = [];
       const formPoints: number[] = [];
+      const formBeatShares: (number | null)[] = [];
       let wins = 0;
       let expectedWins = 0;
+      let shareSum = 0;
+      let shareCount = 0;
 
       for (const entry of sessions) {
         const totals = computeTotals(
@@ -210,12 +214,15 @@ export function usePersonalStats() {
 
           game.shareSum += beaten / (totals.length - 1);
           game.shareCount += 1;
+          shareSum += beaten / (totals.length - 1);
+          shareCount += 1;
         }
 
         byGame.set(entry.template_id, game);
 
         formLabels.push(format(new Date(entry.played_at), 'd MMM', { locale: nl }));
         formPoints.push(expectedWins === 0 ? 0 : round1(wins / expectedWins));
+        formBeatShares.push(shareCount === 0 ? null : Math.round((shareSum / shareCount) * 100));
       }
 
       const gameRecords = Array.from(byGame.entries())
@@ -243,6 +250,7 @@ export function usePersonalStats() {
         form: {
           labels: formLabels.slice(-FORM_POINTS),
           points: formPoints.slice(-FORM_POINTS),
+          beatShares: formBeatShares.slice(-FORM_POINTS),
         },
         gameRecords,
       };

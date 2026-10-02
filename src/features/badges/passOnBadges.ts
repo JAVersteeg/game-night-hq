@@ -204,7 +204,7 @@ function dominationBadge(template: BadgeTemplate): PassOnBadgeDefinition {
     id: `koning-${template.id}`,
     name: dominationName(template),
     condition: `Hoogste winstfactor, ${template.name}`,
-    description: `Voor wie de hoogste winstfactor heeft bij ${template.name}, met minimaal ${MIN_SESSIONS_FOR_DOMINATION} potjes op de teller, en meer potjes gewonnen dan puur toeval zou opleveren.`,
+    description: `Voor wie de hoogste winstfactor heeft bij ${template.name}, met minimaal ${MIN_SESSIONS_FOR_DOMINATION} potjes op de teller, en een winstfactor hoger dan 1.0x.`,
     artKey: dominationArtKey(template),
     featured: template.gameKey === 'catan',
     avatarMark: false,

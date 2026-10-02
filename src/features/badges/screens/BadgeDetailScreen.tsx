@@ -2,11 +2,14 @@ import type { RouteProp } from '@react-navigation/native';
 import { useRoute } from '@react-navigation/native';
 import { format } from 'date-fns';
 import { nl } from 'date-fns/locale';
-import { ActivityIndicator, ScrollView, View } from 'react-native';
+import { useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Badge } from '@/components/Badge';
 import { BadgeHex } from '@/components/BadgeHex';
+import { Card } from '@/components/Card';
+import { InfoIcon } from '@/components/InfoIcon';
 import { SectionLabel } from '@/components/SectionLabel';
 import { Text } from '@/components/Text';
 import { AvatarMarksProvider } from '@/features/badges/avatarMarks';
@@ -14,6 +17,7 @@ import { useGroupBadges } from '@/features/badges/hooks/useGroupBadges';
 import { MemberAvatar } from '@/features/groups/components/MemberAvatar';
 import type { GroupMember } from '@/features/groups/hooks/useGroupMembers';
 import { useGroupMembers } from '@/features/groups/hooks/useGroupMembers';
+import { theme } from '@/lib/theme';
 import type { AppStackParamList } from '@/navigation/types';
 
 /** The tail under the last section, matching the `pb-12` every other screen ends on. */
@@ -27,6 +31,32 @@ function shortDate(iso: string): string {
   return format(new Date(iso), 'd MMM', { locale: nl });
 }
 
+/** The ranking's heading with its explanation tucked behind an info icon — the same
+ *  pressable-label-plus-`InfoIcon` pattern as the ranglijst on the group dashboard. */
+function StandingsHeader({
+  label,
+  open,
+  onToggle,
+}: {
+  label: string;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onToggle}
+      hitSlop={8}
+      accessibilityRole="button"
+      accessibilityLabel={`Uitleg over ${label.toLowerCase()}`}
+      accessibilityState={{ expanded: open }}
+      className="flex-row items-center gap-2 self-start active:opacity-60"
+    >
+      <SectionLabel>{label}</SectionLabel>
+      <InfoIcon size={16} color={open ? theme.ink : theme.inkSubtle} />
+    </Pressable>
+  );
+}
+
 /**
  * One pass-on badge in full: what it takes to hold it, who has it now, and everyone who had it
  * before. The history is replayed from the group's sessions like the rest of this feature, so only
@@ -37,6 +67,7 @@ export function BadgeDetailScreen() {
   const insets = useSafeAreaInsets();
   const { data: members } = useGroupMembers(groupId);
   const { data, isPending, isError } = useGroupBadges(groupId);
+  const [infoOpen, setInfoOpen] = useState(false);
 
   if (isPending) {
     return (
@@ -117,8 +148,18 @@ export function BadgeDetailScreen() {
 
         {badge.standings && badge.standings.rows.length > 0 ? (
           <View className="gap-2">
-            <SectionLabel>{badge.standings.label}</SectionLabel>
-            <Text className="text-sm leading-5 text-ink-subtle">{badge.standings.explanation}</Text>
+            <StandingsHeader
+              label={badge.standings.label}
+              open={infoOpen}
+              onToggle={() => setInfoOpen((current) => !current)}
+            />
+            {infoOpen ? (
+              <Card tone="muted" className="mt-1">
+                <Text className="text-sm leading-5 text-ink-muted">
+                  {badge.standings.explanation}
+                </Text>
+              </Card>
+            ) : null}
             <View className="mt-1 overflow-hidden rounded-2xl border border-line">
               {badge.standings.rows.map((row, index) => {
                 const member = memberById(row.userId);

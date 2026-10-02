@@ -2,6 +2,7 @@ import type { Session } from '@supabase/supabase-js';
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 
 import { logError } from '@/lib/logError';
+import { queryClient } from '@/lib/queryClient';
 import { supabase } from '@/lib/supabase';
 
 interface AuthContextValue {
@@ -25,12 +26,13 @@ interface AuthProviderProps {
  * so every table that references a user id behaves identically whether or not the user is
  * anonymous.
  *
- * Accepted v1 tradeoff: this identity is device-bound. Clearing app data or switching devices
- * loses it, with no recovery path until the deferred Apple/Google account-linking work lands.
+ * Until it is linked, this identity is device-bound: clearing app data or switching devices loses
+ * it, with no way back.
  *
- * There is deliberately no `signOut` exposed. With anonymous auth, signing out is not a neutral
- * action — it destroys the only handle on the user's groups and history, irreversibly. Nothing in
- * the app should offer it until linking exists to make it recoverable.
+ * An identity can optionally be linked to Apple or Google afterwards (see `useAccountLink`), which
+ * keeps the same user id and only makes it recoverable on another device. There is still
+ * deliberately no `signOut`: on an unlinked identity it would destroy the only handle on the user's
+ * groups and history, and offering it to linked users alone would be a confusing half-feature.
  */
 export function AuthProvider({ children }: AuthProviderProps) {
   const [session, setSession] = useState<Session | null>(null);
@@ -42,6 +44,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // signInAnonymously, and StrictMode double-invokes effects in development.
   const signInInFlight = useRef(false);
 
+  // Which user the cached React Query data belongs to. Restoring a linked account swaps the session
+  // to a different user id, and every cached row — groups, sessions, stats — belongs to the old one.
+  const cachedUserId = useRef<string | null>(null);
+
+  const applySession = useCallback((newSession: Session | null) => {
+    const nextUserId = newSession?.user.id ?? null;
+    if (cachedUserId.current !== null && nextUserId !== cachedUserId.current) {
+      queryClient.clear();
+    }
+    cachedUserId.current = nextUserId;
+    setSession(newSession);
+  }, []);
+
   useEffect(() => {
     let isCancelled = false;
 
@@ -52,7 +67,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         if (isCancelled) return;
 
         if (data.session) {
-          setSession(data.session);
+          applySession(data.session);
           return;
         }
 
@@ -63,7 +78,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         if (signInError) throw signInError;
         if (isCancelled) return;
 
-        setSession(signInData.session);
+        applySession(signInData.session);
       } catch (caught) {
         if (isCancelled) return;
         void logError('client:AuthContext', caught, { context: 'anonymous bootstrap' });
@@ -79,14 +94,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession);
+      applySession(newSession);
     });
 
     return () => {
       isCancelled = true;
       subscription.unsubscribe();
     };
-  }, [retryCount]);
+  }, [applySession, retryCount]);
 
   // Deliberately no deep-link handler installing a session here. `gamenighthq://` is a plain
   // custom scheme — unverified, claimable by any app on the device — so a URL alone is never

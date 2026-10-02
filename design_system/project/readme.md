@@ -16,7 +16,7 @@ No Figma file, no slide deck, no brand guidelines and no logo were provided.
 
 ## Product shape (from CLAUDE.md)
 
-- **Identity is anonymous.** Supabase `signInAnonymously()` on first launch. There is no signup, no password, no email. The one onboarding question is "who are you" — a display name — not "create an account". Never design a login screen for this product.
+- **Identity is anonymous.** Supabase `signInAnonymously()` on first launch. There is no signup, no password, no email. The one onboarding question is "who are you" — a display name — not "create an account". Never design a login screen for this product. The one exception: an opt-in *back-up* — linking that anonymous account to Apple/Google so it survives a new phone. It lives as a section on the profile screen and as a quiet link under the display-name prompt for people restoring; it is never the main path and never blocks anyone.
 - **Group** — a friend group with members, an invite code, its own games and its own history. No cross-group data. No admin role: all members are equal.
 - **Game template** — defined per group by any member: a name, custom numeric fields (each with a `sign` so penalties subtract), a scoring direction (`highest_total_wins` / `lowest_total_wins`), and optional bonus rules.
 - **Session** — one sitting of one game. Has a scorekeeper chosen fresh each time; only they can write scores while it is live. Everyone else in the group watches read-only over Realtime. v1 is single-round.

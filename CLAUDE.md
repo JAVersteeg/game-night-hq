@@ -22,7 +22,9 @@ If a library decision isn't covered here, pick the smallest dependency that solv
 
 - Identity is created via Supabase anonymous sign-in (`signInAnonymously()`) on first launch — no email, password, or signup screen. The person is only asked for a display name once, which reads as "who are you," not "create an account."
 - The resulting anonymous user is a real `auth.users` row with a normal session and JWT (`is_anonymous` claim available if a policy ever needs to distinguish). No schema changes elsewhere — every table that references a user ID works the same regardless of whether that ID is anonymous.
-- Known tradeoff, accepted for v1: identity is device-bound. Uninstalling the app, clearing app data, or switching devices loses access to that identity, with no recovery path yet. See Deferred Features for the eventual fix.
+- **Optional account back-up (opt-in, never required):** a user can link their anonymous identity to Apple or Google via `linkIdentity()`, and sign in with it on a new device via `signInWithIdToken()` to get the same user back. Linking keeps the same `auth.users.id`, so no table, RLS policy or query changes — only `is_anonymous` flips to false. Both use the **native** id-token flow (`expo-apple-authentication`, `@react-native-google-signin/google-signin`), never the browser OAuth redirect, so no session ever arrives over the `gamenighthq://` scheme. Apple is iOS-only (Android would need that redirect flow); Google is on both. Entry points: a "Back-up" section on the profile screen, and a subordinate restore link under the display-name prompt for someone on a new device. Provider setup lives in `docs/account-linking-setup.md`.
+- Unlinked identities are still device-bound: uninstalling, clearing app data or switching devices loses them, and linking afterwards is the only recovery. Restoring on a device that already had an unlinked account leaves that account orphaned — accepted; the UI warns first if anything was played on it.
+- Still no sign-out, linked or not. On an unlinked account it destroys the only handle on the user's history, and offering it to linked users alone is a confusing half-feature.
 - This also sidesteps Apple's Sign-in-with-Apple requirement, since that rule only triggers when you offer other third-party/social logins — anonymous auth isn't one.
 
 ## Domain Model
@@ -103,7 +105,7 @@ Explicitly out of scope unless we revisit:
 ## Deferred Features (Late-Stage)
 
 Planned, but not part of the initial build stages — don't implement until the core live-session and stats flow is solid and we've explicitly reached this stage:
-- **Account backup via Apple/Google:** let a user optionally link their anonymous identity to Sign in with Apple or Google (Supabase `linkIdentity()`), so their history survives an uninstall or device switch. Purely opt-in — the anonymous-first flow doesn't change for people who never enable it. If Google sign-in is added, Sign in with Apple must be offered alongside it for App Store compliance.
+- **In-app account deletion:** now that the app offers account linking, App Store Guideline 5.1.1(v) likely requires a way to delete the account from inside the app. Needs a server-side path (an edge function using the service role) since the client cannot delete an `auth.users` row. Decide before the next iOS submission.
 
 ## Open Decisions (flag, don't silently pick a different default)
 

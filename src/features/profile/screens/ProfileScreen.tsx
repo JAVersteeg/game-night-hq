@@ -6,6 +6,8 @@ import { Text } from '@/components/Text';
 
 import { Avatar } from '@/components/Avatar';
 import { Button } from '@/components/Button';
+import { AccountBackupSection } from '@/features/auth/components/AccountBackupSection';
+import { ACCOUNT_LINKING_ENABLED } from '@/features/auth/linking/providers';
 import { Card } from '@/components/Card';
 import { InfoIcon } from '@/components/InfoIcon';
 import { seriesColor } from '@/components/charts/series';
@@ -22,10 +24,7 @@ import {
   useProfile,
   useSetDisplayName,
 } from '@/features/auth/hooks/useProfile';
-import type {
-  PersonalGameRecord,
-  PersonalStats,
-} from '@/features/profile/hooks/usePersonalStats';
+import type { PersonalGameRecord, PersonalStats } from '@/features/profile/hooks/usePersonalStats';
 import {
   MIN_GAMES_FOR_WIN_FACTOR,
   usePersonalStats,
@@ -108,25 +107,37 @@ const METRIC_EXPLANATIONS = [
   },
 ];
 
-/** The "Statistieken" heading with the one info affordance for the whole section — the same
- *  pressable-label-plus-`InfoIcon` pattern as the ranglijst on the group dashboard. */
-function StatsHeader({ open, onToggle }: { open: boolean; onToggle: () => void }) {
+/** A section heading that toggles its own explanation — the same pressable-label-plus-`InfoIcon`
+ *  pattern as the ranglijst on the group dashboard. */
+function InfoHeader({
+  label,
+  accessibilityLabel,
+  open,
+  onToggle,
+}: {
+  label: string;
+  accessibilityLabel: string;
+  open: boolean;
+  onToggle: () => void;
+}) {
   return (
     <Pressable
       onPress={onToggle}
       hitSlop={8}
       accessibilityRole="button"
-      accessibilityLabel="Uitleg over je statistieken"
+      accessibilityLabel={accessibilityLabel}
       accessibilityState={{ expanded: open }}
       className="flex-row items-center gap-2 self-start active:opacity-60"
     >
-      <SectionLabel>Statistieken</SectionLabel>
+      <SectionLabel>{label}</SectionLabel>
       <InfoIcon size={16} color={open ? theme.ink : theme.inkSubtle} />
     </Pressable>
   );
 }
 
 function PersonalStatsSection({ stats }: { stats: PersonalStats }) {
+  const [gamesInfoOpen, setGamesInfoOpen] = useState(false);
+
   if (stats.sessionsPlayed === 0) {
     return (
       <Card tone="muted" className="mt-3">
@@ -158,12 +169,32 @@ function PersonalStatsSection({ stats }: { stats: PersonalStats }) {
         <View className="mt-6">
           <SectionLabel>Vorm</SectionLabel>
           <Card className="mt-3">
-            {/* No fixed domain: a winstfactor has no ceiling, so the axis follows the line and the
-                dashed reference keeps "toeval" in view wherever it lands. */}
+            {/* Winstfactor on the left with no fixed domain: it has no ceiling, so the axis follows
+                the line and the dashed reference keeps "toeval" in view wherever it lands.
+                Overwicht on the right over its fixed 0-100, with a faint line at middenmoot. */}
             <TrendChart
               labels={stats.form.labels}
-              reference={{ value: CHANCE_WIN_FACTOR, label: 'toeval' }}
-              series={[{ name: 'Winstfactor', color: seriesColor(0), points: stats.form.points }]}
+              reference={{ value: CHANCE_WIN_FACTOR, label: 'gemiddeld' }}
+              axisLabel="Winstfactor ×"
+              series={[
+                {
+                  name: 'Winstfactor',
+                  color: seriesColor(0),
+                  points: stats.form.points,
+                  unit: '×',
+                },
+              ]}
+              secondary={{
+                series: {
+                  name: 'Overwicht',
+                  color: seriesColor(1),
+                  points: stats.form.beatShares,
+                  unit: '%',
+                },
+                domain: [0, 100],
+                axisLabel: 'Overwicht %',
+                referenceValue: MID_TABLE_BEAT_SHARE,
+              }}
             />
           </Card>
         </View>
@@ -171,10 +202,17 @@ function PersonalStatsSection({ stats }: { stats: PersonalStats }) {
 
       {gameBars.length > 0 ? (
         <View className="mt-6">
-          <SectionLabel>Sterkste spellen</SectionLabel>
-          <Text className="mt-1 text-sm text-ink-muted">
-            Je winstfactor per spel. De balk is je overwicht, met het streepje op middenmoot.
-          </Text>
+          <InfoHeader
+            label="Sterkste spellen"
+            accessibilityLabel="Uitleg over je sterkste spellen"
+            open={gamesInfoOpen}
+            onToggle={() => setGamesInfoOpen((current) => !current)}
+          />
+          {gamesInfoOpen ? (
+            <Card tone="muted" className="mt-3">
+              <Text className="text-sm leading-5 text-ink-muted">Je winstfactor per spel.</Text>
+            </Card>
+          ) : null}
           <Card className="mt-3 py-4">
             <View className="-mt-1 gap-4">
               {gameBars.map((game, index) => (
@@ -330,8 +368,19 @@ export function ProfileScreen() {
         <DisplayNameSection profile={profile} />
       </View>
 
+      {ACCOUNT_LINKING_ENABLED ? (
+        <View className="mt-6">
+          <AccountBackupSection />
+        </View>
+      ) : null}
+
       <View className="mt-6">
-        <StatsHeader open={infoOpen} onToggle={() => setInfoOpen((current) => !current)} />
+        <InfoHeader
+          label="Statistieken"
+          accessibilityLabel="Uitleg over je statistieken"
+          open={infoOpen}
+          onToggle={() => setInfoOpen((current) => !current)}
+        />
 
         {infoOpen ? (
           <Card tone="muted" className="mt-3 gap-3">
