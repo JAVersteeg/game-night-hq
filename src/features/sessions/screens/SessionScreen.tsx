@@ -1376,6 +1376,8 @@ export function SessionScreen() {
     deleteSession.mutate(undefined, {
       onSuccess: () => {
         setIsDeleteConfirmVisible(false);
+        // Already decided — the `beforeRemove` listener must not ask "verlaten?" about it again.
+        isLeavingRef.current = true;
         navigation.goBack();
       },
     });
@@ -1694,7 +1696,12 @@ export function SessionScreen() {
     // Nothing was ever played, so there's no result worth filing — the session is thrown away
     // instead of landing in the history as a table of zeroes.
     if (bankedRounds === 0) {
-      deleteSession.mutate(undefined, { onSuccess: () => navigation.goBack() });
+      deleteSession.mutate(undefined, {
+        onSuccess: () => {
+          isLeavingRef.current = true;
+          navigation.goBack();
+        },
+      });
       return;
     }
 
