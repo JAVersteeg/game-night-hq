@@ -24,6 +24,8 @@ export const GAME_LIBRARY: GameLibraryEntry[] = [
   { id: 'terraforming_mars', name: 'Terraforming Mars' },
   { id: 'secret_hitler', name: 'Secret Hitler' },
   { id: 'wingspan', name: 'Wingspan' },
+  { id: 'koehandel', name: 'Koehandel' },
+  { id: 'flamme_rouge', name: 'Flamme Rouge' },
 ];
 
 const BY_NORMALIZED_NAME = new Map(
