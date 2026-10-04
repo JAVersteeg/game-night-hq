@@ -57,6 +57,7 @@ interface SessionRow {
   id: string;
   played_at: string;
   template_id: string;
+  winner_id: string | null;
   game_templates: {
     name: string;
     cover_key: string | null;
@@ -111,7 +112,7 @@ export function usePersonalStats() {
       const { data: sessions, error: sessionsError } = await supabase
         .from('sessions')
         .select(
-          `id, played_at, template_id,
+          `id, played_at, template_id, winner_id,
            game_templates(name, cover_key, scoring_direction, rounds, game_template_fields(key, sign), bonus_rules(*)),
            session_participants(user_id)`,
         )
@@ -174,6 +175,7 @@ export function usePersonalStats() {
           scoresBySession.get(entry.id) ?? {},
           entry.game_templates.scoring_direction,
           entry.game_templates.rounds,
+          entry.winner_id,
         );
 
         // Nothing in the schema forbids a session without participants, and it would divide the

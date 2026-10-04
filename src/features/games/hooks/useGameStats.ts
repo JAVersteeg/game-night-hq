@@ -64,6 +64,7 @@ interface SessionRow {
   id: string;
   played_at: string;
   rounds_played: number;
+  winner_id: string | null;
   session_participants: { user_id: string }[];
 }
 
@@ -103,7 +104,7 @@ export function useGameStats(template: GameTemplateWithBonusRules | null | undef
     queryFn: async (): Promise<GameStats> => {
       const { data: sessions, error: sessionsError } = await supabase
         .from('sessions')
-        .select('id, played_at, rounds_played, session_participants(user_id)')
+        .select('id, played_at, rounds_played, winner_id, session_participants(user_id)')
         .eq('template_id', templateId)
         .eq('status', 'completed')
         .order('played_at', { ascending: true })
@@ -142,6 +143,7 @@ export function useGameStats(template: GameTemplateWithBonusRules | null | undef
           scoresBySession.get(session.id) ?? {},
           scoringDirection,
           rounds,
+          session.winner_id,
         );
         const divisor = rounds ? Math.max(1, session.rounds_played) : 1;
 

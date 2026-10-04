@@ -105,8 +105,10 @@ function synthesizedTotal(
   return rounds ? (values[POINTS_FIELD_KEY] ?? 0) : (values[RANK_FIELD_KEY] ?? participants);
 }
 
-/** A total per participant plus which of them won — ties all win, since nothing breaks them.
- *  Ranked templates have no fields to sum: "total" is the finish position instead (1 = best),
+/** A total per participant plus which of them won — ties all win, unless the scorekeeper broke
+ *  the tie by picking `winnerId` (a single-winner game, see `game_templates.single_winner`). The
+ *  pick is only honoured while that player is still among the best scorers, so a score corrected
+ *  after the pick can't leave a stale winner standing. Ranked templates have no fields to sum: "total" is the finish position instead (1 = best),
  *  which is also why the "lowest wins" branch below doubles as "lowest rank wins" for them.
  *  Ranked-and-rounds templates have no fields either, but their "total" is the points banked so
  *  far, which the server accumulated round by round — here it's only read back. */
@@ -117,6 +119,7 @@ export function computeTotals(
   scoresByUser: Record<string, Record<string, number>>,
   scoringDirection: ScoringDirection,
   rounds: boolean,
+  winnerId: string | null = null,
 ): PlayerTotal[] {
   const totals = participantIds.map((userId) => ({
     userId,
@@ -131,5 +134,10 @@ export function computeTotals(
     ? Math.max(...totals.map((entry) => entry.total))
     : Math.min(...totals.map((entry) => entry.total));
 
-  return totals.map((entry) => ({ ...entry, isWinner: entry.total === best }));
+  const isPickedWinnerBest = totals.some((entry) => entry.userId === winnerId && entry.total === best);
+
+  return totals.map((entry) => ({
+    ...entry,
+    isWinner: isPickedWinnerBest ? entry.userId === winnerId : entry.total === best,
+  }));
 }

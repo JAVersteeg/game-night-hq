@@ -68,6 +68,7 @@ import {
   useDeleteSession,
   useFinalizeSession,
   useSession,
+  useSetSessionWinner,
   useUndoRound,
 } from '@/features/sessions/hooks/useSessions';
 import type { AppStackParamList } from '@/navigation/types';
@@ -725,6 +726,71 @@ interface DeleteNoteConfirmModalProps {
   isPending: boolean;
 }
 
+/** A single-winner game ended with a shared top total — the scorekeeper says who actually won.
+ *  Only the tied players are offered, and "Later" leaves the tie standing (everyone tied counts as a
+ *  winner until it's settled) — the summary keeps a button to come back to it. */
+function PickWinnerModal({
+  candidates,
+  selectedId,
+  onSelect,
+  onConfirm,
+  onLater,
+  isPending,
+  hasFailed,
+}: {
+  candidates: GroupMember[];
+  selectedId: string | null;
+  onSelect: (userId: string) => void;
+  onConfirm: () => void;
+  onLater: () => void;
+  isPending: boolean;
+  hasFailed: boolean;
+}) {
+  return (
+    <Modal visible transparent animationType="fade" onRequestClose={onLater}>
+      <Pressable
+        className="flex-1 items-center justify-center bg-surface-deep/70 px-6"
+        onPress={onLater}
+        accessibilityLabel="Sluit"
+      >
+        <Pressable className="w-full max-w-sm gap-4 rounded-3xl border border-line bg-surface p-6">
+          <View>
+            <Text className="text-xl font-bold text-ink">Wie heeft er gewonnen?</Text>
+            <Text className="mt-1 text-sm text-ink-muted">
+              Gelijkspel, maar dit spel heeft maar één winnaar. Kies wie het potje won.
+            </Text>
+          </View>
+          <View className="gap-2">
+            {candidates.map((member) => (
+              <ChoiceRow
+                key={member.userId}
+                title={member.displayName}
+                left={<MemberAvatar member={member} size={32} />}
+                selected={selectedId === member.userId}
+                onSelect={() => onSelect(member.userId)}
+                testID={`pick-winner-${member.userId}`}
+              />
+            ))}
+          </View>
+          {hasFailed ? (
+            <Text className="text-sm text-danger">
+              Opslaan is niet gelukt. Controleer je verbinding en probeer het opnieuw.
+            </Text>
+          ) : null}
+          <Button
+            label="Winnaar vastleggen"
+            onPress={onConfirm}
+            isLoading={isPending}
+            disabled={selectedId === null}
+            testID="pick-winner-confirm"
+          />
+          <Button label="Later kiezen" variant="secondary" onPress={onLater} />
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
 /** A note has no undo once it's gone — unlike a score, which can just be re-entered — so deleting
  *  one asks first, the same way leaving a live session does. */
 function DeleteNoteConfirmModal({ onCancel, onConfirm, isPending }: DeleteNoteConfirmModalProps) {
@@ -972,6 +1038,7 @@ export function SessionScreen() {
   const setScore = useSetScore(sessionId);
   const setScores = useSetScores(sessionId);
   const finalizeSession = useFinalizeSession(sessionId, sessionData?.group_id ?? '');
+  const setSessionWinner = useSetSessionWinner(sessionId, sessionData?.group_id ?? '');
   const deleteSession = useDeleteSession(sessionId, sessionData?.group_id ?? '');
   const commitRound = useCommitRound(sessionId);
   const undoRound = useUndoRound(sessionId);
@@ -1003,6 +1070,10 @@ export function SessionScreen() {
   // only added onto the running totals once "Volgende ronde" banks it.
   const [fieldRoundDraft, setFieldRoundDraft] = useState<RoundFieldValues>({});
   const [isFinishRoundsVisible, setIsFinishRoundsVisible] = useState(false);
+  // The tie-break prompt opens by itself on a finished single-winner tie; "Later kiezen" sets this
+  // so it stays closed until the summary's own button reopens it.
+  const [isWinnerPromptDismissed, setIsWinnerPromptDismissed] = useState(false);
+  const [pickedWinnerId, setPickedWinnerId] = useState<string | null>(null);
   const [countsCurrentRound, setCountsCurrentRound] = useState(true);
   // True while a finished session is being edited via the header pencil — the one state that
   // swaps the always-shown completed summary for the same entry form live play uses. For a rounds
@@ -1359,6 +1430,7 @@ export function SessionScreen() {
     displayedScoresByUser,
     sessionData.game_templates.scoring_direction,
     isRounds,
+    sessionData.winner_id,
   );
   const totalByUserId = new Map(totals.map((entry) => [entry.userId, entry]));
   const pointsByUserId = new Map(totals.map((entry) => [entry.userId, entry.total]));
@@ -1498,6 +1570,23 @@ export function SessionScreen() {
   const isResultPending =
     isMembersPending || isParticipantsPending || isTemplatePending || isScoresPending;
 
+  // A single-winner game whose top total is shared and still unsettled. Only the scorekeeper can
+  // settle it (`sessions_update`), so only they are asked — everyone else just sees the shared win
+  // until it is. Deliberately not tied to the 2-hour edit window: a tie nobody resolved on the
+  // night can be settled whenever the scorekeeper next opens the potje.
+  const tiedLeaders = participants.filter((member) => totalByUserId.get(member.userId)?.isWinner);
+  const needsWinnerPick =
+    showCompletedSummary &&
+    !isResultPending &&
+    isScorekeeper &&
+    sessionData.game_templates.single_winner &&
+    tiedLeaders.length > 1;
+
+  function confirmPickWinner() {
+    if (!pickedWinnerId) return;
+    setSessionWinner.mutate(pickedWinnerId);
+  }
+
   if (showCompletedSummary) {
     const scoringDirection = sessionData.game_templates.scoring_direction;
     const gameName = sessionData.game_templates.name;
@@ -1593,6 +1682,18 @@ export function SessionScreen() {
               </View>
             </Card>
 
+            {needsWinnerPick && isWinnerPromptDismissed ? (
+              <Button
+                label="Winnaar kiezen"
+                variant="secondary"
+                onPress={() => {
+                  setSessionWinner.reset();
+                  setIsWinnerPromptDismissed(false);
+                }}
+                testID="open-pick-winner-button"
+              />
+            ) : null}
+
             <View>
               <SectionLabel>Eindstand</SectionLabel>
               {/* A plain ranked template has only a finish position to show; ranked-and-rounds
@@ -1631,6 +1732,16 @@ export function SessionScreen() {
               onCancel={() => setPendingDeleteNoteId(null)}
               onConfirm={confirmDeleteNote}
               isPending={deleteNote.isPending}
+            />
+          ) : needsWinnerPick && !isWinnerPromptDismissed ? (
+            <PickWinnerModal
+              candidates={tiedLeaders}
+              selectedId={pickedWinnerId}
+              onSelect={setPickedWinnerId}
+              onConfirm={confirmPickWinner}
+              onLater={() => setIsWinnerPromptDismissed(true)}
+              isPending={setSessionWinner.isPending}
+              hasFailed={setSessionWinner.isError}
             />
           ) : null}
         </View>

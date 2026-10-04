@@ -101,6 +101,7 @@ export function useCreateGameTemplate(groupId: string) {
       coverKey?: string | null;
       rounds?: boolean;
       roundCount?: number | null;
+      singleWinner?: boolean;
     }) => {
       const { data, error } = await supabase.rpc('create_game_template', {
         p_group_id: groupId,
@@ -119,6 +120,7 @@ export function useCreateGameTemplate(groupId: string) {
         p_cover_key: input.coverKey ?? undefined,
         p_rounds: input.rounds ?? false,
         p_round_count: input.roundCount ?? undefined,
+        p_single_winner: input.singleWinner ?? false,
       });
 
       if (error) throw error;

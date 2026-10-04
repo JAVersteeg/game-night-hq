@@ -107,6 +107,7 @@ export type Database = {
           round_count: number | null;
           rounds: boolean;
           scoring_direction: Database['public']['Enums']['scoring_direction'];
+          single_winner: boolean;
         };
         Insert: {
           cover_key?: string | null;
@@ -118,6 +119,7 @@ export type Database = {
           round_count?: number | null;
           rounds?: boolean;
           scoring_direction: Database['public']['Enums']['scoring_direction'];
+          single_winner?: boolean;
         };
         Update: {
           cover_key?: string | null;
@@ -129,6 +131,7 @@ export type Database = {
           round_count?: number | null;
           rounds?: boolean;
           scoring_direction?: Database['public']['Enums']['scoring_direction'];
+          single_winner?: boolean;
         };
         Relationships: [
           {
@@ -321,6 +324,7 @@ export type Database = {
           scorekeeper_id: string;
           status: Database['public']['Enums']['session_status'];
           template_id: string;
+          winner_id: string | null;
         };
         Insert: {
           completed_at?: string | null;
@@ -334,6 +338,7 @@ export type Database = {
           scorekeeper_id: string;
           status?: Database['public']['Enums']['session_status'];
           template_id: string;
+          winner_id?: string | null;
         };
         Update: {
           completed_at?: string | null;
@@ -347,6 +352,7 @@ export type Database = {
           scorekeeper_id?: string;
           status?: Database['public']['Enums']['session_status'];
           template_id?: string;
+          winner_id?: string | null;
         };
         Relationships: [
           {
@@ -384,6 +390,7 @@ export type Database = {
           scorekeeper_id: string;
           status: Database['public']['Enums']['session_status'];
           template_id: string;
+          winner_id: string | null;
         };
         SetofOptions: {
           from: '*';
@@ -406,6 +413,7 @@ export type Database = {
           scorekeeper_id: string;
           status: Database['public']['Enums']['session_status'];
           template_id: string;
+          winner_id: string | null;
         };
         SetofOptions: {
           from: '*';
@@ -424,6 +432,7 @@ export type Database = {
           p_round_count?: number;
           p_rounds?: boolean;
           p_scoring_direction: Database['public']['Enums']['scoring_direction'];
+          p_single_winner?: boolean;
         };
         Returns: {
           cover_key: string | null;
@@ -435,6 +444,7 @@ export type Database = {
           round_count: number | null;
           rounds: boolean;
           scoring_direction: Database['public']['Enums']['scoring_direction'];
+          single_winner: boolean;
         };
         SetofOptions: {
           from: '*';
@@ -478,6 +488,7 @@ export type Database = {
           scorekeeper_id: string;
           status: Database['public']['Enums']['session_status'];
           template_id: string;
+          winner_id: string | null;
         };
         SetofOptions: {
           from: '*';

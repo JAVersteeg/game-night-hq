@@ -183,6 +183,8 @@ export function CreateGameTemplateScreen() {
   // `roundCount` is purely informational — 0 means "geen vast aantal", like Dalmuti.
   const [rounds, setRounds] = useState(false);
   const [roundCount, setRoundCount] = useState(0);
+  // A tie on the top total is broken by the scorekeeper picking the winner at the end.
+  const [singleWinner, setSingleWinner] = useState(false);
 
   function applyPreset(preset: GameTemplatePreset) {
     setName(preset.name);
@@ -191,6 +193,7 @@ export function CreateGameTemplateScreen() {
     setFields(preset.fields.map((field) => ({ id: nextDraftFieldId(), ...field })));
     setRounds(preset.rounds ?? false);
     setRoundCount(preset.roundCount ?? 0);
+    setSingleWinner(preset.singleWinner ?? false);
     setIsTemplatesOpen(false);
     setAreNameSuggestionsDismissed(true);
   }
@@ -272,6 +275,7 @@ export function CreateGameTemplateScreen() {
         coverKey,
         rounds,
         roundCount: rounds && roundCount > 0 ? roundCount : null,
+        singleWinner,
       },
       { onSuccess: () => navigation.goBack() },
     );
@@ -341,7 +345,6 @@ export function CreateGameTemplateScreen() {
             />
             <ChoiceRow
               title="Ranglijst"
-              meta="Geen punten — spelers slepen naar hun eindplek"
               selected={scoringDirection === 'ranked'}
               onSelect={() => setScoringDirection('ranked')}
               testID="scoring-direction-ranked"
@@ -367,6 +370,19 @@ export function CreateGameTemplateScreen() {
                 testID="scoring-round-count"
               />
             ) : null}
+          </View>
+        </View>
+
+        <View>
+          <SectionLabel>Winnaar</SectionLabel>
+          <View className="mt-2">
+            <ChoiceRow
+              title="Maar één winnaar"
+              mode="check"
+              selected={singleWinner}
+              onSelect={() => setSingleWinner((current) => !current)}
+              testID="single-winner-toggle"
+            />
           </View>
         </View>
 

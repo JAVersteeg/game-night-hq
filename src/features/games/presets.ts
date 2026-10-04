@@ -56,6 +56,9 @@ export interface GameTemplatePreset {
   /** Informational expected round count (e.g. Arschmallows' 6) — shown as progress, not enforced.
    *  Omitted for an open-ended rounds template like Dalmuti, which has no fixed count. */
   roundCount?: number;
+  /** Only one player can win, so a tie on the top total is broken by the scorekeeper picking the
+   *  winner when the session finishes (Catan: whoever reaches 10 on their own turn). */
+  singleWinner?: boolean;
 }
 
 /**
@@ -86,6 +89,7 @@ export const GAME_TEMPLATE_PRESETS: GameTemplatePreset[] = [
     id: 'catan',
     name: 'Catan',
     scoringDirection: 'highest_total_wins',
+    singleWinner: true,
     fields: [
       // Every player starts with two settlements on the board, one point each.
       { key: 'nederzettingen', label: 'Nederzettingen', sign: 1, default: 2 },

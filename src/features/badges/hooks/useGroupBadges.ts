@@ -47,6 +47,7 @@ interface SessionRow {
   id: string;
   played_at: string;
   template_id: string;
+  winner_id: string | null;
   game_templates: {
     name: string;
     cover_key: string | null;
@@ -78,7 +79,7 @@ export function useGroupBadges(groupId: string) {
         supabase
           .from('sessions')
           .select(
-            `id, played_at, template_id,
+            `id, played_at, template_id, winner_id,
              game_templates(name, cover_key, scoring_direction, rounds, game_template_fields(key, sign), bonus_rules(*)),
              session_participants(user_id)`,
           )
@@ -129,6 +130,7 @@ export function useGroupBadges(groupId: string) {
           scoresBySession.get(row.id) ?? {},
           template.scoring_direction,
           template.rounds,
+          row.winner_id,
         );
 
         return {

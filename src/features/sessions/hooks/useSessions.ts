@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 
 import { profileKeys } from '@/features/auth/hooks/useProfile';
@@ -15,7 +15,7 @@ export type Session = Tables<'sessions'>;
 export interface SessionWithTemplate extends Session {
   game_templates: Pick<
     Tables<'game_templates'>,
-    'name' | 'cover_key' | 'scoring_direction' | 'rounds' | 'round_count'
+    'name' | 'cover_key' | 'scoring_direction' | 'rounds' | 'round_count' | 'single_winner'
   >;
 }
 
@@ -84,7 +84,9 @@ export function useSession(sessionId: string) {
     queryFn: async (): Promise<SessionWithTemplate> => {
       const { data, error } = await supabase
         .from('sessions')
-        .select('*, game_templates(name, cover_key, scoring_direction, rounds, round_count)')
+        .select(
+          '*, game_templates(name, cover_key, scoring_direction, rounds, round_count, single_winner)',
+        )
         .eq('id', sessionId)
         .single();
 
@@ -92,6 +94,27 @@ export function useSession(sessionId: string) {
       return data;
     },
   });
+}
+
+/** Everything derived from a finished session's result — the session itself, plus every stats
+ *  surface that counts its winner. Shared by finalising and by picking the winner afterwards. */
+function invalidateSessionResult(
+  queryClient: QueryClient,
+  sessionId: string,
+  groupId: string,
+) {
+  void queryClient.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) });
+  void queryClient.invalidateQueries({ queryKey: groupKeys.dashboard(groupId) });
+  void queryClient.invalidateQueries({ queryKey: liveSessionKeys.all });
+  void queryClient.invalidateQueries({ queryKey: sessionHistoryKeys.list(groupId) });
+  // A finished potje can move a pass-on badge or complete an milestone, both derived from
+  // exactly this list of sessions.
+  void queryClient.invalidateQueries({ queryKey: groupKeys.badges(groupId) });
+  // Every stats surface counts this session from now on. Invalidated by prefix rather than by
+  // exact key: the template id isn't in scope here, and the profile's stats span all groups,
+  // so neither one can be named precisely — and both are cheap to refetch at this scale.
+  void queryClient.invalidateQueries({ queryKey: gameKeys.all });
+  void queryClient.invalidateQueries({ queryKey: profileKeys.all });
 }
 
 /**
@@ -111,20 +134,29 @@ export function useFinalizeSession(sessionId: string, groupId: string) {
 
       if (error) throw error;
     },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) });
-      void queryClient.invalidateQueries({ queryKey: groupKeys.dashboard(groupId) });
-      void queryClient.invalidateQueries({ queryKey: liveSessionKeys.all });
-      void queryClient.invalidateQueries({ queryKey: sessionHistoryKeys.list(groupId) });
-      // A finished potje can move a pass-on badge or complete an milestone, both derived from
-      // exactly this list of sessions.
-      void queryClient.invalidateQueries({ queryKey: groupKeys.badges(groupId) });
-      // Every stats surface counts this session from now on. Invalidated by prefix rather than by
-      // exact key: the template id isn't in scope here, and the profile's stats span all groups,
-      // so neither one can be named precisely — and both are cheap to refetch at this scale.
-      void queryClient.invalidateQueries({ queryKey: gameKeys.all });
-      void queryClient.invalidateQueries({ queryKey: profileKeys.all });
+    onSuccess: () => invalidateSessionResult(queryClient, sessionId, groupId),
+  });
+}
+
+/**
+ * Settles a tie on the top total of a single-winner game by recording who actually won. A plain
+ * update like finalising, so `sessions_update` already limits it to the scorekeeper — and, unlike a
+ * score correction, it isn't bound to the 2-hour edit window: a tie nobody resolved on the night can
+ * still be settled later. `winner_id` only matters while the top is shared (see `computeTotals`).
+ */
+export function useSetSessionWinner(sessionId: string, groupId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (winnerId: string) => {
+      const { error } = await supabase
+        .from('sessions')
+        .update({ winner_id: winnerId })
+        .eq('id', sessionId);
+
+      if (error) throw error;
     },
+    onSuccess: () => invalidateSessionResult(queryClient, sessionId, groupId),
   });
 }
 

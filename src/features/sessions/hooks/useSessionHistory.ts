@@ -23,6 +23,7 @@ export const sessionHistoryKeys = {
 interface SessionRow {
   id: string;
   played_at: string;
+  winner_id: string | null;
   game_templates: {
     name: string;
     cover_key: string | null;
@@ -49,7 +50,7 @@ export function useSessionHistory(groupId: string) {
       const { data: sessions, error: sessionsError } = await supabase
         .from('sessions')
         .select(
-          `id, played_at,
+          `id, played_at, winner_id,
            game_templates(name, cover_key, scoring_direction, rounds, game_template_fields(key, sign), bonus_rules(*)),
            session_participants(user_id)`,
         )
@@ -87,6 +88,7 @@ export function useSessionHistory(groupId: string) {
           scoresBySession.get(session.id) ?? {},
           session.game_templates.scoring_direction,
           session.game_templates.rounds,
+          session.winner_id,
         );
 
         return {
