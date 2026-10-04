@@ -16,6 +16,20 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+/**
+ * Dev-only escape hatch for testing one profile on several devices: when both are set (in
+ * `.env.local`, never in an EAS profile), a development build signs in as this email/password user
+ * instead of keeping its own anonymous identity. `__DEV__` keeps it out of release builds even if
+ * the variables leak into one.
+ */
+const DEV_LOGIN =
+  __DEV__ && process.env.EXPO_PUBLIC_DEV_LOGIN_EMAIL && process.env.EXPO_PUBLIC_DEV_LOGIN_PASSWORD
+    ? {
+        email: process.env.EXPO_PUBLIC_DEV_LOGIN_EMAIL,
+        password: process.env.EXPO_PUBLIC_DEV_LOGIN_PASSWORD,
+      }
+    : null;
+
 interface AuthProviderProps {
   children: React.ReactNode;
 }
@@ -66,7 +80,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         if (getSessionError) throw getSessionError;
         if (isCancelled) return;
 
-        if (data.session) {
+        const isDevUser = data.session?.user.email === DEV_LOGIN?.email;
+        if (data.session && (!DEV_LOGIN || isDevUser)) {
           applySession(data.session);
           return;
         }
@@ -74,7 +89,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
         if (signInInFlight.current) return;
         signInInFlight.current = true;
 
-        const { data: signInData, error: signInError } = await supabase.auth.signInAnonymously();
+        // Replaces whatever anonymous identity this device had — it stays in auth.users, just
+        // unreachable from here, same as a restore onto a device that already had an account.
+        const { data: signInData, error: signInError } = DEV_LOGIN
+          ? await supabase.auth.signInWithPassword(DEV_LOGIN)
+          : await supabase.auth.signInAnonymously();
         if (signInError) throw signInError;
         if (isCancelled) return;
 
