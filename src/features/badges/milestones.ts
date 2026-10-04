@@ -39,7 +39,7 @@ interface PlayerHistory {
 }
 
 function onDate(playedAt: string): string {
-  return `Gehaald op ${format(new Date(playedAt), 'd MMM', { locale: nl })}`;
+  return `Gehaald op ${format(new Date(playedAt), 'd-M')}`;
 }
 
 /** The Nth potje a player took part in — the shape every "x potjes" milestone shares. */

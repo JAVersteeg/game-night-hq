@@ -1,7 +1,6 @@
 import type { RouteProp } from '@react-navigation/native';
 import { useRoute } from '@react-navigation/native';
 import { format } from 'date-fns';
-import { nl } from 'date-fns/locale';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -28,7 +27,7 @@ function firstNameOf(member: GroupMember | undefined): string {
 }
 
 function shortDate(iso: string): string {
-  return format(new Date(iso), 'd MMM', { locale: nl });
+  return format(new Date(iso), 'd-M');
 }
 
 /** The ranking's heading with its explanation tucked behind an info icon — the same
@@ -215,9 +214,19 @@ export function BadgeDetailScreen() {
                     }`}
                   >
                     <MemberAvatar member={member} size={32} />
-                    <Text className="flex-1 text-base text-ink" numberOfLines={1}>
-                      {firstNameOf(member)}
-                    </Text>
+                    <View className="min-w-0 flex-1 gap-0.5">
+                      <Text className="text-base text-ink" numberOfLines={1}>
+                        {firstNameOf(member)}
+                      </Text>
+                      {period.metric ? (
+                        <Text
+                          className="text-sm text-ink-subtle"
+                          style={{ fontVariant: ['tabular-nums'] }}
+                        >
+                          {period.metric}
+                        </Text>
+                      ) : null}
+                    </View>
                     <Text
                       className="text-sm text-ink-subtle"
                       style={{ fontVariant: ['tabular-nums'] }}

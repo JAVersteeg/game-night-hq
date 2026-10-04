@@ -63,6 +63,9 @@ export interface PassOnBadgeDefinition {
   /** Whether the holder wears this badge on their avatar everywhere in the group. Needs `artKey`:
    *  a badge without a drawing has nothing to show at avatar size. */
   avatarMark: boolean;
+  /** Whether a past holder's final figure is worth showing under "Eerdere houders". True for the
+   *  streaks, where the figure is the record they set; a past winstfactor is just a snapshot. */
+  metricInHistory?: boolean;
   /** Whether this session can move the badge at all. */
   qualifies: (session: DerivedSession) => boolean;
   /** Who holds it after every qualifying session up to and including the last one in the list. */
@@ -237,6 +240,7 @@ const LONGEST_STREAK_BADGE: PassOnBadgeDefinition = {
   artKey: null,
   featured: false,
   avatarMark: false,
+  metricInHistory: true,
   qualifies: () => true,
   resolve: (qualifying) => {
     const running = new Map<string, number>();
@@ -263,14 +267,15 @@ const LONGEST_STREAK_BADGE: PassOnBadgeDefinition = {
  *  attendance counterpart to `LONGEST_STREAK_BADGE` — same shape, counted per avond instead of
  *  per potje, and won by showing up rather than by winning. */
 const LONGEST_ATTENDANCE_BADGE: PassOnBadgeDefinition = {
-  id: 'langste-aanwezigheidsreeks',
-  name: 'Langste aanwezigheidsreeks',
-  condition: 'Meeste avonden op een rij',
+  id: 'trouwste-speler',
+  name: 'Trouwste speler',
+  condition: 'Meeste game nights op een rij',
   description:
-    'Voor wie de meeste speelavonden op een rij is komen opdagen, zonder er één te missen. Een avond telt zodra je bij één potje van die dag meedeed.',
+    'Voor wie de meeste game nights op een rij is komen opdagen. Een avond telt zodra je bij één potje van die dag meedeed.',
   artKey: null,
   featured: false,
   avatarMark: false,
+  metricInHistory: true,
   qualifies: () => true,
   resolve: (qualifying) => {
     // Chronological, since `qualifying` is and a Map keeps insertion order: one entry per avond,

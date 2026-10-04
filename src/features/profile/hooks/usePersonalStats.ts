@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { nl } from 'date-fns/locale';
 
 import { useAuth } from '@/features/auth/context/AuthContext';
 import type { BonusRule, ScoringDirection } from '@/features/games/hooks/useGameTemplates';
@@ -241,7 +240,7 @@ export function usePersonalStats() {
 
         byGame.set(entry.template_id, game);
 
-        formLabels.push(format(new Date(entry.played_at), 'd MMM', { locale: nl }));
+        formLabels.push(format(new Date(entry.played_at), 'd-M'));
         formPoints.push(expectedWins === 0 ? 0 : round1(wins / expectedWins));
         formBeatShares.push(shareCount === 0 ? null : Math.round((shareSum / shareCount) * 100));
       }

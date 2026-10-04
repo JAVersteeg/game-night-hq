@@ -2,7 +2,6 @@ import type { RouteProp } from '@react-navigation/native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { format } from 'date-fns';
-import { nl } from 'date-fns/locale';
 import { useLayoutEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -34,7 +33,7 @@ function firstNameOf(member: GroupMember | undefined): string {
 }
 
 function shortDate(iso: string): string {
-  return format(new Date(iso), 'd MMM', { locale: nl });
+  return format(new Date(iso), 'd-M');
 }
 
 /** One of the two headline pass-on badges: the big hexagon card at the top of the tab. */

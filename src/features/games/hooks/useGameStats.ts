@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { nl } from 'date-fns/locale';
 
 import type {
   GameTemplateWithBonusRules,
@@ -320,7 +319,7 @@ function buildTrend(sessions: SessionTotals[]): GameTrend {
   });
 
   return {
-    labels: window.map((session) => format(new Date(session.playedAt), 'd MMM', { locale: nl })),
+    labels: window.map((session) => format(new Date(session.playedAt), 'd-M')),
     series: userIds.map((userId) => ({
       userId,
       points: window.map(

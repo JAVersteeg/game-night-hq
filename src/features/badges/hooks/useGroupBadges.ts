@@ -171,7 +171,10 @@ export function useGroupBadges(groupId: string) {
                 sessionsAgo: sessions.filter((session) => session.playedAt > current.from).length,
               }
             : null,
-          previousHolders: periods.slice(0, -1).reverse(),
+          previousHolders: periods
+            .slice(0, -1)
+            .reverse()
+            .map((period) => (definition.metricInHistory ? period : { ...period, metric: null })),
           // Over the whole history, not a prefix: the ranking is the state of play right now,
           // where `periods` is how the badge got here.
           standings: definition.standings?.(sessions.filter(definition.qualifies)) ?? null,
