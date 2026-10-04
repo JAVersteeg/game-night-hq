@@ -61,6 +61,8 @@ export interface GameTemplatePreset {
   /** Only one player can win, so a tie on the top total is broken by the scorekeeper picking the
    *  winner when the session finishes (Catan: whoever reaches 10 on their own turn). */
   singleWinner?: boolean;
+  /** Played in teams formed when the potje starts; required for `team_win`. */
+  teams?: boolean;
 }
 
 /**

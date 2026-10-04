@@ -2,7 +2,8 @@ import type { RouteProp } from '@react-navigation/native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useState } from 'react';
-import { ActivityIndicator, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Pressable, View } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { Text } from '@/components/Text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -10,6 +11,7 @@ import { Button } from '@/components/Button';
 import { ChoiceRow } from '@/components/ChoiceRow';
 import { CoverThumbnail } from '@/components/CoverThumbnail';
 import { SectionLabel } from '@/components/SectionLabel';
+import { TextField } from '@/components/TextField';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { AvatarMarksProvider } from '@/features/badges/avatarMarks';
 import { MemberAvatar } from '@/features/groups/components/MemberAvatar';
@@ -18,9 +20,13 @@ import { coverImageForTemplate } from '@/features/games/covers';
 import { useGameTemplates } from '@/features/games/hooks/useGameTemplates';
 import { useGroupMembers } from '@/features/groups/hooks/useGroupMembers';
 import { useCreateSession } from '@/features/sessions/hooks/useSessions';
+import { teamLabel } from '@/features/sessions/scoring';
 import type { AppStackParamList } from '@/navigation/types';
 
 type Navigation = NativeStackNavigationProp<AppStackParamList>;
+
+const MIN_TEAMS = 2;
+const MAX_TEAM_NAME_LENGTH = 40;
 
 /**
  * Pick who's playing and who's keeping score for a game already chosen from the dashboard. The
@@ -51,28 +57,100 @@ export function StartSessionScreen() {
   );
   const [scorekeeperId, setScorekeeperId] = useState<string | null>(currentUserId ?? null);
 
-  function toggleParticipant(userId: string) {
-    setParticipantIds((current) => {
-      const isSelected = current.includes(userId);
-      const next = isSelected ? current.filter((id) => id !== userId) : [...current, userId];
+  // Team game only. Teams are numbered 1..teamCount; a typed name of '' means "name it after its
+  // players", which is also what the field shows as its placeholder.
+  const isTeamGame = template?.teams ?? false;
+  const [teamCount, setTeamCount] = useState(MIN_TEAMS);
+  const [teamByUser, setTeamByUser] = useState<Record<string, number>>(
+    currentUserId ? { [currentUserId]: 1 } : {},
+  );
+  const [teamNames, setTeamNames] = useState<string[]>([]);
 
-      // The scorekeeper has to keep playing to keep the job: dropping them from the roster clears
-      // the pick rather than leaving a stale, no-longer-valid selection in place.
-      if (isSelected && scorekeeperId === userId) setScorekeeperId(null);
+  const teamNumbers = Array.from({ length: teamCount }, (_, index) => index + 1);
+  const membersOfTeam = (team: number) =>
+    (members ?? []).filter(
+      (member) => participantIds.includes(member.userId) && teamByUser[member.userId] === team,
+    );
+
+  /** The team a newly picked player joins: whichever has the fewest players so far, so picking
+   *  everyone in turn already deals them out evenly. */
+  function smallestTeam(assignments: Record<string, number>, count: number): number {
+    const sizes = Array.from(
+      { length: count },
+      (_, index) => Object.values(assignments).filter((team) => team === index + 1).length,
+    );
+    return sizes.indexOf(Math.min(...sizes)) + 1;
+  }
+
+  function toggleParticipant(userId: string) {
+    const isSelected = participantIds.includes(userId);
+    setParticipantIds((current) =>
+      isSelected ? current.filter((id) => id !== userId) : [...current, userId],
+    );
+    setTeamByUser((current) => {
+      const { [userId]: _removed, ...rest } = current;
+      return isSelected ? rest : { ...rest, [userId]: smallestTeam(rest, teamCount) };
+    });
+
+    // The scorekeeper has to keep playing to keep the job: dropping them from the roster clears
+    // the pick rather than leaving a stale, no-longer-valid selection in place.
+    if (isSelected && scorekeeperId === userId) setScorekeeperId(null);
+  }
+
+  function addTeam() {
+    setTeamCount((current) => current + 1);
+  }
+
+  /** Only the last team can go, so the numbers of the others never shift; its players are dealt
+   *  out over the teams that remain. */
+  function removeLastTeam() {
+    const remaining = teamCount - 1;
+    setTeamByUser((current) => {
+      const next = Object.fromEntries(
+        Object.entries(current).filter(([, team]) => team <= remaining),
+      );
+      for (const [userId, team] of Object.entries(current)) {
+        if (team > remaining) next[userId] = smallestTeam(next, remaining);
+      }
+      return next;
+    });
+    setTeamNames((current) => current.slice(0, remaining));
+    setTeamCount(remaining);
+  }
+
+  function renameTeam(team: number, name: string) {
+    setTeamNames((current) => {
+      const next = [...current];
+      next[team - 1] = name;
       return next;
     });
   }
+
+  const areTeamsComplete = teamNumbers.every((team) =>
+    participantIds.some((userId) => teamByUser[userId] === team),
+  );
 
   const canSubmit =
     Boolean(template) &&
     participantIds.length > 0 &&
     scorekeeperId !== null &&
+    (!isTeamGame || areTeamsComplete) &&
     !createSession.isPending;
 
   function handleSubmit() {
     if (!canSubmit || !scorekeeperId) return;
     createSession.mutate(
-      { templateId, scorekeeperId, participantIds },
+      {
+        templateId,
+        scorekeeperId,
+        participantIds,
+        teams: isTeamGame
+          ? {
+              numbers: participantIds.map((userId) => teamByUser[userId]),
+              names: teamNumbers.map((team) => teamNames[team - 1]?.trim() || null),
+            }
+          : undefined,
+      },
       {
         onSuccess: (newSession) => {
           navigation.replace('Session', { sessionId: newSession.id });
@@ -83,10 +161,12 @@ export function StartSessionScreen() {
 
   return (
     <AvatarMarksProvider groupId={groupId}>
-      <ScrollView
+      <KeyboardAwareScrollView
         className="flex-1 bg-surface"
         contentContainerClassName="gap-8 px-6 pt-6"
         contentContainerStyle={{ paddingBottom: 48 + insets.bottom }}
+        bottomOffset={24}
+        keyboardShouldPersistTaps="handled"
       >
         <View className="flex-row items-center gap-4">
           <CoverThumbnail
@@ -125,6 +205,88 @@ export function StartSessionScreen() {
           </View>
         </View>
 
+        {isTeamGame && members ? (
+          <View>
+            <SectionLabel>Teams</SectionLabel>
+            <View className="mt-2 gap-3">
+              {teamNumbers.map((team) => {
+                const teamMembers = membersOfTeam(team);
+                return (
+                  <View key={team} className="gap-3 rounded-2xl border border-line bg-surface p-4">
+                    <TextField
+                      label={`Team ${team}`}
+                      value={teamNames[team - 1] ?? ''}
+                      onChangeText={(name) => renameTeam(team, name)}
+                      placeholder={teamLabel(
+                        team,
+                        null,
+                        teamMembers.map((member) => member.displayName),
+                      )}
+                      maxLength={MAX_TEAM_NAME_LENGTH}
+                      testID={`team-name-input-${team}`}
+                    />
+                    {teamMembers.length === 0 ? (
+                      <Text className="text-sm text-ink-muted">Nog geen spelers</Text>
+                    ) : (
+                      teamMembers.map((member) => (
+                        <View key={member.userId} className="flex-row items-center gap-3">
+                          <MemberAvatar member={member} size={28} />
+                          <Text className="min-w-0 flex-1 text-base text-ink" numberOfLines={1}>
+                            {member.displayName}
+                          </Text>
+                          <View className="flex-row gap-1">
+                            {teamNumbers.map((option) => (
+                              <Pressable
+                                key={option}
+                                onPress={() =>
+                                  setTeamByUser((current) => ({
+                                    ...current,
+                                    [member.userId]: option,
+                                  }))
+                                }
+                                accessibilityRole="button"
+                                accessibilityLabel={`Naar team ${option}`}
+                                accessibilityState={{ selected: option === team }}
+                                className={`h-8 w-8 items-center justify-center rounded-full ${
+                                  option === team
+                                    ? 'bg-accent'
+                                    : 'bg-surface-sunken active:opacity-70'
+                                }`}
+                              >
+                                <Text
+                                  className={`text-sm font-semibold ${
+                                    option === team ? 'text-accent-fg' : 'text-ink-muted'
+                                  }`}
+                                >
+                                  {option}
+                                </Text>
+                              </Pressable>
+                            ))}
+                          </View>
+                        </View>
+                      ))
+                    )}
+                    {team === teamCount && teamCount > MIN_TEAMS ? (
+                      <Button label="Team verwijderen" variant="ghost" onPress={removeLastTeam} />
+                    ) : null}
+                  </View>
+                );
+              })}
+              <Button
+                label="Team toevoegen"
+                variant="secondary"
+                onPress={addTeam}
+                disabled={teamCount >= Math.max(MIN_TEAMS, participantIds.length)}
+              />
+              {!areTeamsComplete ? (
+                <Text className="text-sm text-ink-muted">
+                  Elk team heeft minstens één speler nodig.
+                </Text>
+              ) : null}
+            </View>
+          </View>
+        ) : null}
+
         {participantIds.length > 0 && members ? (
           <View>
             <SectionLabel>Scorebijhouder</SectionLabel>
@@ -157,7 +319,7 @@ export function StartSessionScreen() {
           isLoading={createSession.isPending}
           testID="start-session-submit"
         />
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </AvatarMarksProvider>
   );
 }

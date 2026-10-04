@@ -1,5 +1,13 @@
 import type { NavigationAction, RouteProp } from '@react-navigation/native';
-import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ActivityIndicator, Modal, Pressable, View } from 'react-native';
@@ -46,8 +54,10 @@ import {
   RANK_FIELD_KEY,
   computeBreakdown,
   computeTotals,
+  groupByTeam,
   roundRankPoints,
   higherTotalIsBetter,
+  teamLabel,
 } from '@/features/sessions/scoring';
 import {
   useAddSessionNote,
@@ -55,7 +65,10 @@ import {
   useSessionNotes,
   type SessionNote,
 } from '@/features/sessions/hooks/useSessionNotes';
-import { useSessionParticipants } from '@/features/sessions/hooks/useSessionParticipants';
+import {
+  useSessionParticipants,
+  useSessionTeamByUser,
+} from '@/features/sessions/hooks/useSessionParticipants';
 import {
   useSetScore,
   useSetScores,
@@ -86,8 +99,52 @@ function isWithinGraceWindow(completedAt: string | null): boolean {
   );
 }
 
+/** One team of a team game's session: its number, display name and players (participant order). */
+interface SessionTeam {
+  team: number;
+  label: string;
+  members: GroupMember[];
+}
+
+/** A team's overlapping avatars — the team's stand-in for a single player's avatar. */
+function TeamAvatars({ members, size }: { members: GroupMember[]; size: number }) {
+  return (
+    <View className="flex-row">
+      {members.map((member, index) => (
+        <View
+          key={member.userId}
+          className="rounded-full border-2 border-surface"
+          style={{ marginLeft: index === 0 ? 0 : -size / 3 }}
+        >
+          <MemberAvatar member={member} size={size} />
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/** A team's name over its players' names, next to their avatars. */
+function TeamHeader({ team }: { team: SessionTeam }) {
+  return (
+    <>
+      <TeamAvatars members={team.members} size={32} />
+      <View className="min-w-0 flex-1">
+        <Text className="text-base font-semibold text-ink" numberOfLines={1}>
+          {team.label}
+        </Text>
+        <Text className="text-sm text-ink-muted" numberOfLines={1}>
+          {team.members.map((member) => member.displayName).join(', ')}
+        </Text>
+      </View>
+    </>
+  );
+}
+
 interface PlayerCardProps {
   member: GroupMember;
+  /** Set in a team game, where one card stands for a whole team and `member` is only the player
+   *  its entries are keyed under (every teammate gets the same values written). */
+  team?: SessionTeam;
   isScorekeeper: boolean;
   fields: { key: string; label: string; sign: number; defaultValue: number; exclusive: boolean }[];
   values: Record<string, number>;
@@ -157,6 +214,7 @@ function ExclusiveFieldToggle({
 
 function PlayerCard({
   member,
+  team,
   isScorekeeper,
   fields,
   values,
@@ -169,8 +227,10 @@ function PlayerCard({
   onChangeField,
 }: PlayerCardProps) {
   // The collapsed card's only view of the fields — spectators can never expand it, so without this
-  // they'd see a total with no way to tell where it came from.
-  const summary = showSummary && !(canEdit && isOpen) ? fieldSummary(fields, values) : [];
+  // they'd see a total with no way to tell where it came from. A single field *is* the total, so
+  // there's nothing to break down and the line would only repeat it.
+  const summary =
+    showSummary && fields.length > 1 && !(canEdit && isOpen) ? fieldSummary(fields, values) : [];
 
   return (
     <View className="overflow-hidden rounded-2xl border border-line bg-surface">
@@ -180,14 +240,23 @@ function PlayerCard({
         accessibilityState={canEdit ? { expanded: isOpen } : undefined}
         className={`flex-row items-center gap-3 px-4 py-3 ${canEdit ? 'active:opacity-70' : ''}`}
       >
-        <MemberAvatar member={member} size={36} />
+        {team ? (
+          <TeamAvatars members={team.members} size={36} />
+        ) : (
+          <MemberAvatar member={member} size={36} />
+        )}
         <View className="min-w-0 flex-1">
           <View className="flex-row items-center gap-2">
             <Text className="min-w-0 shrink text-base font-semibold text-ink" numberOfLines={1}>
-              {member.displayName}
+              {team ? team.label : member.displayName}
             </Text>
-            {isScorekeeper ? <Badge tone="accent">Scorebijhouder</Badge> : null}
+            {isScorekeeper && !team ? <Badge tone="accent">Scorebijhouder</Badge> : null}
           </View>
+          {team ? (
+            <Text className="text-sm text-ink-muted" numberOfLines={1}>
+              {team.members.map((teamMember) => teamMember.displayName).join(', ')}
+            </Text>
+          ) : null}
           {summary.length > 0 ? (
             <View className="mt-1 gap-0.5">
               {summary.map((line) => (
@@ -726,10 +795,37 @@ interface DeleteNoteConfirmModalProps {
   isPending: boolean;
 }
 
-/** A single-winner game ended with a shared top total — the scorekeeper says who actually won.
- *  Only the tied players are offered, and "Later" leaves the tie standing (everyone tied counts as a
- *  winner until it's settled) — the summary keeps a button to come back to it. */
+/** A winner to pick in `PickWinnerModal`: a player (keyed by user id) or a team (by its number). */
+interface WinnerCandidate {
+  id: string;
+  title: string;
+  left: ReactNode;
+}
+
+function playerCandidate(member: GroupMember): WinnerCandidate {
+  return {
+    id: member.userId,
+    title: member.displayName,
+    left: <MemberAvatar member={member} size={32} />,
+  };
+}
+
+function teamCandidate(team: SessionTeam): WinnerCandidate {
+  return {
+    id: String(team.team),
+    title: team.label,
+    left: <TeamAvatars members={team.members} size={28} />,
+  };
+}
+
+/** The scorekeeper says who won. Mostly for a single-winner game that ended with a shared top
+ *  total: only the tied players (or teams) are offered, and "Later" leaves the tie standing
+ *  (everyone tied counts as a winner until it's settled) — the summary keeps a button to come back
+ *  to it. A team game decided on who won uses it too, to finish the potje with every team offered. */
 function PickWinnerModal({
+  title = 'Wie heeft er gewonnen?',
+  description = 'Gelijkspel, maar dit spel heeft maar één winnaar. Kies wie het potje won.',
+  laterLabel = 'Later kiezen',
   candidates,
   selectedId,
   onSelect,
@@ -738,9 +834,12 @@ function PickWinnerModal({
   isPending,
   hasFailed,
 }: {
-  candidates: GroupMember[];
+  title?: string;
+  description?: string;
+  laterLabel?: string;
+  candidates: WinnerCandidate[];
   selectedId: string | null;
-  onSelect: (userId: string) => void;
+  onSelect: (id: string) => void;
   onConfirm: () => void;
   onLater: () => void;
   isPending: boolean;
@@ -755,20 +854,18 @@ function PickWinnerModal({
       >
         <Pressable className="w-full max-w-sm gap-4 rounded-3xl border border-line bg-surface p-6">
           <View>
-            <Text className="text-xl font-bold text-ink">Wie heeft er gewonnen?</Text>
-            <Text className="mt-1 text-sm text-ink-muted">
-              Gelijkspel, maar dit spel heeft maar één winnaar. Kies wie het potje won.
-            </Text>
+            <Text className="text-xl font-bold text-ink">{title}</Text>
+            <Text className="mt-1 text-sm text-ink-muted">{description}</Text>
           </View>
           <View className="gap-2">
-            {candidates.map((member) => (
+            {candidates.map((candidate) => (
               <ChoiceRow
-                key={member.userId}
-                title={member.displayName}
-                left={<MemberAvatar member={member} size={32} />}
-                selected={selectedId === member.userId}
-                onSelect={() => onSelect(member.userId)}
-                testID={`pick-winner-${member.userId}`}
+                key={candidate.id}
+                title={candidate.title}
+                left={candidate.left}
+                selected={selectedId === candidate.id}
+                onSelect={() => onSelect(candidate.id)}
+                testID={`pick-winner-${candidate.id}`}
               />
             ))}
           </View>
@@ -784,7 +881,7 @@ function PickWinnerModal({
             disabled={selectedId === null}
             testID="pick-winner-confirm"
           />
-          <Button label="Later kiezen" variant="secondary" onPress={onLater} />
+          <Button label={laterLabel} variant="secondary" onPress={onLater} />
         </Pressable>
       </Pressable>
     </Modal>
@@ -927,7 +1024,9 @@ function hasRecordedProgress(
   );
 
   return Object.values(scoresByUser ?? {}).some((values) =>
-    Object.entries(values).some(([fieldKey, value]) => value !== (baselineByKey.get(fieldKey) ?? 0)),
+    Object.entries(values).some(
+      ([fieldKey, value]) => value !== (baselineByKey.get(fieldKey) ?? 0),
+    ),
   );
 }
 
@@ -1031,6 +1130,7 @@ export function SessionScreen() {
   );
   const { data: participantIds, isPending: isParticipantsPending } =
     useSessionParticipants(sessionId);
+  const { data: teamByUser } = useSessionTeamByUser(sessionId);
   const { data: template, isPending: isTemplatePending } = useGameTemplate(
     sessionData?.template_id ?? '',
   );
@@ -1073,7 +1173,11 @@ export function SessionScreen() {
   // The tie-break prompt opens by itself on a finished single-winner tie; "Later kiezen" sets this
   // so it stays closed until the summary's own button reopens it.
   const [isWinnerPromptDismissed, setIsWinnerPromptDismissed] = useState(false);
+  // A player id, or — in a team game — the picked team's number as a string.
   const [pickedWinnerId, setPickedWinnerId] = useState<string | null>(null);
+  // A team game decided on who won finishes through a "which team won?" prompt instead of straight
+  // away; within the edit window the summary can reopen it to correct a mis-tap.
+  const [isPickTeamVisible, setIsPickTeamVisible] = useState(false);
   const [countsCurrentRound, setCountsCurrentRound] = useState(true);
   // True while a finished session is being edited via the header pencil — the one state that
   // swaps the always-shown completed summary for the same entry form live play uses. For a rounds
@@ -1094,8 +1198,10 @@ export function SessionScreen() {
   // (`private.can_write_scores`'s completed branch) is still open. Computed with optional chaining
   // — unlike `canEdit` further down, this has to be safe to read before the pending/error guard
   // below, since setting the header is itself a hook that must run unconditionally on every render.
+  // A `team_win` game has no scores to edit — its result is corrected by picking the team again.
   const canEditCompletedSession =
     sessionData?.status === 'completed' &&
+    sessionData.game_templates.scoring_direction !== 'team_win' &&
     currentUserId === sessionData?.scorekeeper_id &&
     isWithinGraceWindow(sessionData?.completed_at ?? null);
 
@@ -1297,6 +1403,46 @@ export function SessionScreen() {
     (participantIds ?? []).includes(member.userId),
   );
 
+  // A team game shows one card per team, keyed by its first player: every entry is written to all
+  // of the team's players at once (see `teammatesOf`), so any one of them carries the team's values.
+  const isTeamWin = sessionData.game_templates.scoring_direction === 'team_win';
+  const sessionTeams =
+    sessionData.game_templates.teams && teamByUser
+      ? { teamByUser, winningTeam: sessionData.winning_team }
+      : null;
+  const teams: SessionTeam[] = sessionTeams
+    ? groupByTeam(
+        participants.map((member) => member.userId),
+        sessionTeams.teamByUser,
+      ).map(({ team, userIds }) => {
+        const teamMembers = participants.filter((member) => userIds.includes(member.userId));
+        return {
+          team,
+          label: teamLabel(
+            team,
+            sessionData.team_names,
+            teamMembers.map((member) => member.displayName),
+          ),
+          members: teamMembers,
+        };
+      })
+    : [];
+
+  /** Everyone a value entered for `userId` belongs to: their whole team in a team game, else just
+   *  them. */
+  function teammatesOf(userId: string): string[] {
+    if (!sessionTeams) return [userId];
+    const team = sessionTeams.teamByUser[userId];
+    return participants
+      .map((member) => member.userId)
+      .filter((id) => sessionTeams.teamByUser[id] === team);
+  }
+
+  // What the entry lists iterate over: a card per player, or per team in a team game.
+  const entryUnits: { member: GroupMember; team?: SessionTeam }[] = sessionTeams
+    ? teams.map((team) => ({ member: team.members[0], team }))
+    : participants.map((member) => ({ member }));
+
   const fields = (template?.game_template_fields ?? []).map((field) => ({
     key: field.key,
     label: field.label,
@@ -1305,19 +1451,25 @@ export function SessionScreen() {
     exclusive: field.exclusive,
   }));
 
-  /** Writes one participant's field value and, for an exclusive field, clears it for every other
-   *  participant that currently holds it — enforcing the at-most-one-holder rule client-side. */
+  /** Writes one participant's field value (their whole team's, in a team game) and, for an
+   *  exclusive field, clears it for every other participant that currently holds it — enforcing the
+   *  at-most-one-holder rule client-side. */
   function handleFieldChange(userId: string, fieldKey: string, value: number) {
     const field = fields.find((candidate) => candidate.key === fieldKey);
+    const targets = teammatesOf(userId);
     if (field?.exclusive && value !== 0) {
       for (const member of participants) {
-        if (member.userId === userId) continue;
+        if (targets.includes(member.userId)) continue;
         if (((scoresByUser ?? {})[member.userId]?.[fieldKey] ?? 0) !== 0) {
           setScore.mutate({ userId: member.userId, fieldKey, value: 0 });
         }
       }
     }
-    setScore.mutate({ userId, fieldKey, value });
+    if (targets.length === 1) {
+      setScore.mutate({ userId, fieldKey, value });
+    } else {
+      setScores.mutate(targets.map((target) => ({ userId: target, fieldKey, value })));
+    }
   }
 
   /** Same exclusivity rule as `handleFieldChange`, but against this round's local draft rather than
@@ -1325,17 +1477,18 @@ export function SessionScreen() {
    *  banked. */
   function handleFieldRoundChange(userId: string, fieldKey: string, value: number) {
     const field = fields.find((candidate) => candidate.key === fieldKey);
+    const targets = teammatesOf(userId);
     setFieldRoundDraft((current) => {
       const next: RoundFieldValues = { ...current };
       if (field?.exclusive && value !== 0) {
         for (const member of participants) {
-          if (member.userId === userId) continue;
+          if (targets.includes(member.userId)) continue;
           if ((next[member.userId]?.[fieldKey] ?? 0) !== 0) {
             next[member.userId] = { ...next[member.userId], [fieldKey]: 0 };
           }
         }
       }
-      next[userId] = { ...next[userId], [fieldKey]: value };
+      for (const target of targets) next[target] = { ...next[target], [fieldKey]: value };
       return next;
     });
   }
@@ -1344,17 +1497,18 @@ export function SessionScreen() {
    *  the server-synced scores — nothing here is written until "Klaar" flushes the whole draft. */
   function handleCompletedFieldChange(userId: string, fieldKey: string, value: number) {
     const field = fields.find((candidate) => candidate.key === fieldKey);
+    const targets = teammatesOf(userId);
     setCompletedScoresDraft((current) => {
       const next: ScoresByUser = { ...(current ?? {}) };
       if (field?.exclusive && value !== 0) {
         for (const member of participants) {
-          if (member.userId === userId) continue;
+          if (targets.includes(member.userId)) continue;
           if ((next[member.userId]?.[fieldKey] ?? 0) !== 0) {
             next[member.userId] = { ...next[member.userId], [fieldKey]: 0 };
           }
         }
       }
-      next[userId] = { ...next[userId], [fieldKey]: value };
+      for (const target of targets) next[target] = { ...next[target], [fieldKey]: value };
       return next;
     });
   }
@@ -1431,8 +1585,11 @@ export function SessionScreen() {
     sessionData.game_templates.scoring_direction,
     isRounds,
     sessionData.winner_id,
+    sessionTeams,
   );
   const totalByUserId = new Map(totals.map((entry) => [entry.userId, entry]));
+  const isTeamWinner = (team: SessionTeam) =>
+    totalByUserId.get(team.members[0]?.userId ?? '')?.isWinner ?? false;
   const pointsByUserId = new Map(totals.map((entry) => [entry.userId, entry.total]));
   const memberById = new Map(participants.map((member) => [member.userId, member]));
   const roundMembers = (roundOrder ?? [])
@@ -1443,7 +1600,7 @@ export function SessionScreen() {
     (a, b) => (pointsByUserId.get(b.userId) ?? 0) - (pointsByUserId.get(a.userId) ?? 0),
   );
   // Same, for a single-round field game, where "best" depends on the scoring direction.
-  const fieldStandingsMembers = [...participants].sort((a, b) => {
+  const fieldStandingsUnits = [...entryUnits].sort(({ member: a }, { member: b }) => {
     const difference = (pointsByUserId.get(b.userId) ?? 0) - (pointsByUserId.get(a.userId) ?? 0);
     return higherTotalIsBetter(sessionData.game_templates.scoring_direction, isRounds)
       ? difference
@@ -1574,7 +1731,12 @@ export function SessionScreen() {
   // settle it (`sessions_update`), so only they are asked — everyone else just sees the shared win
   // until it is. Deliberately not tied to the 2-hour edit window: a tie nobody resolved on the
   // night can be settled whenever the scorekeeper next opens the potje.
-  const tiedLeaders = participants.filter((member) => totalByUserId.get(member.userId)?.isWinner);
+  // In a team game the tie is between teams, and so is the pick.
+  const tiedLeaders: WinnerCandidate[] = sessionTeams
+    ? teams.filter(isTeamWinner).map(teamCandidate)
+    : participants
+        .filter((member) => totalByUserId.get(member.userId)?.isWinner)
+        .map(playerCandidate);
   const needsWinnerPick =
     showCompletedSummary &&
     !isResultPending &&
@@ -1584,8 +1746,45 @@ export function SessionScreen() {
 
   function confirmPickWinner() {
     if (!pickedWinnerId) return;
-    setSessionWinner.mutate(pickedWinnerId);
+    setSessionWinner.mutate(sessionTeams ? { team: Number(pickedWinnerId) } : pickedWinnerId);
   }
+
+  /** "Potje afronden" for a team game decided on who won: opens the team prompt, whose confirm then
+   *  finishes the potje — or, on one that's already finished, only corrects the winning team. */
+  function openPickTeam() {
+    finalizeSession.reset();
+    setSessionWinner.reset();
+    setPickedWinnerId(
+      sessionData!.winning_team !== null ? String(sessionData!.winning_team) : null,
+    );
+    setIsPickTeamVisible(true);
+  }
+
+  function confirmPickTeam() {
+    if (!pickedWinnerId) return;
+    const winningTeam = Number(pickedWinnerId);
+    const close = () => setIsPickTeamVisible(false);
+    if (isCompletedSession) {
+      setSessionWinner.mutate({ team: winningTeam }, { onSuccess: close });
+      return;
+    }
+    withDraftNoteSaved(() => finalizeSession.mutate({ winningTeam }, { onSuccess: close }));
+  }
+
+  const pickTeamModal = isPickTeamVisible ? (
+    <PickWinnerModal
+      title="Welk team heeft gewonnen?"
+      description="Kies het team dat dit potje won."
+      laterLabel="Annuleren"
+      candidates={teams.map(teamCandidate)}
+      selectedId={pickedWinnerId}
+      onSelect={setPickedWinnerId}
+      onConfirm={confirmPickTeam}
+      onLater={() => setIsPickTeamVisible(false)}
+      isPending={finalizeSession.isPending || setSessionWinner.isPending || addNote.isPending}
+      hasFailed={finalizeSession.isError || setSessionWinner.isError}
+    />
+  ) : null;
 
   if (showCompletedSummary) {
     const scoringDirection = sessionData.game_templates.scoring_direction;
@@ -1605,13 +1804,47 @@ export function SessionScreen() {
           ),
         };
       })
-      .sort((a, b) =>
-        higherTotalIsBetter(scoringDirection, isRounds) ? b.total - a.total : a.total - b.total,
+      // The winner always leads: on a tied top total the scorekeeper's pick would otherwise sit
+      // wherever the participant order happened to put it.
+      .sort(
+        (a, b) =>
+          Number(b.isWinner) - Number(a.isWinner) ||
+          (higherTotalIsBetter(scoringDirection, isRounds) ? b.total - a.total : a.total - b.total),
       );
 
+    // A team game's result reads per team: one bar per team, winner first, under the team's name.
+    const orderedTeams = [...teams].sort(
+      (a, b) =>
+        Number(isTeamWinner(b)) - Number(isTeamWinner(a)) ||
+        (higherTotalIsBetter(scoringDirection, isRounds) ? -1 : 1) *
+          ((totalByUserId.get(a.members[0].userId)?.total ?? 0) -
+            (totalByUserId.get(b.members[0].userId)?.total ?? 0)),
+    );
+    const orderedTeamRows = orderedTeams.map((team) => {
+      const entry = totalByUserId.get(team.members[0].userId);
+      return {
+        name: team.label,
+        total: entry?.total ?? 0,
+        isWinner: entry?.isWinner ?? false,
+        breakdown: computeBreakdown(
+          fields,
+          template?.bonus_rules ?? [],
+          displayedScoresByUser[team.members[0].userId] ?? {},
+        ),
+      };
+    });
+
     const winners = participants.filter((member) => totalByUserId.get(member.userId)?.isWinner);
+    const winnerTitle = sessionTeams
+      ? teams
+          .filter(isTeamWinner)
+          .map((team) => team.label)
+          .join(' & ')
+      : winners.map((member) => member.displayName).join(' & ');
     const orderedMembers = [...participants].sort(
       (a, b) =>
+        Number(totalByUserId.get(b.userId)?.isWinner ?? false) -
+          Number(totalByUserId.get(a.userId)?.isWinner ?? false) ||
         (totalByUserId.get(a.userId)?.total ?? 0) - (totalByUserId.get(b.userId)?.total ?? 0),
     );
 
@@ -1674,7 +1907,7 @@ export function SessionScreen() {
                     </View>
                     <View className="min-w-0 flex-1 items-start">
                       <Text className="text-xl font-bold text-ink" numberOfLines={2}>
-                        {winners.map((member) => member.displayName).join(' & ')}
+                        {winnerTitle || 'Nog geen winnaar'}
                       </Text>
                     </View>
                   </>
@@ -1694,6 +1927,18 @@ export function SessionScreen() {
               />
             ) : null}
 
+            {isTeamWin &&
+            isScorekeeper &&
+            !isResultPending &&
+            (sessionData.winning_team === null || canEdit) ? (
+              <Button
+                label={sessionData.winning_team === null ? 'Winnaar kiezen' : 'Ander team kiezen'}
+                variant="secondary"
+                onPress={openPickTeam}
+                testID="open-pick-team-button"
+              />
+            ) : null}
+
             <View>
               <SectionLabel>Eindstand</SectionLabel>
               {/* A plain ranked template has only a finish position to show; ranked-and-rounds
@@ -1702,6 +1947,19 @@ export function SessionScreen() {
               {isResultPending ? (
                 <Card className="mt-2 items-center justify-center py-8">
                   <ActivityIndicator />
+                </Card>
+              ) : isTeamWin ? (
+                <View className="mt-2 gap-2">
+                  {orderedTeams.map((team) => (
+                    <Card key={team.team} className="flex-row items-center gap-3">
+                      <TeamHeader team={team} />
+                      {isTeamWinner(team) ? <Badge tone="success">Gewonnen</Badge> : null}
+                    </Card>
+                  ))}
+                </View>
+              ) : sessionTeams ? (
+                <Card className="mt-2">
+                  <ScoreBars rows={orderedTeamRows} />
                 </Card>
               ) : isRanked && !isRounds ? (
                 <View className="mt-2">
@@ -1743,7 +2001,9 @@ export function SessionScreen() {
               isPending={setSessionWinner.isPending}
               hasFailed={setSessionWinner.isError}
             />
-          ) : null}
+          ) : (
+            pickTeamModal
+          )}
         </View>
       </AvatarMarksProvider>
     );
@@ -1810,7 +2070,7 @@ export function SessionScreen() {
                 onUndo={handleUndoRound}
               />
               <View className="mt-2 gap-2">
-                {participants.map((member) => {
+                {entryUnits.map(({ member, team }) => {
                   // Every unset field reads as 0 here explicitly (rather than a field's
                   // `defaultValue`, which for an exclusive field is its award amount, not a sane
                   // per-round fallback) — this round hasn't been banked yet, so nothing about it
@@ -1832,6 +2092,7 @@ export function SessionScreen() {
                     <PlayerCard
                       key={member.userId}
                       member={member}
+                      team={team}
                       isScorekeeper={member.userId === sessionData.scorekeeper_id}
                       fields={fields}
                       values={roundValues}
@@ -1857,9 +2118,25 @@ export function SessionScreen() {
                 </Text>
               ) : null}
             </View>
+          ) : isTeamWin ? (
+            <View>
+              <SectionLabel>Teams</SectionLabel>
+              <View className="mt-2 gap-2">
+                {teams.map((team) => (
+                  <Card key={team.team} className="flex-row items-center gap-3">
+                    <TeamHeader team={team} />
+                  </Card>
+                ))}
+              </View>
+              {canEdit ? (
+                <Text className="mt-3 text-sm text-ink-muted">
+                  Bij "Potje afronden" kies je welk team heeft gewonnen.
+                </Text>
+              ) : null}
+            </View>
           ) : (
             <View>
-              <SectionLabel>Deelnemers</SectionLabel>
+              <SectionLabel>{sessionTeams ? 'Teams' : 'Deelnemers'}</SectionLabel>
               {isRanked ? (
                 canEdit ? (
                   <View className="mt-2">
@@ -1908,10 +2185,11 @@ export function SessionScreen() {
                 <View className="mt-2 gap-2">
                   {/* The scorekeeper keeps a fixed order so a card never jumps out from under
                       their thumb mid-entry; everyone watching gets the live standings instead. */}
-                  {(canEdit ? participants : fieldStandingsMembers).map((member) => (
+                  {(canEdit ? entryUnits : fieldStandingsUnits).map(({ member, team }) => (
                     <PlayerCard
                       key={member.userId}
                       member={member}
+                      team={team}
                       isScorekeeper={member.userId === sessionData.scorekeeper_id}
                       fields={fields}
                       values={displayedScoresByUser[member.userId] ?? {}}
@@ -2011,7 +2289,11 @@ export function SessionScreen() {
               ) : (
                 <Button
                   label="Potje afronden"
-                  onPress={() => withDraftNoteSaved(() => finalizeSession.mutate())}
+                  onPress={
+                    isTeamWin
+                      ? openPickTeam
+                      : () => withDraftNoteSaved(() => finalizeSession.mutate())
+                  }
                   isLoading={finalizeSession.isPending || addNote.isPending}
                   testID="finalize-session-submit"
                 />
@@ -2038,6 +2320,8 @@ export function SessionScreen() {
             hasFailed={commitRound.isError || finalizeSession.isError || deleteSession.isError}
           />
         ) : null}
+
+        {pickTeamModal}
 
         {isDeleteConfirmVisible ? (
           <DeleteSessionConfirmModal

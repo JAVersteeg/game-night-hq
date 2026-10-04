@@ -4,7 +4,13 @@ import { nl } from 'date-fns/locale';
 
 import { useAuth } from '@/features/auth/context/AuthContext';
 import type { BonusRule, ScoringDirection } from '@/features/games/hooks/useGameTemplates';
-import { computeTotals, higherTotalIsBetter } from '@/features/sessions/scoring';
+import {
+  areTeammates,
+  beatCredit,
+  computeTotals,
+  higherTotalIsBetter,
+  sessionTeamsOf,
+} from '@/features/sessions/scoring';
 import { supabase } from '@/lib/supabase';
 
 export interface PersonalGameRecord {
@@ -58,6 +64,7 @@ interface SessionRow {
   played_at: string;
   template_id: string;
   winner_id: string | null;
+  winning_team: number | null;
   game_templates: {
     name: string;
     cover_key: string | null;
@@ -66,7 +73,7 @@ interface SessionRow {
     game_template_fields: { key: string; sign: number }[];
     bonus_rules: BonusRule[];
   };
-  session_participants: { user_id: string }[];
+  session_participants: { user_id: string; team: number | null }[];
 }
 
 const EMPTY_STATS: PersonalStats = {
@@ -112,9 +119,9 @@ export function usePersonalStats() {
       const { data: sessions, error: sessionsError } = await supabase
         .from('sessions')
         .select(
-          `id, played_at, template_id, winner_id,
+          `id, played_at, template_id, winner_id, winning_team,
            game_templates(name, cover_key, scoring_direction, rounds, game_template_fields(key, sign), bonus_rules(*)),
-           session_participants(user_id)`,
+           session_participants(user_id, team)`,
         )
         .in(
           'id',
@@ -168,6 +175,7 @@ export function usePersonalStats() {
       let shareCount = 0;
 
       for (const entry of sessions) {
+        const teams = sessionTeamsOf(entry.session_participants, entry.winning_team);
         const totals = computeTotals(
           entry.session_participants.map((participant) => participant.user_id),
           entry.game_templates.game_template_fields,
@@ -176,6 +184,7 @@ export function usePersonalStats() {
           entry.game_templates.scoring_direction,
           entry.game_templates.rounds,
           entry.winner_id,
+          teams,
         );
 
         // Nothing in the schema forbids a session without participants, and it would divide the
@@ -185,7 +194,11 @@ export function usePersonalStats() {
         const own = totals.find((total) => total.userId === userId);
         const isWinner = own?.isWinner ?? false;
         if (isWinner) wins += 1;
-        expectedWins += 1 / totals.length;
+        // Chance odds are per competitor: a team in a team game, a player otherwise.
+        const competitorCount = teams
+          ? new Set(Object.values(teams.teamByUser)).size
+          : totals.length;
+        expectedWins += 1 / competitorCount;
 
         const game = byGame.get(entry.template_id) ?? {
           name: entry.game_templates.name,
@@ -198,25 +211,31 @@ export function usePersonalStats() {
         };
         game.gamesPlayed += 1;
         game.wins += isWinner ? 1 : 0;
-        game.expectedWins += 1 / totals.length;
+        game.expectedWins += 1 / competitorCount;
+
+        // Teammates never played against each other, so only opponents count as "the table".
+        const opponents = own
+          ? totals.filter(
+              (other) =>
+                other.userId !== own.userId && !areTeammates(teams, own.userId, other.userId),
+            )
+          : [];
 
         // A one-player potje has no table to beat, so it's left out of the average rather than
         // counted as a perfect score — the same call `useGameStats` makes for a group's Overwicht.
-        if (own && totals.length > 1) {
+        if (own && opponents.length > 0) {
           const higherWins = higherTotalIsBetter(
             entry.game_templates.scoring_direction,
             entry.game_templates.rounds,
           );
-          const beaten = totals.reduce((count, other) => {
-            if (other.userId === own.userId) return count;
-            if (other.total === own.total) return count + 0.5;
-            const isBetter = higherWins ? own.total > other.total : own.total < other.total;
-            return isBetter ? count + 1 : count;
-          }, 0);
+          const beaten = opponents.reduce(
+            (count, other) => count + beatCredit(own, other, higherWins),
+            0,
+          );
 
-          game.shareSum += beaten / (totals.length - 1);
+          game.shareSum += beaten / opponents.length;
           game.shareCount += 1;
-          shareSum += beaten / (totals.length - 1);
+          shareSum += beaten / opponents.length;
           shareCount += 1;
         }
 

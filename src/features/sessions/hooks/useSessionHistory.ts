@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 
 import type { BonusRule, ScoringDirection } from '@/features/games/hooks/useGameTemplates';
-import { computeTotals } from '@/features/sessions/scoring';
+import { computeTotals, groupByTeam, sessionTeamsOf } from '@/features/sessions/scoring';
 import { supabase } from '@/lib/supabase';
 
 export interface SessionHistoryEntry {
@@ -14,6 +14,10 @@ export interface SessionHistoryEntry {
    *  `group_members`), so display names have to be resolved by the caller against the group's
    *  member list rather than embedded here. */
   winnerIds: string[];
+  /** A team game only: the winning team(s), by number and players, plus every team's typed name
+   *  (see `teamLabel`) — the history names the team rather than listing its players. */
+  winningTeams: { team: number; userIds: string[] }[] | null;
+  teamNames: (string | null)[] | null;
 }
 
 export const sessionHistoryKeys = {
@@ -24,6 +28,8 @@ interface SessionRow {
   id: string;
   played_at: string;
   winner_id: string | null;
+  winning_team: number | null;
+  team_names: (string | null)[] | null;
   game_templates: {
     name: string;
     cover_key: string | null;
@@ -32,7 +38,7 @@ interface SessionRow {
     game_template_fields: { key: string; sign: number }[];
     bonus_rules: BonusRule[];
   };
-  session_participants: { user_id: string }[];
+  session_participants: { user_id: string; team: number | null }[];
 }
 
 /**
@@ -50,9 +56,9 @@ export function useSessionHistory(groupId: string) {
       const { data: sessions, error: sessionsError } = await supabase
         .from('sessions')
         .select(
-          `id, played_at, winner_id,
+          `id, played_at, winner_id, winning_team, team_names,
            game_templates(name, cover_key, scoring_direction, rounds, game_template_fields(key, sign), bonus_rules(*)),
-           session_participants(user_id)`,
+           session_participants(user_id, team)`,
         )
         .eq('group_id', groupId)
         .eq('status', 'completed')
@@ -81,22 +87,34 @@ export function useSessionHistory(groupId: string) {
       }
 
       return sessions.map((session) => {
+        const participantIds = session.session_participants.map(
+          (participant) => participant.user_id,
+        );
+        const teams = sessionTeamsOf(session.session_participants, session.winning_team);
         const totals = computeTotals(
-          session.session_participants.map((participant) => participant.user_id),
+          participantIds,
           session.game_templates.game_template_fields,
           session.game_templates.bonus_rules,
           scoresBySession.get(session.id) ?? {},
           session.game_templates.scoring_direction,
           session.game_templates.rounds,
           session.winner_id,
+          teams,
         );
+        const winnerIds = totals.filter((total) => total.isWinner).map((total) => total.userId);
 
         return {
           id: session.id,
           playedAt: session.played_at,
           gameName: session.game_templates.name,
           coverKey: session.game_templates.cover_key,
-          winnerIds: totals.filter((total) => total.isWinner).map((total) => total.userId),
+          winnerIds,
+          winningTeams: teams
+            ? groupByTeam(participantIds, teams.teamByUser).filter(({ userIds }) =>
+                winnerIds.includes(userIds[0]),
+              )
+            : null,
+          teamNames: session.team_names,
         };
       });
     },

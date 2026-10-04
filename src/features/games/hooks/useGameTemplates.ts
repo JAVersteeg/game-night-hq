@@ -41,6 +41,8 @@ export function scoringDirectionLabel(direction: ScoringDirection): string {
       return 'Laagste totaal wint';
     case 'ranked':
       return 'Ranglijst';
+    case 'team_win':
+      return 'Eén team wint';
   }
 }
 
@@ -102,6 +104,7 @@ export function useCreateGameTemplate(groupId: string) {
       rounds?: boolean;
       roundCount?: number | null;
       singleWinner?: boolean;
+      teams?: boolean;
     }) => {
       const { data, error } = await supabase.rpc('create_game_template', {
         p_group_id: groupId,
@@ -121,6 +124,7 @@ export function useCreateGameTemplate(groupId: string) {
         p_rounds: input.rounds ?? false,
         p_round_count: input.roundCount ?? undefined,
         p_single_winner: input.singleWinner ?? false,
+        p_teams: input.teams ?? false,
       });
 
       if (error) throw error;

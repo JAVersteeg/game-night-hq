@@ -6,7 +6,7 @@ import { buildPassOnBadges, replayHolders } from '@/features/badges/passOnBadges
 import type { BonusRule, ScoringDirection } from '@/features/games/hooks/useGameTemplates';
 import { gameKeyForTemplate } from '@/features/games/presets';
 import { groupKeys } from '@/features/groups/hooks/useGroups';
-import { computeTotals, higherTotalIsBetter } from '@/features/sessions/scoring';
+import { computeTotals, higherTotalIsBetter, sessionTeamsOf } from '@/features/sessions/scoring';
 import { supabase } from '@/lib/supabase';
 import type { ImageSourcePropType } from 'react-native';
 
@@ -48,6 +48,7 @@ interface SessionRow {
   played_at: string;
   template_id: string;
   winner_id: string | null;
+  winning_team: number | null;
   game_templates: {
     name: string;
     cover_key: string | null;
@@ -56,7 +57,7 @@ interface SessionRow {
     game_template_fields: { key: string; sign: number }[];
     bonus_rules: BonusRule[];
   };
-  session_participants: { user_id: string }[];
+  session_participants: { user_id: string; team: number | null }[];
 }
 
 /**
@@ -79,9 +80,9 @@ export function useGroupBadges(groupId: string) {
         supabase
           .from('sessions')
           .select(
-            `id, played_at, template_id, winner_id,
+            `id, played_at, template_id, winner_id, winning_team,
              game_templates(name, cover_key, scoring_direction, rounds, game_template_fields(key, sign), bonus_rules(*)),
-             session_participants(user_id)`,
+             session_participants(user_id, team)`,
           )
           .eq('group_id', groupId)
           .eq('status', 'completed')
@@ -123,6 +124,7 @@ export function useGroupBadges(groupId: string) {
       const sessions: DerivedSession[] = sessionRows.map((row) => {
         const template = row.game_templates;
         const participantIds = row.session_participants.map((participant) => participant.user_id);
+        const teams = sessionTeamsOf(row.session_participants, row.winning_team);
         const totals = computeTotals(
           participantIds,
           template.game_template_fields,
@@ -131,6 +133,7 @@ export function useGroupBadges(groupId: string) {
           template.scoring_direction,
           template.rounds,
           row.winner_id,
+          teams,
         );
 
         return {
@@ -141,7 +144,10 @@ export function useGroupBadges(groupId: string) {
           gameKey: gameKeyForTemplate(template.cover_key, template.name),
           participantIds,
           winnerIds: totals.filter((total) => total.isWinner).map((total) => total.userId),
-          lastPlaceId: lastPlaceOf(totals, template.scoring_direction, template.rounds),
+          // A team game's last place is a whole team, never one player to pin a badge on.
+          lastPlaceId: teams
+            ? null
+            : lastPlaceOf(totals, template.scoring_direction, template.rounds),
         };
       });
 

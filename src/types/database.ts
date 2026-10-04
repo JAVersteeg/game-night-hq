@@ -108,6 +108,7 @@ export type Database = {
           rounds: boolean;
           scoring_direction: Database['public']['Enums']['scoring_direction'];
           single_winner: boolean;
+          teams: boolean;
         };
         Insert: {
           cover_key?: string | null;
@@ -120,6 +121,7 @@ export type Database = {
           rounds?: boolean;
           scoring_direction: Database['public']['Enums']['scoring_direction'];
           single_winner?: boolean;
+          teams?: boolean;
         };
         Update: {
           cover_key?: string | null;
@@ -132,6 +134,7 @@ export type Database = {
           rounds?: boolean;
           scoring_direction?: Database['public']['Enums']['scoring_direction'];
           single_winner?: boolean;
+          teams?: boolean;
         };
         Relationships: [
           {
@@ -259,14 +262,17 @@ export type Database = {
       session_participants: {
         Row: {
           session_id: string;
+          team: number | null;
           user_id: string;
         };
         Insert: {
           session_id: string;
+          team?: number | null;
           user_id: string;
         };
         Update: {
           session_id?: string;
+          team?: number | null;
           user_id?: string;
         };
         Relationships: [
@@ -323,8 +329,10 @@ export type Database = {
           rounds_played: number;
           scorekeeper_id: string;
           status: Database['public']['Enums']['session_status'];
+          team_names: string[] | null;
           template_id: string;
           winner_id: string | null;
+          winning_team: number | null;
         };
         Insert: {
           completed_at?: string | null;
@@ -337,8 +345,10 @@ export type Database = {
           rounds_played?: number;
           scorekeeper_id: string;
           status?: Database['public']['Enums']['session_status'];
+          team_names?: string[] | null;
           template_id: string;
           winner_id?: string | null;
+          winning_team?: number | null;
         };
         Update: {
           completed_at?: string | null;
@@ -351,8 +361,10 @@ export type Database = {
           rounds_played?: number;
           scorekeeper_id?: string;
           status?: Database['public']['Enums']['session_status'];
+          team_names?: string[] | null;
           template_id?: string;
           winner_id?: string | null;
+          winning_team?: number | null;
         };
         Relationships: [
           {
@@ -389,8 +401,10 @@ export type Database = {
           rounds_played: number;
           scorekeeper_id: string;
           status: Database['public']['Enums']['session_status'];
+          team_names: string[] | null;
           template_id: string;
           winner_id: string | null;
+          winning_team: number | null;
         };
         SetofOptions: {
           from: '*';
@@ -412,8 +426,10 @@ export type Database = {
           rounds_played: number;
           scorekeeper_id: string;
           status: Database['public']['Enums']['session_status'];
+          team_names: string[] | null;
           template_id: string;
           winner_id: string | null;
+          winning_team: number | null;
         };
         SetofOptions: {
           from: '*';
@@ -433,6 +449,7 @@ export type Database = {
           p_rounds?: boolean;
           p_scoring_direction: Database['public']['Enums']['scoring_direction'];
           p_single_winner?: boolean;
+          p_teams?: boolean;
         };
         Returns: {
           cover_key: string | null;
@@ -445,6 +462,7 @@ export type Database = {
           rounds: boolean;
           scoring_direction: Database['public']['Enums']['scoring_direction'];
           single_winner: boolean;
+          teams: boolean;
         };
         SetofOptions: {
           from: '*';
@@ -474,6 +492,8 @@ export type Database = {
           p_group_id: string;
           p_participant_ids: string[];
           p_scorekeeper_id: string;
+          p_team_names?: string[];
+          p_teams?: number[];
           p_template_id: string;
         };
         Returns: {
@@ -487,8 +507,10 @@ export type Database = {
           rounds_played: number;
           scorekeeper_id: string;
           status: Database['public']['Enums']['session_status'];
+          team_names: string[] | null;
           template_id: string;
           winner_id: string | null;
+          winning_team: number | null;
         };
         SetofOptions: {
           from: '*';
@@ -548,7 +570,7 @@ export type Database = {
         | 'grey'
         | 'black'
         | 'lime';
-      scoring_direction: 'highest_total_wins' | 'lowest_total_wins' | 'ranked';
+      scoring_direction: 'highest_total_wins' | 'lowest_total_wins' | 'ranked' | 'team_win';
       session_status: 'in_progress' | 'completed';
     };
     CompositeTypes: {
@@ -686,7 +708,7 @@ export const Constants = {
         'black',
         'lime',
       ],
-      scoring_direction: ['highest_total_wins', 'lowest_total_wins', 'ranked'],
+      scoring_direction: ['highest_total_wins', 'lowest_total_wins', 'ranked', 'team_win'],
       session_status: ['in_progress', 'completed'],
     },
   },

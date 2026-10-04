@@ -7,7 +7,14 @@ import type {
   ScoringDirection,
 } from '@/features/games/hooks/useGameTemplates';
 import { gameKeys } from '@/features/games/hooks/useGameTemplates';
-import { computeTotals, higherTotalIsBetter } from '@/features/sessions/scoring';
+import {
+  areTeammates,
+  beatCredit,
+  computeTotals,
+  higherTotalIsBetter,
+  sessionTeamsOf,
+  type SessionTeams,
+} from '@/features/sessions/scoring';
 import { supabase } from '@/lib/supabase';
 
 export interface LeaderboardEntry {
@@ -65,12 +72,15 @@ interface SessionRow {
   played_at: string;
   rounds_played: number;
   winner_id: string | null;
-  session_participants: { user_id: string }[];
+  winning_team: number | null;
+  session_participants: { user_id: string; team: number | null }[];
 }
 
 interface SessionTotals {
   playedAt: string;
   totals: { userId: string; total: number; isWinner: boolean }[];
+  /** Set for a team game's session — teammates never played against each other. */
+  teams: SessionTeams | null;
 }
 
 const EMPTY_STATS: GameStats = {
@@ -104,7 +114,9 @@ export function useGameStats(template: GameTemplateWithBonusRules | null | undef
     queryFn: async (): Promise<GameStats> => {
       const { data: sessions, error: sessionsError } = await supabase
         .from('sessions')
-        .select('id, played_at, rounds_played, winner_id, session_participants(user_id)')
+        .select(
+          'id, played_at, rounds_played, winner_id, winning_team, session_participants(user_id, team)',
+        )
         .eq('template_id', templateId)
         .eq('status', 'completed')
         .order('played_at', { ascending: true })
@@ -136,6 +148,7 @@ export function useGameStats(template: GameTemplateWithBonusRules | null | undef
       // and the whole stats surface works in points per round instead. Dividing by a positive
       // constant can't reorder a session, so the winner flags `computeTotals` set still hold.
       const totalsBySession: SessionTotals[] = sessions.map((session) => {
+        const teams = sessionTeamsOf(session.session_participants, session.winning_team);
         const totals = computeTotals(
           session.session_participants.map((participant) => participant.user_id),
           fields,
@@ -144,11 +157,13 @@ export function useGameStats(template: GameTemplateWithBonusRules | null | undef
           scoringDirection,
           rounds,
           session.winner_id,
+          teams,
         );
         const divisor = rounds ? Math.max(1, session.rounds_played) : 1;
 
         return {
           playedAt: session.played_at,
+          teams,
           totals:
             divisor === 1
               ? totals
@@ -210,9 +225,19 @@ function buildLeaderboard(
   const byUser = new Map<string, LeaderboardTally>();
 
   for (const session of sessions) {
-    const participants = session.totals.length;
+    // What competes in this session: a team in a team game (each of whose players carries the
+    // team's total), a player otherwise. Chance odds and the table average are per competitor, so
+    // a team of three doesn't weigh three times as much as a team of one.
+    const competitors = session.teams
+      ? Array.from(
+          new Map(
+            session.totals.map((entry) => [session.teams!.teamByUser[entry.userId], entry]),
+          ).values(),
+        )
+      : session.totals;
+    const competitorCount = competitors.length;
     const average =
-      session.totals.reduce((sum, entry) => sum + entry.total, 0) / Math.max(1, participants);
+      competitors.reduce((sum, entry) => sum + entry.total, 0) / Math.max(1, competitorCount);
 
     for (const entry of session.totals) {
       const tally = byUser.get(entry.userId) ?? {
@@ -228,22 +253,25 @@ function buildLeaderboard(
       tally.gamesPlayed += 1;
       tally.wins += entry.isWinner ? 1 : 0;
       tally.totalSum += entry.total;
-      tally.expectedWins += 1 / participants;
+      tally.expectedWins += 1 / competitorCount;
       tally.diffSum += entry.total - average;
+
+      // Teammates never played against each other, so only opponents count as "the table".
+      const opponents = session.totals.filter(
+        (other) =>
+          other.userId !== entry.userId && !areTeammates(session.teams, entry.userId, other.userId),
+      );
 
       // A one-player session has no table to beat, so it's left out of the average rather than
       // counted as a perfect score. It shouldn't exist, but nothing in the schema forbids it.
-      if (participants > 1) {
-        const beaten = session.totals.reduce((count, other) => {
-          if (other.userId === entry.userId) return count;
-          if (other.total === entry.total) return count + 0.5;
-          const isBetter = higherTotalIsBetter(scoringDirection, rounds)
-            ? entry.total > other.total
-            : entry.total < other.total;
-          return isBetter ? count + 1 : count;
-        }, 0);
+      if (opponents.length > 0) {
+        const higherWins = higherTotalIsBetter(scoringDirection, rounds);
+        const beaten = opponents.reduce(
+          (count, other) => count + beatCredit(entry, other, higherWins),
+          0,
+        );
 
-        tally.shareSum += beaten / (participants - 1);
+        tally.shareSum += beaten / opponents.length;
         tally.shareCount += 1;
       }
 

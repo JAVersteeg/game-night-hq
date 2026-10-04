@@ -15,6 +15,7 @@ import { CoverThumbnail } from '@/components/CoverThumbnail';
 import { NumberStepper } from '@/components/NumberStepper';
 import { SectionLabel } from '@/components/SectionLabel';
 import { TextField } from '@/components/TextField';
+import { ToggleSwitch } from '@/components/ToggleSwitch';
 import { gameColorForKey } from '@/features/games/colors';
 import { coverImageForKey } from '@/features/games/covers';
 import type {
@@ -36,6 +37,7 @@ import type { AppStackParamList } from '@/navigation/types';
 const MAX_NAME_LENGTH = 60;
 const MAX_FIELD_LABEL_LENGTH = 60;
 const MAX_NAME_SUGGESTIONS = 5;
+const PLAY_MODES = ['Individueel', 'Teams'] as const;
 
 const DEFAULT_FIELD: NewGameTemplateField = { key: 'punten', label: 'Punten', sign: 1 };
 
@@ -114,11 +116,13 @@ function TemplatesModal({ visible, onClose, onSelect }: TemplatesModalProps) {
                 key={preset.id}
                 title={preset.name}
                 meta={presetMeta(preset)}
-                left={<CoverThumbnail
+                left={
+                  <CoverThumbnail
                     source={coverImageForKey(preset.id)}
                     color={gameColorForKey(preset.id)}
                     size={40}
-                  />}
+                  />
+                }
                 onPress={() => onSelect(preset)}
               />
             ))}
@@ -185,6 +189,17 @@ export function CreateGameTemplateScreen() {
   const [roundCount, setRoundCount] = useState(0);
   // A tie on the top total is broken by the scorekeeper picking the winner at the end.
   const [singleWinner, setSingleWinner] = useState(false);
+  // Teams are formed per potje; the template only says whether there are any.
+  const [teams, setTeams] = useState(false);
+
+  /** `ranked` has no team form and `team_win` has no solo form, so whichever no longer applies
+   *  falls back to the plain points direction. */
+  function changeTeams(next: boolean) {
+    setTeams(next);
+    if (scoringDirection === (next ? 'ranked' : 'team_win')) {
+      setScoringDirection('highest_total_wins');
+    }
+  }
 
   function applyPreset(preset: GameTemplatePreset) {
     setName(preset.name);
@@ -194,6 +209,7 @@ export function CreateGameTemplateScreen() {
     setRounds(preset.rounds ?? false);
     setRoundCount(preset.roundCount ?? 0);
     setSingleWinner(preset.singleWinner ?? false);
+    setTeams(preset.teams ?? false);
     setIsTemplatesOpen(false);
     setAreNameSuggestionsDismissed(true);
   }
@@ -244,8 +260,10 @@ export function CreateGameTemplateScreen() {
   }
 
   // Ranked scores on finish order rather than on entered values, so the field editor drops out and
-  // an empty field list is what gets saved — whether or not it's also played in rounds.
-  const isFieldless = scoringDirection === 'ranked';
+  // an empty field list is what gets saved — whether or not it's also played in rounds. A team game
+  // decided on who won has no values at all, and nothing to play in rounds or tie on either.
+  const isTeamWin = scoringDirection === 'team_win';
+  const isFieldless = scoringDirection === 'ranked' || isTeamWin;
   const trimmedName = name.trim();
   const canSubmit =
     trimmedName.length > 0 && (isFieldless || fields.length > 0) && !createGameTemplate.isPending;
@@ -273,9 +291,10 @@ export function CreateGameTemplateScreen() {
               default: defaultValue,
             })),
         coverKey,
-        rounds,
-        roundCount: rounds && roundCount > 0 ? roundCount : null,
-        singleWinner,
+        rounds: rounds && !isTeamWin,
+        roundCount: rounds && !isTeamWin && roundCount > 0 ? roundCount : null,
+        singleWinner: singleWinner && !isTeamWin,
+        teams,
       },
       { onSuccess: () => navigation.goBack() },
     );
@@ -317,16 +336,34 @@ export function CreateGameTemplateScreen() {
                     key={entry.id}
                     title={entry.name}
                     meta={preset ? presetMeta(preset) : undefined}
-                    left={<CoverThumbnail
+                    left={
+                      <CoverThumbnail
                         source={coverImageForKey(entry.id)}
                         color={gameColorForKey(entry.id)}
                         size={40}
-                      />}
+                      />
+                    }
                     onPress={() => applyLibraryEntry(entry)}
                   />
                 );
               })}
             </View>
+          ) : null}
+        </View>
+
+        <View>
+          <View>
+            <ToggleSwitch
+              options={PLAY_MODES}
+              value={teams ? 'Teams' : 'Individueel'}
+              onChange={(mode) => changeTeams(mode === 'Teams')}
+              testID="teams-toggle"
+            />
+          </View>
+          {teams ? (
+            <Text className="mt-2 text-sm text-ink-muted">
+              De teams kies je bij het starten van een potje.
+            </Text>
           ) : null}
         </View>
 
@@ -343,48 +380,61 @@ export function CreateGameTemplateScreen() {
               selected={scoringDirection === 'lowest_total_wins'}
               onSelect={() => setScoringDirection('lowest_total_wins')}
             />
-            <ChoiceRow
-              title="Ranglijst"
-              selected={scoringDirection === 'ranked'}
-              onSelect={() => setScoringDirection('ranked')}
-              testID="scoring-direction-ranked"
-            />
-          </View>
-        </View>
-
-        <View>
-          <SectionLabel>Rondes</SectionLabel>
-          <View className="mt-2 gap-2">
-            <ChoiceRow
-              title="In rondes gespeeld"
-              mode="check"
-              selected={rounds}
-              onSelect={() => setRounds((current) => !current)}
-              testID="scoring-rounds-toggle"
-            />
-            {rounds ? (
-              <NumberStepper
-                label="Verwacht aantal rondes (optioneel)"
-                value={roundCount}
-                onChange={(value) => setRoundCount(Math.max(0, value))}
-                testID="scoring-round-count"
+            {teams ? (
+              <ChoiceRow
+                title="Eén team wint"
+                selected={isTeamWin}
+                onSelect={() => setScoringDirection('team_win')}
+                testID="scoring-direction-team-win"
               />
-            ) : null}
+            ) : (
+              <ChoiceRow
+                title="Ranglijst"
+                selected={scoringDirection === 'ranked'}
+                onSelect={() => setScoringDirection('ranked')}
+                testID="scoring-direction-ranked"
+              />
+            )}
           </View>
         </View>
 
-        <View>
-          <SectionLabel>Winnaar</SectionLabel>
-          <View className="mt-2">
-            <ChoiceRow
-              title="Maar één winnaar"
-              mode="check"
-              selected={singleWinner}
-              onSelect={() => setSingleWinner((current) => !current)}
-              testID="single-winner-toggle"
-            />
-          </View>
-        </View>
+        {isTeamWin ? null : (
+          <>
+            <View>
+              <SectionLabel>Rondes</SectionLabel>
+              <View className="mt-2 gap-2">
+                <ChoiceRow
+                  title="In rondes gespeeld"
+                  mode="check"
+                  selected={rounds}
+                  onSelect={() => setRounds((current) => !current)}
+                  testID="scoring-rounds-toggle"
+                />
+                {rounds ? (
+                  <NumberStepper
+                    label="Verwacht aantal rondes (optioneel)"
+                    value={roundCount}
+                    onChange={(value) => setRoundCount(Math.max(0, value))}
+                    testID="scoring-round-count"
+                  />
+                ) : null}
+              </View>
+            </View>
+
+            <View>
+              <SectionLabel>Winnaar</SectionLabel>
+              <View className="mt-2">
+                <ChoiceRow
+                  title="Maar één winnaar"
+                  mode="check"
+                  selected={singleWinner}
+                  onSelect={() => setSingleWinner((current) => !current)}
+                  testID="single-winner-toggle"
+                />
+              </View>
+            </View>
+          </>
+        )}
 
         {isFieldless ? null : (
           <View>

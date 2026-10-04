@@ -53,7 +53,7 @@ import { useGroup } from '@/features/groups/hooks/useGroups';
 import { useLiveSessions, type LiveSession } from '@/features/sessions/hooks/useLiveSessions';
 import { useDeleteSession } from '@/features/sessions/hooks/useSessions';
 import { useSessionHistory } from '@/features/sessions/hooks/useSessionHistory';
-import { higherTotalIsBetter } from '@/features/sessions/scoring';
+import { higherTotalIsBetter, teamLabel } from '@/features/sessions/scoring';
 import { getPlayerColor } from '@/lib/playerColors';
 import { theme } from '@/lib/theme';
 import type { AppStackParamList } from '@/navigation/types';
@@ -339,9 +339,16 @@ function HistoryTab({ groupId }: { groupId: string }) {
               playedAt.getFullYear() === currentYear ? 'MMMM' : 'MMMM yyyy',
               { locale: nl },
             );
-            const winnerNames = session.winnerIds
-              .map((userId) => displayNameById.get(userId))
-              .filter((name): name is string => Boolean(name));
+            const namesOf = (userIds: string[]) =>
+              userIds
+                .map((userId) => displayNameById.get(userId))
+                .filter((name): name is string => Boolean(name));
+            // A team game names the winning team, not each of its players.
+            const winnerNames = session.winningTeams
+              ? session.winningTeams.map(({ team, userIds }) =>
+                  teamLabel(team, session.teamNames, namesOf(userIds)),
+                )
+              : namesOf(session.winnerIds);
             const winnerLabel = winnerNames.length > 1 ? 'Winnaars' : 'Winnaar';
             const meta =
               winnerNames.length > 0
@@ -558,7 +565,9 @@ function LeaderboardRow({
             {meta}
           </Text>
         </View>
-        <Text className={`text-xl font-bold tracking-tight ${isWeak ? 'text-ink-faint' : 'text-ink'}`}>
+        <Text
+          className={`text-xl font-bold tracking-tight ${isWeak ? 'text-ink-faint' : 'text-ink'}`}
+        >
           {value}
         </Text>
       </View>
@@ -625,11 +634,15 @@ function LeaderboardSection({
   // have a saldo against. A ranked-and-rounds template (Dalmuti) accumulates real points instead —
   // same as a field-based rounds game — so it keeps puntensaldo.
   const isRanked = scoringDirection === 'ranked' && !isRounds;
+  // A team game decided on who won has no points at all — only wins.
+  const isTeamWin = scoringDirection === 'team_win';
   const context: MetricContext = { lowerIsBetter: scoringDirection === 'lowest_total_wins' };
 
   // Ranked games record a finish position, not points, so there is no table average to have a
   // saldo against — it drops out of the chips and out of the explanation with it.
-  const metrics = METRICS.filter((metric) => !(isRanked && metric.key === 'puntensaldo'));
+  const metrics = METRICS.filter(
+    (metric) => !((isRanked || isTeamWin) && metric.key === 'puntensaldo'),
+  );
   const metric = metrics.find((entry) => entry.key === metricKey) ?? metrics[0];
 
   const rows = [...stats.leaderboard].sort(
@@ -681,7 +694,7 @@ function LeaderboardSection({
             userId={entry.userId}
             name={displayNameById.get(entry.userId) ?? '?'}
             meta={
-              isRounds
+              isRounds || isTeamWin
                 ? `${entry.wins}/${entry.gamesPlayed} gewonnen`
                 : `${entry.wins}/${entry.gamesPlayed} gewonnen · ${
                     isRanked
@@ -780,37 +793,40 @@ function GameStatsSection({
         </Card>
       ) : (
         <>
-          <View className="mt-6">
-            <SectionLabel>
-              {isRanked ? 'Plek per potje' : isRounds ? 'Punten per ronde' : 'Scoreverloop'}
-            </SectionLabel>
-            <Card className="mt-3">
-              <TrendChart
-                labels={stats.trend.labels}
-                inverted={isRanked}
-                domain={
-                  isRanked
-                    ? [1, Math.max(2, stats.maxParticipants)]
-                    : isCatan
-                      ? [2, 12]
-                      : undefined
-                }
-                // Ranked always plots a finish rank here (1 = best), even for a ranked-and-rounds
-                // template — see the comment above on `isRanked`. Otherwise it's whichever
-                // direction the template scores by.
-                higherIsBetter={
-                  isRanked
-                    ? false
-                    : higherTotalIsBetter(template.scoring_direction, template.rounds)
-                }
-                series={stats.trend.series.map((entry) => ({
-                  name: displayNameById.get(entry.userId) ?? '?',
-                  color: colorByUser.get(entry.userId) ?? seriesColor(0),
-                  points: entry.points,
-                }))}
-              />
-            </Card>
-          </View>
+          {/* A team game decided on who won has no score to follow over time. */}
+          {template.scoring_direction === 'team_win' ? null : (
+            <View className="mt-6">
+              <SectionLabel>
+                {isRanked ? 'Plek per potje' : isRounds ? 'Punten per ronde' : 'Scoreverloop'}
+              </SectionLabel>
+              <Card className="mt-3">
+                <TrendChart
+                  labels={stats.trend.labels}
+                  inverted={isRanked}
+                  domain={
+                    isRanked
+                      ? [1, Math.max(2, stats.maxParticipants)]
+                      : isCatan
+                        ? [2, 12]
+                        : undefined
+                  }
+                  // Ranked always plots a finish rank here (1 = best), even for a ranked-and-rounds
+                  // template — see the comment above on `isRanked`. Otherwise it's whichever
+                  // direction the template scores by.
+                  higherIsBetter={
+                    isRanked
+                      ? false
+                      : higherTotalIsBetter(template.scoring_direction, template.rounds)
+                  }
+                  series={stats.trend.series.map((entry) => ({
+                    name: displayNameById.get(entry.userId) ?? '?',
+                    color: colorByUser.get(entry.userId) ?? seriesColor(0),
+                    points: entry.points,
+                  }))}
+                />
+              </Card>
+            </View>
+          )}
 
           <LeaderboardSection
             stats={stats}

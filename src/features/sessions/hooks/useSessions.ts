@@ -15,7 +15,13 @@ export type Session = Tables<'sessions'>;
 export interface SessionWithTemplate extends Session {
   game_templates: Pick<
     Tables<'game_templates'>,
-    'name' | 'cover_key' | 'scoring_direction' | 'rounds' | 'round_count' | 'single_winner'
+    | 'name'
+    | 'cover_key'
+    | 'scoring_direction'
+    | 'rounds'
+    | 'round_count'
+    | 'single_winner'
+    | 'teams'
   >;
 }
 
@@ -37,12 +43,19 @@ export function useCreateSession(groupId: string) {
       templateId: string;
       scorekeeperId: string;
       participantIds: string[];
+      /** A team game only: each participant's team number (1..N), same order as `participantIds`,
+       *  and each team's typed name — null for one that should be named after its players. */
+      teams?: { numbers: number[]; names: (string | null)[] };
     }): Promise<Session> => {
       const { data, error } = await supabase.rpc('create_session', {
         p_group_id: groupId,
         p_template_id: input.templateId,
         p_scorekeeper_id: input.scorekeeperId,
         p_participant_ids: input.participantIds,
+        p_teams: input.teams?.numbers,
+        // The generated Args type has no nullable elements, but a null entry is exactly what the
+        // RPC stores for "name it after its players".
+        p_team_names: input.teams?.names as string[] | undefined,
       });
 
       if (error) throw error;
@@ -85,7 +98,7 @@ export function useSession(sessionId: string) {
       const { data, error } = await supabase
         .from('sessions')
         .select(
-          '*, game_templates(name, cover_key, scoring_direction, rounds, round_count, single_winner)',
+          '*, game_templates(name, cover_key, scoring_direction, rounds, round_count, single_winner, teams)',
         )
         .eq('id', sessionId)
         .single();
@@ -98,11 +111,7 @@ export function useSession(sessionId: string) {
 
 /** Everything derived from a finished session's result — the session itself, plus every stats
  *  surface that counts its winner. Shared by finalising and by picking the winner afterwards. */
-function invalidateSessionResult(
-  queryClient: QueryClient,
-  sessionId: string,
-  groupId: string,
-) {
+function invalidateSessionResult(queryClient: QueryClient, sessionId: string, groupId: string) {
   void queryClient.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) });
   void queryClient.invalidateQueries({ queryKey: groupKeys.dashboard(groupId) });
   void queryClient.invalidateQueries({ queryKey: liveSessionKeys.all });
@@ -121,15 +130,21 @@ function invalidateSessionResult(
  * Finalising is a plain update, not an RPC: `sessions_update` already restricts it to the
  * scorekeeper, and flipping `status` to `completed` is exactly what makes `can_write_scores` start
  * rejecting further writes — the "lock" is a side effect of this one column, nothing more.
+ *
+ * A `team_win` game passes the winning team along, so the result and the finish land together.
  */
 export function useFinalizeSession(sessionId: string, groupId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async () => {
+    mutationFn: async (input: { winningTeam: number } | void) => {
       const { error } = await supabase
         .from('sessions')
-        .update({ status: 'completed', completed_at: new Date().toISOString() })
+        .update({
+          status: 'completed',
+          completed_at: new Date().toISOString(),
+          ...(input ? { winning_team: input.winningTeam } : {}),
+        })
         .eq('id', sessionId);
 
       if (error) throw error;
@@ -148,10 +163,11 @@ export function useSetSessionWinner(sessionId: string, groupId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (winnerId: string) => {
+    /** A player id, or — in a team game — the winning team's number. */
+    mutationFn: async (winner: string | { team: number }) => {
       const { error } = await supabase
         .from('sessions')
-        .update({ winner_id: winnerId })
+        .update(typeof winner === 'string' ? { winner_id: winner } : { winning_team: winner.team })
         .eq('id', sessionId);
 
       if (error) throw error;
