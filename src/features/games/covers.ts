@@ -9,6 +9,7 @@ import { gameKeyForTemplate } from '@/features/games/presets';
  */
 export const GAME_COVERS: Record<string, ImageSourcePropType> = {
   catan: require('../../../assets/game_covers/catan_cover.png'),
+  catan_cities_and_knights: require('../../../assets/game_covers/catancitiesandnights_cover.jpg'),
   heat: require('../../../assets/game_covers/heat_cover.jpg'),
   arschmallows: require('../../../assets/game_covers/arschmallows_cover.png'),
   dalmuti: require('../../../assets/game_covers/dalmuti_cover.jpg'),

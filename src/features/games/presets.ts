@@ -18,6 +18,7 @@ export interface GameLibraryEntry {
  */
 export const GAME_LIBRARY: GameLibraryEntry[] = [
   { id: 'catan', name: 'Catan' },
+  { id: 'catan_cities_and_knights', name: 'Catan: Steden en Ridders' },
   { id: 'heat', name: 'Heat' },
   { id: 'arschmallows', name: 'Arschmallows' },
   { id: 'dalmuti', name: 'De Grote Dalmuti' },
