@@ -11,6 +11,7 @@ import { Badge } from '@/components/Badge';
 import { Button } from '@/components/Button';
 import { Card, ListRow } from '@/components/Card';
 import { ChoiceRow } from '@/components/ChoiceRow';
+import { CloseIcon } from '@/components/CloseIcon';
 import { CoverThumbnail } from '@/components/CoverThumbnail';
 import { NumberStepper } from '@/components/NumberStepper';
 import { SectionLabel } from '@/components/SectionLabel';
@@ -32,6 +33,7 @@ import {
   type GameLibraryEntry,
   type GameTemplatePreset,
 } from '@/features/games/presets';
+import { theme } from '@/lib/theme';
 import type { AppStackParamList } from '@/navigation/types';
 
 const MAX_NAME_LENGTH = 60;
@@ -138,10 +140,12 @@ function FieldRow({
   field,
   onToggleSign,
   onChangeLabel,
+  onRemove,
 }: {
   field: DraftField;
   onToggleSign: () => void;
   onChangeLabel: (label: string) => void;
+  onRemove: () => void;
 }) {
   return (
     <Card className="flex-row items-center gap-3 py-2">
@@ -161,6 +165,15 @@ function FieldRow({
           </Badge>
         </Pressable>
       )}
+      <Pressable
+        onPress={onRemove}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel={`Verwijder ${field.label}`}
+        testID={`field-remove-${field.id}`}
+      >
+        <CloseIcon size={18} color={theme.inkSubtle} />
+      </Pressable>
     </Card>
   );
 }
@@ -257,6 +270,10 @@ export function CreateGameTemplateScreen() {
 
   function renameField(id: string, label: string) {
     setFields(fields.map((field) => (field.id === id ? { ...field, label } : field)));
+  }
+
+  function removeField(id: string) {
+    setFields(fields.filter((field) => field.id !== id));
   }
 
   // Ranked scores on finish order rather than on entered values, so the field editor drops out and
@@ -450,6 +467,7 @@ export function CreateGameTemplateScreen() {
                   field={field}
                   onToggleSign={() => toggleFieldSign(field.id)}
                   onChangeLabel={(label) => renameField(field.id, label)}
+                  onRemove={() => removeField(field.id)}
                 />
               ))}
             </View>
