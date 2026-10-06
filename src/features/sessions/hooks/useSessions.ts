@@ -6,6 +6,7 @@ import { gameKeys } from '@/features/games/hooks/useGameTemplates';
 import { groupKeys } from '@/features/groups/hooks/useGroups';
 import { liveSessionKeys } from '@/features/sessions/hooks/useLiveSessions';
 import { sessionHistoryKeys } from '@/features/sessions/hooks/useSessionHistory';
+import { SESSION_PHOTOS_BUCKET } from '@/features/sessions/hooks/useSessionPhotos';
 import { sessionScoreKeys } from '@/features/sessions/hooks/useSessionScores';
 import { supabase } from '@/lib/supabase';
 import type { Tables } from '@/types/database';
@@ -243,21 +244,47 @@ export function useUndoRound(sessionId: string) {
 }
 
 /**
- * Abandoning a session the scorekeeper never actually played out — `sessions_delete` restricts
- * this to the scorekeeper and only while `in_progress`, so a finished session can never be erased
- * this way. The cascade on `session_participants`/`session_scores` handles the rest.
+ * Throwing a session away — `private.can_delete_session` decides when: any group member while it's
+ * live, and its scorekeeper for 2 hours after it's finished (a potje entered by mistake or twice).
+ * The cascade on participants, scores, notes and photo rows handles the rest.
  */
 export function useDeleteSession(sessionId: string, groupId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from('sessions').delete().eq('id', sessionId);
+      // The photo rows cascade with the session, but their files don't — clear those first, or
+      // nothing would ever reference them again. Best-effort: a stray file shouldn't block this.
+      const { data: photos } = await supabase
+        .from('session_photos')
+        .select('storage_path')
+        .eq('session_id', sessionId);
+      if (photos && photos.length > 0) {
+        await supabase.storage
+          .from(SESSION_PHOTOS_BUCKET)
+          .remove(photos.map((photo) => photo.storage_path));
+      }
+
+      // `select` so a policy-filtered delete (the window closed while the screen was open) surfaces
+      // as an error instead of a silent no-op that would still navigate away.
+      const { data, error } = await supabase
+        .from('sessions')
+        .delete()
+        .eq('id', sessionId)
+        .select('id');
       if (error) throw error;
+      if (data.length === 0) throw new Error('Dit potje kan niet meer verwijderd worden.');
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: groupKeys.dashboard(groupId) });
       void queryClient.invalidateQueries({ queryKey: liveSessionKeys.all });
+      // A finished session counted towards history, badges and every stats surface; same
+      // prefix-wide reasoning as `invalidateSessionResult`. Not its own detail query, though —
+      // the screen is still mounted and would refetch a row that no longer exists.
+      void queryClient.invalidateQueries({ queryKey: sessionHistoryKeys.list(groupId) });
+      void queryClient.invalidateQueries({ queryKey: groupKeys.badges(groupId) });
+      void queryClient.invalidateQueries({ queryKey: gameKeys.all });
+      void queryClient.invalidateQueries({ queryKey: profileKeys.all });
     },
   });
 }

@@ -50,6 +50,7 @@ If a library decision isn't covered here, pick the smallest dependency that solv
 - Has participants (a subset of group members) and one set of field values per participant.
 - **A session for a non-rounds template is single-round**: one set of field values per player per session. A session for a `rounds` template instead accumulates over rounds, and tracks `rounds_played` plus whichever of `last_round_order` (ranked) or `last_round_values` (field-based) describes the most recently banked round — enough to undo it exactly once. Individual rounds are never stored, only the running total.
 - Only the scorekeeper can write score entries for a session in progress. Everyone else in the group gets read-only realtime updates.
+- **Notes and photos:** any group member can add a note or a photo to a session at any time — during play or long after. Only the author/uploader can delete theirs, and only while the session is in progress or within 2 hours of completion (the same edit window as scores). Photos live in the private `session-photos` Storage bucket at `{session_id}/{uuid}.jpg`, resized to ~1600px JPEG on device before upload.
 
 **Stats (derived, not stored)**
 Computed from session history per group, at minimum:
@@ -86,6 +87,8 @@ bonus_rules          (id, template_id, field_key, operator, value, points_delta)
 sessions             (id, group_id, template_id, scorekeeper_id, status, played_at, winner_id, team_names, winning_team)
 session_participants (session_id, user_id, team)
 session_scores       (session_id, user_id, field_key, value)
+session_notes        (id, session_id, author_id, body, created_at)
+session_photos       (id, session_id, uploader_id, storage_path, created_at)
 ```
 
 Use Row Level Security everywhere: a row is only readable/writable by members of the group it belongs to, and `session_scores` writes are additionally restricted to the session's current `scorekeeper_id` while `status = 'in_progress'`.
@@ -93,7 +96,8 @@ Use Row Level Security everywhere: a row is only readable/writable by members of
 ## Permissions Model
 
 - Any group member: create game templates, start sessions, view history/stats
-- Only the session's designated scorekeeper: write scores while that session is in progress
+- Only the session's designated scorekeeper: write scores while that session is in progress, and correct or delete it within 2 hours of completion
+- Any group member: delete a session that's still in progress
 - No group-admin role in v1 — all members are equal otherwise
 
 ## Non-Goals (v1)

@@ -45,7 +45,22 @@
           }
         }
       ],
-      "expo-apple-authentication"
+      "expo-apple-authentication",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Game Night HQ heeft toegang tot je foto's nodig om een foto aan een potje toe te voegen.",
+          "cameraPermission": "Game Night HQ heeft toegang tot je camera nodig om een foto van een potje te maken.",
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "savePhotosPermission": "Game Night HQ heeft toegang tot je galerij nodig om foto's van een potje op te slaan.",
+          "isAccessMediaLocationEnabled": false
+        }
+      ]
     ],
     "extra": {
       "eas": {

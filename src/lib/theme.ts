@@ -16,6 +16,7 @@ export const theme = {
   inkFaint: '#5f5549',
   accentFg: '#16120e',
   warning: '#e0a736',
+  danger: '#e2685a',
 } as const;
 
 /**

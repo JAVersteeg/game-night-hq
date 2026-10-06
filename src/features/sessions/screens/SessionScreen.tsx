@@ -44,6 +44,7 @@ import { MemberAvatar } from '@/features/groups/components/MemberAvatar';
 import { useGroupMembers, type GroupMember } from '@/features/groups/hooks/useGroupMembers';
 import { CoverThumbnail } from '@/components/CoverThumbnail';
 import { PencilIcon } from '@/components/PencilIcon';
+import { TrashIcon } from '@/components/TrashIcon';
 import { TrophyIcon } from '@/components/TrophyIcon';
 import { ReorderList } from '@/components/ReorderList';
 import { gameColorForTemplate } from '@/features/games/colors';
@@ -65,6 +66,8 @@ import {
   useSessionNotes,
   type SessionNote,
 } from '@/features/sessions/hooks/useSessionNotes';
+import { useSessionPhotos } from '@/features/sessions/hooks/useSessionPhotos';
+import { SessionPhotosSection } from '@/features/sessions/components/SessionPhotosSection';
 import {
   useSessionParticipants,
   useSessionTeamByUser,
@@ -88,9 +91,9 @@ import type { AppStackParamList } from '@/navigation/types';
 
 type Navigation = NativeStackNavigationProp<AppStackParamList>;
 
-/** How long a finished session's scores (and notes) stay writable after `completed_at` — mirrors
- *  the window `private.can_write_scores`/`can_write_session_notes` enforce server-side. Kept as one
- *  constant so the two can't quietly drift apart. */
+/** How long a finished session's scores stay writable — and its notes and photos deletable — after
+ *  `completed_at`. Mirrors the window `private.can_write_scores`/`can_write_session_notes` enforce
+ *  server-side. Kept as one constant so the two can't quietly drift apart. */
 const EDIT_GRACE_WINDOW_MS = 2 * 60 * 60 * 1000;
 
 function isWithinGraceWindow(completedAt: string | null): boolean {
@@ -923,15 +926,21 @@ interface DeleteSessionConfirmModalProps {
   onCancel: () => void;
   onConfirm: () => void;
   isPending: boolean;
+  /** A finished session (the header bin) rather than a live one — it also drops out of stats. */
+  isCompleted?: boolean;
+  hasFailed?: boolean;
 }
 
-/** Throwing a live session away from inside the session itself — the deliberate route, reached
- *  from the button at the end of the scroll. Backing out of the screen offers the same thing
- *  through `LeaveSessionSheet`, which also has "later verder" to leave it running. */
+/** Throwing a session away from inside the session itself. For a live one that's the deliberate
+ *  route, reached from the button at the end of the scroll — backing out of the screen offers the
+ *  same thing through `LeaveSessionSheet`, which also has "later verder" to leave it running. For a
+ *  finished one it's the header bin, open to the scorekeeper during the 2-hour edit window. */
 function DeleteSessionConfirmModal({
   onCancel,
   onConfirm,
   isPending,
+  isCompleted = false,
+  hasFailed = false,
 }: DeleteSessionConfirmModalProps) {
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onCancel}>
@@ -944,8 +953,13 @@ function DeleteSessionConfirmModal({
           <View>
             <Text className="text-xl font-bold text-ink">Potje verwijderen?</Text>
             <Text className="mt-1 text-sm text-ink-muted">
-              Het potje en alle scores tot nu toe worden verwijderd. Dit kun je niet ongedaan maken.
+              {isCompleted
+                ? "Dit kun je niet ongedaan maken"
+                : 'Het potje en alle scores tot nu toe worden verwijderd. Dit kun je niet ongedaan maken.'}
             </Text>
+            {hasFailed ? (
+              <Text className="mt-2 text-sm text-danger">Verwijderen mislukt.</Text>
+            ) : null}
           </View>
           <Button
             label="Verwijderen"
@@ -1005,7 +1019,7 @@ function LeaveSessionSheet({ onStay, onLeave, onDiscard, isPending }: LeaveSessi
  *
  *  Not simply "are there score rows": `create_session` seeds a single-round template's non-zero
  *  field defaults as real rows, so a Catan session has scores the instant it starts. What counts is
- *  a value that differs from where the session began — plus any banked round, and any note, neither
+ *  a value that differs from where the session began — plus any banked round, note or photo, none
  *  of which exists until someone does something. */
 function hasRecordedProgress(
   roundsPlayed: number,
@@ -1013,8 +1027,9 @@ function hasRecordedProgress(
   isRounds: boolean,
   scoresByUser: ScoresByUser | undefined,
   noteCount: number,
+  photoCount: number,
 ): boolean {
-  if (roundsPlayed > 0 || noteCount > 0) return true;
+  if (roundsPlayed > 0 || noteCount > 0 || photoCount > 0) return true;
 
   // The value each field starts at, mirroring what create_session seeds: an exclusive field's
   // default is the award for holding it rather than a starting value, and a rounds template is
@@ -1030,14 +1045,14 @@ function hasRecordedProgress(
   );
 }
 
-/** An append-only log, oldest first. Any group member can add one while `canWrite` holds (in
- *  progress, or within the 2-hour grace window after completion), but only the author can delete
- *  their own — RLS is the real enforcement, this just hides the affordance. */
+/** An append-only log, oldest first. Any group member can add one at any time, but only the author
+ *  can delete their own, and only while `canDelete` holds (in progress, or within the 2-hour grace
+ *  window after completion) — RLS is the real enforcement, this just hides the affordance. */
 function SessionNotesSection({
   notes,
   authorNameById,
   currentUserId,
-  canWrite,
+  canDelete,
   draft,
   onDraftChange,
   onAdd,
@@ -1047,7 +1062,7 @@ function SessionNotesSection({
   notes: SessionNote[];
   authorNameById: Map<string, string>;
   currentUserId: string | undefined;
-  canWrite: boolean;
+  canDelete: boolean;
   draft: string;
   onDraftChange: (value: string) => void;
   onAdd: () => void;
@@ -1071,7 +1086,7 @@ function SessionNotesSection({
                     {format(new Date(note.created_at), 'HH:mm', { locale: nl })}
                   </Text>
                 </View>
-                {canWrite && note.author_id === currentUserId ? (
+                {canDelete && note.author_id === currentUserId ? (
                   <Pressable
                     onPress={() => onDelete(note.id)}
                     accessibilityRole="button"
@@ -1086,24 +1101,22 @@ function SessionNotesSection({
           ))
         )}
       </View>
-      {canWrite ? (
-        <View className="mt-3 gap-2">
-          <TextField
-            value={draft}
-            onChangeText={onDraftChange}
-            placeholder="Notitie toevoegen…"
-            testID="session-note-input"
-          />
-          <Button
-            label="Toevoegen"
-            variant="secondary"
-            onPress={onAdd}
-            isLoading={isAdding}
-            disabled={draft.trim().length === 0}
-            testID="session-note-submit"
-          />
-        </View>
-      ) : null}
+      <View className="mt-3 gap-2">
+        <TextField
+          value={draft}
+          onChangeText={onDraftChange}
+          placeholder="Notitie toevoegen…"
+          testID="session-note-input"
+        />
+        <Button
+          label="Toevoegen"
+          variant="secondary"
+          onPress={onAdd}
+          isLoading={isAdding}
+          disabled={draft.trim().length === 0}
+          testID="session-note-submit"
+        />
+      </View>
     </View>
   );
 }
@@ -1145,6 +1158,7 @@ export function SessionScreen() {
   const { data: notes } = useSessionNotes(sessionId);
   const addNote = useAddSessionNote(sessionId);
   const deleteNote = useDeleteSessionNote(sessionId);
+  const { data: photos } = useSessionPhotos(sessionId);
 
   const [openParticipantId, setOpenParticipantId] = useState<string | null>(currentUserId ?? null);
   const [noteDraft, setNoteDraft] = useState('');
@@ -1204,6 +1218,14 @@ export function SessionScreen() {
     sessionData.game_templates.scoring_direction !== 'team_win' &&
     currentUserId === sessionData?.scorekeeper_id &&
     isWithinGraceWindow(sessionData?.completed_at ?? null);
+  // The header bin, under the same window — mirrors `private.can_delete_session`'s completed branch.
+  // Unlike the pencil it includes `team_win` (deleting doesn't need scores), and it steps aside
+  // while a correction is mid-flight, so "Klaar" is the only thing to tap until that's settled.
+  const canDeleteCompletedSession =
+    sessionData?.status === 'completed' &&
+    currentUserId === sessionData.scorekeeper_id &&
+    isWithinGraceWindow(sessionData.completed_at) &&
+    !isEditingCompletedSession;
 
   // Same reasoning as `canEditCompletedSession`: declared up here, before the guard, purely so the
   // header effect below can reach it. A rounds template has no scores to edit directly — only its
@@ -1273,6 +1295,7 @@ export function SessionScreen() {
           sessionData.game_templates.rounds,
           scoresByUser,
           notes?.length ?? 0,
+          photos?.length ?? 0,
         )
       ) {
         event.preventDefault();
@@ -1292,7 +1315,16 @@ export function SessionScreen() {
         onSettled: () => navigation.dispatch(event.data.action),
       });
     });
-  }, [navigation, sessionData, template, scoresByUser, notes, currentUserId, deleteSession]);
+  }, [
+    navigation,
+    sessionData,
+    template,
+    scoresByUser,
+    notes,
+    photos,
+    currentUserId,
+    deleteSession,
+  ]);
 
   function leaveSessionRunning() {
     if (!pendingLeaveAction) return;
@@ -1315,20 +1347,41 @@ export function SessionScreen() {
   useLayoutEffect(() => {
     navigation.setOptions({
       title: sessionData?.game_templates.name ?? 'Potje',
-      headerRight: canEditCompletedSession
-        ? () => (
-            <EditSessionButton
-              isEditing={isEditingCompletedSession}
-              isPending={undoRound.isPending}
-              onPress={handleToggleEditCompletedSession}
-            />
-          )
-        : undefined,
+      headerRight:
+        canEditCompletedSession || canDeleteCompletedSession
+          ? () => (
+              <View className="flex-row items-center gap-5">
+                {canDeleteCompletedSession ? (
+                  <Pressable
+                    onPress={() => {
+                      deleteSession.reset();
+                      setIsDeleteConfirmVisible(true);
+                    }}
+                    hitSlop={12}
+                    accessibilityRole="button"
+                    accessibilityLabel="Potje verwijderen"
+                    className="active:opacity-70"
+                    testID="delete-completed-session-button"
+                  >
+                    <TrashIcon size={20} color={theme.danger} />
+                  </Pressable>
+                ) : null}
+                {canEditCompletedSession ? (
+                  <EditSessionButton
+                    isEditing={isEditingCompletedSession}
+                    isPending={undoRound.isPending}
+                    onPress={handleToggleEditCompletedSession}
+                  />
+                ) : null}
+              </View>
+            )
+          : undefined,
     });
   }, [
     navigation,
     sessionData?.game_templates.name,
     canEditCompletedSession,
+    canDeleteCompletedSession,
     isEditingCompletedSession,
     undoRound.isPending,
     // `handleToggleEditCompletedSession` reads `completedScoresDraft` to know what "Klaar" should
@@ -1529,10 +1582,10 @@ export function SessionScreen() {
   // the scorekeeper role, and the rounds structure stay locked the moment the session completes —
   // this is scores only.
   const canEdit = isScorekeeper && (isInProgress || isWithinGraceWindow(sessionData.completed_at));
-  // Mirrors `can_write_session_notes`: notes are everyone's, not just the scorekeeper's — any
-  // group member can add one while the session is live, plus the same grace window after
-  // finalising so the table can still write up what happened.
-  const canWriteNotes = isInProgress || isWithinGraceWindow(sessionData.completed_at);
+  // Mirrors `can_write_session_notes`: notes and photos are everyone's and can be added at any
+  // time, but an author can only take theirs back while the session is live or within the same
+  // grace window after finalising — after that the record is settled.
+  const canDeleteNotes = isInProgress || isWithinGraceWindow(sessionData.completed_at);
   // Keyed off group members, not participants: someone who sat this one out can still comment.
   const authorNameById = new Map(
     (members ?? []).map((member) => [member.userId, member.displayName]),
@@ -1545,8 +1598,8 @@ export function SessionScreen() {
   }
 
   /** Finalising shouldn't silently drop a note that was typed but never sent, so it's posted first.
-   *  `then` runs either way: a failed note stays in the input and can still be sent in the grace
-   *  window, which beats blocking the finish on it. */
+   *  `then` runs either way: a failed note stays in the input and can still be sent afterwards,
+   *  which beats blocking the finish on it. */
   function withDraftNoteSaved(then: () => void) {
     const body = noteDraft.trim();
     if (!body || !currentUserId) {
@@ -1983,16 +2036,32 @@ export function SessionScreen() {
               notes={notes ?? []}
               authorNameById={authorNameById}
               currentUserId={currentUserId}
-              canWrite={canWriteNotes}
+              canDelete={canDeleteNotes}
               draft={noteDraft}
               onDraftChange={setNoteDraft}
               onAdd={handleAddNote}
               onDelete={setPendingDeleteNoteId}
               isAdding={addNote.isPending}
             />
+
+            <SessionPhotosSection
+              sessionId={sessionId}
+              photos={photos}
+              authorNameById={authorNameById}
+              currentUserId={currentUserId}
+              canDelete={canDeleteNotes}
+            />
           </KeyboardAwareScrollView>
 
-          {pendingDeleteNoteId ? (
+          {isDeleteConfirmVisible ? (
+            <DeleteSessionConfirmModal
+              onCancel={() => setIsDeleteConfirmVisible(false)}
+              onConfirm={confirmDeleteSession}
+              isPending={deleteSession.isPending}
+              isCompleted
+              hasFailed={deleteSession.isError}
+            />
+          ) : pendingDeleteNoteId ? (
             <DeleteNoteConfirmModal
               onCancel={() => setPendingDeleteNoteId(null)}
               onConfirm={confirmDeleteNote}
@@ -2225,12 +2294,20 @@ export function SessionScreen() {
             notes={notes ?? []}
             authorNameById={authorNameById}
             currentUserId={currentUserId}
-            canWrite={canWriteNotes}
+            canDelete={canDeleteNotes}
             draft={noteDraft}
             onDraftChange={setNoteDraft}
             onAdd={handleAddNote}
             onDelete={setPendingDeleteNoteId}
             isAdding={addNote.isPending}
+          />
+
+          <SessionPhotosSection
+            sessionId={sessionId}
+            photos={photos}
+            authorNameById={authorNameById}
+            currentUserId={currentUserId}
+            canDelete={canDeleteNotes}
           />
 
           {/* Out of the pinned footer on purpose: it's the rare, destructive action, so it sits at
