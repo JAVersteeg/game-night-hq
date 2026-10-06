@@ -150,7 +150,6 @@ function BadgesTab({
     <View className="gap-6">
       {featured.length > 0 ? (
         <View className="gap-3">
-          <SectionLabel>In omloop</SectionLabel>
           <View className="flex-row gap-3">
             {featured.map((badge) => (
               <FeaturedBadgeCard
@@ -165,7 +164,7 @@ function BadgesTab({
       ) : null}
 
       {others.length > 0 ? (
-        <View className="gap-3">
+        <View className="gap-2">
           <SectionLabel>Overige badges</SectionLabel>
           <View className="overflow-hidden rounded-2xl border border-line">
             {others.map((badge, index) => (
@@ -297,7 +296,7 @@ function MilestonesTab({
 
   return (
     <View className="gap-6">
-      <View className="gap-2.5">
+      <View className="gap-2">
         <SectionLabel>Speler</SectionLabel>
         <View className="flex-row flex-wrap gap-2">
           {members.map((member) => (
