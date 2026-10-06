@@ -246,14 +246,45 @@ function DiscardLiveSessionModal({
   );
 }
 
-/** The group's game templates: tap one to start a session, or add a new one. */
+/** From this many games on, the most played ones are pulled out above the alphabetical list — in a
+ *  shorter list the whole thing is already one glance. */
+const MIN_GAMES_FOR_MOST_PLAYED = 8;
+const MOST_PLAYED_COUNT = 3;
+
+/** The group's game templates: tap one to start a session, or add a new one. Alphabetical, with the
+ *  group's most played games pinned on top once there are enough games to make scanning slow. */
 function GamesTab({ groupId }: { groupId: string }) {
   const navigation = useNavigation<Navigation>();
   const { data: templates, isPending, isError } = useGameTemplates(groupId);
+  const { data: stats } = useGroupDashboardStats(groupId);
+
+  const sorted = [...(templates ?? [])].sort((a, b) =>
+    a.name.localeCompare(b.name, 'nl', { sensitivity: 'base' }),
+  );
+  // `popularGames` only holds games that have actually been played, most played first, so a group
+  // that hasn't played three different games yet just gets a shorter top section.
+  const mostPlayedIds = new Set(
+    sorted.length >= MIN_GAMES_FOR_MOST_PLAYED
+      ? (stats?.popularGames ?? []).slice(0, MOST_PLAYED_COUNT).map((game) => game.templateId)
+      : [],
+  );
+  const mostPlayed = (stats?.popularGames ?? [])
+    .filter((game) => mostPlayedIds.has(game.templateId))
+    .flatMap((game) => sorted.filter((template) => template.id === game.templateId));
+  const others = sorted.filter((template) => !mostPlayedIds.has(template.id));
+
+  const renderRow = (template: (typeof sorted)[number]) => (
+    <GameRow
+      key={template.id}
+      name={template.name}
+      coverKey={template.cover_key}
+      onPress={() => navigation.navigate('StartSession', { groupId, templateId: template.id })}
+    />
+  );
 
   return (
     <View className="flex-1">
-      <ScrollView className="flex-1" contentContainerClassName="grow gap-3 px-6 pb-4 pt-4">
+      <ScrollView className="flex-1" contentContainerClassName="grow gap-1 px-6 pb-4 pt-4">
         {isPending ? (
           <View className="items-center py-6">
             <ActivityIndicator />
@@ -267,17 +298,19 @@ function GamesTab({ groupId }: { groupId: string }) {
             title="Nog geen spellen"
             body="Voeg een spel toe met de velden die jullie bijhouden, zoals punten of strafkaarten."
           />
+        ) : mostPlayed.length > 0 ? (
+          <>
+            <View className="gap-2">
+              <SectionLabel>Meest gespeeld</SectionLabel>
+              {mostPlayed.map(renderRow)}
+            </View>
+            <View className="mt-3 gap-2">
+              <SectionLabel>Andere spellen</SectionLabel>
+              {others.map(renderRow)}
+            </View>
+          </>
         ) : (
-          templates.map((template) => (
-            <GameRow
-              key={template.id}
-              name={template.name}
-              coverKey={template.cover_key}
-              onPress={() =>
-                navigation.navigate('StartSession', { groupId, templateId: template.id })
-              }
-            />
-          ))
+          sorted.map(renderRow)
         )}
       </ScrollView>
 
@@ -308,7 +341,7 @@ function HistoryTab({ groupId }: { groupId: string }) {
   );
 
   return (
-    <ScrollView className="flex-1" contentContainerClassName="grow gap-3 px-6 pb-4 pt-4">
+    <ScrollView className="flex-1" contentContainerClassName="grow gap-2 px-6 pb-4 pt-4">
       {isPending ? (
         <View className="items-center py-6">
           <ActivityIndicator />
@@ -359,7 +392,7 @@ function HistoryTab({ groupId }: { groupId: string }) {
             previousMonth = month;
 
             return (
-              <View key={session.id} className={`gap-3 ${header && index > 0 ? 'mt-3' : ''}`}>
+              <View key={session.id} className={`gap-2 ${header && index > 0 ? 'mt-3' : ''}`}>
                 {header ? <SectionLabel>{header}</SectionLabel> : null}
                 <HistoryRow
                   gameName={session.gameName}
@@ -660,7 +693,7 @@ function LeaderboardSection({
       <LeaderboardHeader open={infoOpen} onToggle={() => setInfoOpen((current) => !current)} />
 
       {infoOpen ? (
-        <Card tone="muted" className="mt-3 gap-3">
+        <Card tone="muted" className="mt-2 gap-3">
           {metrics.map((entry) => (
             <Text key={entry.key} className="text-sm leading-5 text-ink-muted">
               <Text className="font-semibold text-ink">{entry.label}. </Text>
@@ -673,7 +706,7 @@ function LeaderboardSection({
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        className="mt-3"
+        className="mt-2"
         contentContainerClassName="gap-2"
       >
         {metrics.map((entry) => (
@@ -686,7 +719,7 @@ function LeaderboardSection({
         ))}
       </ScrollView>
 
-      <View className="mt-3 overflow-hidden rounded-2xl border border-line bg-surface">
+      <View className="mt-2 overflow-hidden rounded-2xl border border-line bg-surface">
         {rows.map((entry, index) => (
           <LeaderboardRow
             key={entry.userId}
@@ -799,7 +832,7 @@ function GameStatsSection({
               <SectionLabel>
                 {isRanked ? 'Plek per potje' : isRounds ? 'Punten per ronde' : 'Scoreverloop'}
               </SectionLabel>
-              <Card className="mt-3">
+              <Card className="mt-2">
                 <TrendChart
                   labels={stats.trend.labels}
                   inverted={isRanked}
@@ -869,19 +902,19 @@ function StatsTab({ groupId }: { groupId: string }) {
             <ActivityIndicator />
           </View>
         ) : isError || !stats ? (
-          <Card tone="muted" className="mt-3">
+          <Card tone="muted" className="mt-2">
             <Text className="text-base text-ink-muted">
               De statistieken konden niet worden geladen.
             </Text>
           </Card>
         ) : stats.popularGames.length === 0 ? (
-          <Card tone="muted" className="mt-3">
+          <Card tone="muted" className="mt-2">
             <Text className="text-base text-ink-muted">
               Zodra jullie potjes hebben gespeeld, zie je hier de populairste spellen van de groep.
             </Text>
           </Card>
         ) : (
-          <Card className="mt-3 py-4">
+          <Card className="mt-2 py-4">
             <BarList
               rows={stats.popularGames.map((game) => ({
                 key: game.templateId,
