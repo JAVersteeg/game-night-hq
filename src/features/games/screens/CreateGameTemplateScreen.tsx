@@ -263,7 +263,9 @@ export function CreateGameTemplateScreen() {
   // an empty field list is what gets saved — whether or not it's also played in rounds. A team game
   // decided on who won has no values at all, and nothing to play in rounds or tie on either.
   const isTeamWin = scoringDirection === 'team_win';
-  const isFieldless = scoringDirection === 'ranked' || isTeamWin;
+  // A finish order has no tied top to break, so "Maar één winnaar" doesn't apply to it either.
+  const isRanked = scoringDirection === 'ranked';
+  const isFieldless = isRanked || isTeamWin;
   const trimmedName = name.trim();
   const canSubmit =
     trimmedName.length > 0 && (isFieldless || fields.length > 0) && !createGameTemplate.isPending;
@@ -293,7 +295,7 @@ export function CreateGameTemplateScreen() {
         coverKey,
         rounds: rounds && !isTeamWin,
         roundCount: rounds && !isTeamWin && roundCount > 0 ? roundCount : null,
-        singleWinner: singleWinner && !isTeamWin,
+        singleWinner: singleWinner && !isTeamWin && !isRanked,
         teams,
       },
       { onSuccess: () => navigation.goBack() },
@@ -421,18 +423,20 @@ export function CreateGameTemplateScreen() {
               </View>
             </View>
 
-            <View>
-              <SectionLabel>Winnaar</SectionLabel>
-              <View className="mt-2">
-                <ChoiceRow
-                  title="Maar één winnaar"
-                  mode="check"
-                  selected={singleWinner}
-                  onSelect={() => setSingleWinner((current) => !current)}
-                  testID="single-winner-toggle"
-                />
+            {isRanked ? null : (
+              <View>
+                <SectionLabel>Winnaar</SectionLabel>
+                <View className="mt-2">
+                  <ChoiceRow
+                    title="Maar één winnaar"
+                    mode="check"
+                    selected={singleWinner}
+                    onSelect={() => setSingleWinner((current) => !current)}
+                    testID="single-winner-toggle"
+                  />
+                </View>
               </View>
-            </View>
+            )}
           </>
         )}
 
