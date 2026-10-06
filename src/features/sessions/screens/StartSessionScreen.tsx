@@ -10,17 +10,20 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/Button';
 import { ChoiceRow } from '@/components/ChoiceRow';
 import { CoverThumbnail } from '@/components/CoverThumbnail';
+import { InfoIcon } from '@/components/InfoIcon';
 import { SectionLabel } from '@/components/SectionLabel';
 import { TextField } from '@/components/TextField';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { AvatarMarksProvider } from '@/features/badges/avatarMarks';
 import { MemberAvatar } from '@/features/groups/components/MemberAvatar';
+import { ScoringInfoModal } from '@/features/games/components/ScoringInfoModal';
 import { gameColorForTemplate } from '@/features/games/colors';
 import { coverImageForTemplate } from '@/features/games/covers';
 import { useGameTemplates } from '@/features/games/hooks/useGameTemplates';
 import { useGroupMembers } from '@/features/groups/hooks/useGroupMembers';
 import { useCreateSession } from '@/features/sessions/hooks/useSessions';
 import { teamLabel } from '@/features/sessions/scoring';
+import { theme } from '@/lib/theme';
 import type { AppStackParamList } from '@/navigation/types';
 
 type Navigation = NativeStackNavigationProp<AppStackParamList>;
@@ -49,6 +52,7 @@ export function StartSessionScreen() {
 
   const { data: members, isPending, isError } = useGroupMembers(groupId);
   const createSession = useCreateSession(groupId);
+  const [isScoringOpen, setIsScoringOpen] = useState(false);
 
   // Whoever opened this screen is playing too, by default — the common case is starting a session
   // you're about to join, not setting one up purely for other people.
@@ -179,6 +183,17 @@ export function StartSessionScreen() {
               {template?.name ?? '…'}
             </Text>
           </View>
+          <Pressable
+            onPress={() => setIsScoringOpen(true)}
+            disabled={!template}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel="Puntentelling bekijken"
+            className="active:opacity-60"
+            testID="scoring-info-button"
+          >
+            <InfoIcon size={24} color={theme.inkSubtle} />
+          </Pressable>
         </View>
 
         <View>
@@ -320,6 +335,14 @@ export function StartSessionScreen() {
           testID="start-session-submit"
         />
       </KeyboardAwareScrollView>
+
+      {isScoringOpen && template ? (
+        <ScoringInfoModal
+          templateId={template.id}
+          gameName={template.name}
+          onClose={() => setIsScoringOpen(false)}
+        />
+      ) : null}
     </AvatarMarksProvider>
   );
 }
