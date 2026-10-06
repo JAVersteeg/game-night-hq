@@ -57,11 +57,6 @@ function extraRuleTexts(template: GameTemplateWithBonusRules): string[] {
         : 'Wordt gespeeld in rondes, zonder vast aantal. De scores van elke ronde worden bij elkaar opgeteld.',
     );
   }
-  if (template.single_winner) {
-    extras.push(
-      'Er kan maar één winnaar zijn. Bij een gelijke stand kiest de scorebijhouder wie er wint.',
-    );
-  }
   return extras;
 }
 
