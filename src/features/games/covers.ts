@@ -17,6 +17,7 @@ export const GAME_COVERS: Record<string, ImageSourcePropType> = {
   wingspan: require('../../../assets/game_covers/wingspan_cover.jpg'),
   koehandel: require('../../../assets/game_covers/koehandel_cover.jpg'),
   flamme_rouge: require('../../../assets/game_covers/flammerouge_cover.png'),
+  hitster: require('../../../assets/game_covers/hitster_cover.jpg'),
 };
 
 export function coverImageForKey(coverKey: string | null | undefined): ImageSourcePropType | undefined {

@@ -26,6 +26,7 @@ export const GAME_LIBRARY: GameLibraryEntry[] = [
   { id: 'wingspan', name: 'Wingspan' },
   { id: 'koehandel', name: 'Koehandel' },
   { id: 'flamme_rouge', name: 'Flamme Rouge' },
+  { id: 'hitster', name: 'Hitster' },
 ];
 
 const BY_NORMALIZED_NAME = new Map(
