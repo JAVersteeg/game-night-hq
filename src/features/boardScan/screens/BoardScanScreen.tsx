@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
+import { CheckIcon } from '@/components/CheckIcon';
 import { PencilIcon } from '@/components/PencilIcon';
 import { TrophyIcon } from '@/components/TrophyIcon';
 import { SectionLabel } from '@/components/SectionLabel';
@@ -24,6 +25,7 @@ import {
   targetAnchor,
   type BoardTarget,
 } from '@/features/boardScan/components/BoardView';
+import { AnalysisProgress, UploadProgress } from '@/features/boardScan/components/AnalysisProgress';
 import { CATAN_POINT_COLUMNS } from '@/features/boardScan/components/ScoreIcons';
 import {
   boardAsShown,
@@ -98,7 +100,7 @@ export function BoardScanScreen() {
 
   const [isReanalysing, setIsReanalysing] = useState(false);
   const [pickError, setPickError] = useState<string | null>(null);
-
+  const [upload, setUpload] = useState({ done: 0, total: 1 });
   // Straight from the screen, no pop-up in between: one less tap, and iOS can refuse to open the
   // picker while a closing pop-up is still on screen.
   async function pickAndStart(source: 'camera' | 'library') {
@@ -118,7 +120,11 @@ export function BoardScanScreen() {
         : await ImagePicker.launchImageLibraryAsync(options);
     const asset = result.canceled ? undefined : result.assets[0];
     if (!asset) return;
-    startScan.mutate({ uri: asset.uri }, { onSuccess: () => setIsReanalysing(false) });
+    setUpload({ done: 0, total: 1 });
+    startScan.mutate(
+      { uri: asset.uri, onProgress: (done, total) => setUpload({ done, total }) },
+      { onSuccess: () => setIsReanalysing(false) },
+    );
   }
 
   const startError = pickError ?? (startScan.error ? startScan.error.message : null);
@@ -126,9 +132,8 @@ export function BoardScanScreen() {
     <View className="gap-2">
       {startError ? <Text className="text-sm text-danger">{startError}</Text> : null}
       {startScan.isPending ? (
-        <View className="flex-row items-center gap-3 py-2">
-          <ActivityIndicator color={theme.ink} />
-          <Text className="text-sm text-ink-muted">Foto wordt voorbereid en verstuurd…</Text>
+        <View className="py-2">
+          <UploadProgress done={upload.done} total={upload.total} />
         </View>
       ) : (
         <>
@@ -186,14 +191,14 @@ export function BoardScanScreen() {
   } else if (scan.status === 'analyzing') {
     body = (
       <Card className="items-center gap-3 p-6">
-        <ActivityIndicator color={theme.ink} />
         <Text className="text-center text-base font-semibold text-ink">
           Bord wordt geanalyseerd…
         </Text>
+        {isStuck ? null : <AnalysisProgress startedAt={scan.updated_at} />}
         <Text className="text-center text-sm text-ink-muted">
           {isStuck
             ? 'Dit duurt veel langer dan normaal; de analyse is waarschijnlijk vastgelopen. Probeer het opnieuw.'
-            : 'Dit duurt meestal minder dan een minuut. Je kunt de app gerust sluiten: het bord verschijnt hier zodra het klaar is.'}
+            : 'Je kunt de app gerust sluiten: het bord verschijnt hier zodra het klaar is.'}
         </Text>
         {isStuck ? startButton : null}
       </Card>
@@ -329,7 +334,11 @@ function ReadyBoard({
               }`}
               testID="board-scan-edit"
             >
-              <PencilIcon size={18} color={editing ? theme.accentFg : theme.ink} />
+              {editing ? (
+                <CheckIcon size={24} color={theme.accentFg} />
+              ) : (
+                <PencilIcon size={18} color={theme.ink} />
+              )}
             </Pressable>
           ) : null}
         </View>
@@ -348,7 +357,7 @@ function ReadyBoard({
       <View>
         <SectionLabel>Spelers</SectionLabel>
         <Card className="mt-2">
-          <View className="flex-row items-end px-4 pb-1 pt-3">
+          <View className="flex-row items-end px-4 pb-2 pt-2">
             <View className="flex-1" />
             {COLUMNS.map(({ label, Icon }) => (
               <View key={label} className="w-8 items-center" accessibilityLabel={label}>
@@ -367,7 +376,7 @@ function ReadyBoard({
                 key={s.color}
                 disabled={!canEdit}
                 onPress={() => setLabelling(s.color)}
-                className="border-t border-line px-4 py-3 active:opacity-70"
+                className="border-t border-line py-3 pl-2 pr-4 active:opacity-70"
                 accessibilityRole="button"
                 accessibilityLabel={`Speler voor ${COLOR_LABEL[s.color]} kiezen`}
               >
@@ -477,8 +486,7 @@ type Anchor = { x: number; y: number; r: number };
 
 const POPOVER_WIDTH = 300;
 /** The edit button's distance from the board's top and right edge — the same on both sides. */
-const EDIT_BUTTON_INSET = 10;
-/** `surface-deep` at 60%, as a raw colour: it's a border colour, not a className. */
+const EDIT_BUTTON_INSET = 10;/** `surface-deep` at 60%, as a raw colour: it's a border colour, not a className. */
 const OVERLAY = `${theme.surfaceDeep}99`;
 
 function TargetSheet({

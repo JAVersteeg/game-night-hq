@@ -5,6 +5,7 @@ import { Pressable, View } from 'react-native';
 import { Button } from '@/components/Button';
 import { SectionLabel } from '@/components/SectionLabel';
 import { Text } from '@/components/Text';
+import { AnalysisProgress } from '@/features/boardScan/components/AnalysisProgress';
 import { BoardView } from '@/features/boardScan/components/BoardView';
 import { boardAsShown, recordedScores } from '@/features/boardScan/catan';
 import { useBoardScan } from '@/features/boardScan/useBoardScan';
@@ -68,6 +69,7 @@ export function BoardScanSection({ sessionId }: { sessionId: string }) {
       <SectionLabel>Bord</SectionLabel>
       <View className="mt-2 gap-3">
         <Text className="text-sm text-ink-muted">{status}</Text>
+        {scan?.status === 'analyzing' ? <AnalysisProgress startedAt={scan.updated_at} /> : null}
         <Button
           label={scan ? 'Open' : 'Analyseer bord'}
           variant="secondary"

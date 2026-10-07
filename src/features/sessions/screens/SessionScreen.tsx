@@ -44,6 +44,7 @@ import { MemberAvatar } from '@/features/groups/components/MemberAvatar';
 import { useGroupMembers, type GroupMember } from '@/features/groups/hooks/useGroupMembers';
 import { CoverThumbnail } from '@/components/CoverThumbnail';
 import { PencilIcon } from '@/components/PencilIcon';
+import { PlusIcon } from '@/components/PlusIcon';
 import { TrashIcon } from '@/components/TrashIcon';
 import { TrophyIcon } from '@/components/TrophyIcon';
 import { ReorderList } from '@/components/ReorderList';
@@ -1072,6 +1073,8 @@ function SessionNotesSection({
   onDelete: (noteId: string) => void;
   isAdding: boolean;
 }) {
+  const isNoteAddDisabled = isAdding || draft.trim().length === 0;
+
   return (
     <View>
       <SectionLabel>Notities</SectionLabel>
@@ -1104,21 +1107,31 @@ function SessionNotesSection({
           ))
         )}
       </View>
-      <View className="mt-3 gap-2">
-        <TextField
-          value={draft}
-          onChangeText={onDraftChange}
-          placeholder="Notitie toevoegen…"
-          testID="session-note-input"
-        />
-        <Button
-          label="Toevoegen"
-          variant="secondary"
-          onPress={onAdd}
-          isLoading={isAdding}
-          disabled={draft.trim().length === 0}
+      <View className="mt-3 flex-row items-stretch gap-2">
+        <View className="min-w-0 flex-1">
+          <TextField
+            value={draft}
+            onChangeText={onDraftChange}
+            placeholder="Notitie toevoegen…"
+            testID="session-note-input"
+          />
+        </View>
+        <Pressable
+          onPress={isNoteAddDisabled ? undefined : onAdd}
+          accessibilityRole="button"
+          accessibilityLabel="Notitie toevoegen"
+          accessibilityState={{ disabled: isNoteAddDisabled }}
+          className={`w-[58px] items-center justify-center rounded-2xl bg-surface-sunken active:opacity-80 ${
+            isNoteAddDisabled ? 'opacity-50' : ''
+          }`}
           testID="session-note-submit"
-        />
+        >
+          {isAdding ? (
+            <ActivityIndicator color={theme.ink} />
+          ) : (
+            <PlusIcon color={theme.ink} />
+          )}
+        </Pressable>
       </View>
     </View>
   );

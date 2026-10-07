@@ -18,6 +18,9 @@ const CROP_SHARE = 0.58;
 export const BOARD_SCAN_STALE_MS = 5 * 60 * 1000;
 
 export const MAX_BOARD_SCAN_ATTEMPTS = 3;
+/** How long a reading usually takes once the photos are up (measured 30–35 s; see the edge
+ *  function's eval/README.md). Drives the waiting bar; nothing depends on it being exact. */
+export const EXPECTED_ANALYSIS_MS = 35_000;
 
 export type BoardScan = Omit<
   Tables<'board_scans'>,
@@ -122,7 +125,11 @@ export function useStartBoardScan(sessionId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (photo: { uri: string }) => {
+    mutationFn: async (photo: {
+      uri: string;
+      /** Called as the photo's parts are prepared and uploaded: `done` of `total`. */
+      onProgress?: (done: number, total: number) => void;
+    }) => {
       // The decoded image is the truth about its size: a picker's numbers can predate rotation.
       const original = await ImageManipulator.manipulate(photo.uri).renderAsync();
       const { width, height } = original;
@@ -137,8 +144,10 @@ export function useStartBoardScan(sessionId: string) {
 
       const folder = `${sessionId}/${randomUUID()}`;
       const images: UploadedImage[] = [];
+      photo.onProgress?.(0, rects.length);
       for (const [i, rect] of rects.entries()) {
         images.push(await uploadPart(photo.uri, rect, `${folder}/${i}.jpg`));
+        photo.onProgress?.(i + 1, rects.length);
       }
 
       const { error } = await supabase.functions.invoke('analyze-board', {
