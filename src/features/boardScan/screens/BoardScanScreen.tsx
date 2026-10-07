@@ -3,6 +3,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useRef, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
+  Image,
   Modal,
   Pressable,
   ScrollView,
@@ -101,9 +102,12 @@ export function BoardScanScreen() {
   const [isReanalysing, setIsReanalysing] = useState(false);
   const [pickError, setPickError] = useState<string | null>(null);
   const [upload, setUpload] = useState({ done: 0, total: 1 });
+  // The photo picked or taken, waiting for the go-ahead to be analysed.
+  const [pendingUri, setPendingUri] = useState<string | null>(null);
+
   // Straight from the screen, no pop-up in between: one less tap, and iOS can refuse to open the
   // picker while a closing pop-up is still on screen.
-  async function pickAndStart(source: 'camera' | 'library') {
+  async function pickPhoto(source: 'camera' | 'library') {
     setPickError(null);
     if (source === 'camera') {
       const permission = await ImagePicker.requestCameraPermissionsAsync();
@@ -120,14 +124,26 @@ export function BoardScanScreen() {
         : await ImagePicker.launchImageLibraryAsync(options);
     const asset = result.canceled ? undefined : result.assets[0];
     if (!asset) return;
+    // Not started yet: an analysis costs one of the few attempts, so the photo is shown first.
+    startScan.reset();
+    setPendingUri(asset.uri);
+  }
+
+  function startAnalysis(uri: string) {
     setUpload({ done: 0, total: 1 });
     startScan.mutate(
-      { uri: asset.uri, onProgress: (done, total) => setUpload({ done, total }) },
-      { onSuccess: () => setIsReanalysing(false) },
+      { uri, onProgress: (done, total) => setUpload({ done, total }) },
+      {
+        onSuccess: () => {
+          setPendingUri(null);
+          setIsReanalysing(false);
+        },
+      },
     );
   }
 
   const startError = pickError ?? (startScan.error ? startScan.error.message : null);
+  const attemptsNote = `Telt als 1 van de ${MAX_BOARD_SCAN_ATTEMPTS} analyses van dit potje (nog ${attemptsLeft}).`;
   const photoOptions = (
     <View className="gap-2">
       {startError ? <Text className="text-sm text-danger">{startError}</Text> : null}
@@ -135,22 +151,48 @@ export function BoardScanScreen() {
         <View className="py-2">
           <UploadProgress done={upload.done} total={upload.total} />
         </View>
+      ) : pendingUri ? (
+        <>
+          <View className="h-72 overflow-hidden rounded-2xl bg-surface-sunken">
+            <Image
+              source={{ uri: pendingUri }}
+              className="h-full w-full"
+              resizeMode="contain"
+              accessibilityLabel="Gekozen foto van het bord"
+              accessibilityIgnoresInvertColors
+            />
+          </View>
+          <Button
+            label="Analyseren"
+            onPress={() => startAnalysis(pendingUri)}
+            testID="board-scan-confirm"
+          />
+          <Button
+            label="Andere foto"
+            variant="secondary"
+            onPress={() => {
+              startScan.reset();
+              setPendingUri(null);
+            }}
+            testID="board-scan-discard"
+          />
+          <Text className="text-xs text-ink-subtle">{attemptsNote}</Text>
+        </>
       ) : (
         <>
           <Button
             label="Foto maken"
-            onPress={() => void pickAndStart('camera')}
+            onPress={() => void pickPhoto('camera')}
             testID="board-scan-camera"
           />
           <Button
             label="Kies uit galerij"
             variant="secondary"
-            onPress={() => void pickAndStart('library')}
+            onPress={() => void pickPhoto('library')}
             testID="board-scan-library"
           />
           <Text className="text-xs text-ink-subtle">
-            Recht van boven, met het hele bord in beeld. Telt als 1 van de {MAX_BOARD_SCAN_ATTEMPTS}{' '}
-            analyses van dit potje (nog {attemptsLeft}).
+            Recht van boven, met het hele bord in beeld. {attemptsNote}
           </Text>
         </>
       )}
