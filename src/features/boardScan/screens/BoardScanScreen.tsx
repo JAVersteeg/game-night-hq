@@ -399,7 +399,7 @@ function ReadyBoard({
       <View>
         <SectionLabel>Spelers</SectionLabel>
         <Card className="mt-2">
-          <View className="flex-row items-end px-4 pb-2 pt-2">
+          <View className="flex-row items-end px-1 pb-2 pt-2">
             <View className="flex-1" />
             {COLUMNS.map(({ label, Icon }) => (
               <View key={label} className="w-8 items-center" accessibilityLabel={label}>
@@ -407,53 +407,66 @@ function ReadyBoard({
               </View>
             ))}
           </View>
-          {summaries.map((s) => {
-            const userId = colorPlayers[s.color];
-            const route = s.hasLongestRoad ? 2 : 0;
-            // Largest army isn't on the board: it comes from the recorded scores.
-            const army = userId ? (scoresByUser[userId]?.[LARGEST_ARMY_FIELD] ?? 0) : 0;
-            const cards = userId ? (scoresByUser[userId]?.[DEV_CARDS_FIELD] ?? 0) : 0;
-            return (
-              <Pressable
-                key={s.color}
-                disabled={!canEdit}
-                onPress={() => setLabelling(s.color)}
-                className="border-t border-line py-3 pl-2 pr-4 active:opacity-70"
-                accessibilityRole="button"
-                accessibilityLabel={`Speler voor ${COLOR_LABEL[s.color]} kiezen`}
-              >
-                <View className="flex-row items-center">
-                  <View
-                    className="mr-2 h-4 w-4 rounded-full border border-line"
-                    style={{ backgroundColor: PIECE_FILL[s.color] }}
-                  />
-                  <Text
-                    numberOfLines={1}
-                    className={`min-w-0 flex-1 text-base font-semibold ${userId ? 'text-ink' : 'text-ink-subtle'}`}
-                  >
-                    {userId ? nameOf(userId) : `Wie speelde ${COLOR_LABEL[s.color]}?`}
-                    {userId && !scan.color_players[s.color] ? (
-                      <Text className="text-sm font-normal text-ink-subtle"> (voorstel)</Text>
-                    ) : null}
-                  </Text>
-                  <PointCell value={s.buildingPoints} />
-                  <PointCell value={route} />
-                  <PointCell value={army} />
-                  <PointCell value={cards} />
-                  <PointCell value={s.buildingPoints + route + army + cards} strong />
-                </View>
-                <View className="ml-6 mt-1 flex-row">
-                  <Text className="w-16 text-xs text-ink-subtle">
-                    {s.settlements} {s.settlements === 1 ? 'dorp' : 'dorpen'}
-                  </Text>
-                  <Text className="w-16 text-xs text-ink-subtle">
-                    {s.cities} {s.cities === 1 ? 'stad' : 'steden'}
-                  </Text>
-                  <Text className="w-16 text-xs text-ink-subtle">route {s.longestRoad}</Text>
-                </View>
-              </Pressable>
-            );
-          })}
+          {summaries
+            .map((s) => {
+              const userId = colorPlayers[s.color];
+              const route = s.hasLongestRoad ? 2 : 0;
+              // Largest army isn't on the board: it comes from the recorded scores.
+              const army = userId ? (scoresByUser[userId]?.[LARGEST_ARMY_FIELD] ?? 0) : 0;
+              const cards = userId ? (scoresByUser[userId]?.[DEV_CARDS_FIELD] ?? 0) : 0;
+              return {
+                s,
+                userId,
+                route,
+                army,
+                cards,
+                total: s.buildingPoints + route + army + cards,
+              };
+            })
+            // Highest total first; the sort is stable, so ties keep the colour order.
+            .sort((a, b) => b.total - a.total)
+            .map(({ s, userId, route, army, cards, total }) => {
+              return (
+                <Pressable
+                  key={s.color}
+                  disabled={!canEdit}
+                  onPress={() => setLabelling(s.color)}
+                  className="border-t border-line px-1 py-3 active:opacity-70"
+                  accessibilityRole="button"
+                  accessibilityLabel={`Speler voor ${COLOR_LABEL[s.color]} kiezen`}
+                >
+                  <View className="flex-row items-center">
+                    <View
+                      className="mr-2 h-4 w-4 rounded-full border border-line"
+                      style={{ backgroundColor: PIECE_FILL[s.color] }}
+                    />
+                    <Text
+                      numberOfLines={1}
+                      className={`min-w-0 flex-1 text-base font-semibold ${userId ? 'text-ink' : 'text-ink-subtle'}`}
+                    >
+                      {userId ? nameOf(userId) : `Wie speelde ${COLOR_LABEL[s.color]}?`}
+                      {userId && !scan.color_players[s.color] ? (
+                        <Text className="text-sm font-normal text-ink-subtle"> (voorstel)</Text>
+                      ) : null}
+                    </Text>
+                    <PointCell value={s.buildingPoints} />
+                    <PointCell value={route} />
+                    <PointCell value={army} />
+                    <PointCell value={cards} />
+                    <PointCell value={total} strong />
+                  </View>
+                  <View className="ml-6 mt-1 flex-row">
+                    <Text className="w-16 text-xs text-ink-subtle">
+                      {s.settlements} {s.settlements === 1 ? 'dorp' : 'dorpen'}
+                    </Text>
+                    <Text className="w-14 text-xs text-ink-subtle">
+                      {s.cities} {s.cities === 1 ? 'stad' : 'steden'}
+                    </Text>
+                    <Text className="w-14 text-xs text-ink-subtle">route {s.longestRoad}</Text>
+                  </View>
+                </Pressable>
+              );
+            })}
         </Card>
         {canEdit && pendingSuggestions.length > 0 ? (
           <View className="mt-2">
@@ -528,7 +541,7 @@ type Anchor = { x: number; y: number; r: number };
 
 const POPOVER_WIDTH = 300;
 /** The edit button's distance from the board's top and right edge — the same on both sides. */
-const EDIT_BUTTON_INSET = 10;/** `surface-deep` at 60%, as a raw colour: it's a border colour, not a className. */
+const EDIT_BUTTON_INSET = 10; /** `surface-deep` at 60%, as a raw colour: it's a border colour, not a className. */
 const OVERLAY = `${theme.surfaceDeep}99`;
 
 function TargetSheet({
