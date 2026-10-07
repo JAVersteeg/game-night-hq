@@ -1,0 +1,1082 @@
+{
+  "wall": 16403,
+  "results": [
+    {
+      "file": "0.jpg",
+      "model": "claude-opus-5-5",
+      "ms": 16402,
+      "usage": {
+        "input_tokens": 6036,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 1472,
+        "service_tier": "standard",
+        "inference_geo": "global",
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        }
+      },
+      "stop": "end_turn",
+      "output": {
+        "orientation": "Photo shows flat-topped hexes in vertical columns (left to right column sizes 3,4,5,6,5,4,3). Rotating the photo 90° clockwise makes them pointy-topped: photo left column becomes top row; within a row, columns run from photo bottom to photo top.",
+        "hexes": [
+          {
+            "row": 0,
+            "col": 0,
+            "terrain": "fields",
+            "number": 11,
+            "x": 378,
+            "y": 1488
+          },
+          {
+            "row": 0,
+            "col": 1,
+            "terrain": "mountains",
+            "number": 4,
+            "x": 293,
+            "y": 1327
+          },
+          {
+            "row": 0,
+            "col": 2,
+            "terrain": "mountains",
+            "number": 2,
+            "x": 178,
+            "y": 1096
+          },
+          {
+            "row": 1,
+            "col": 0,
+            "terrain": "pasture",
+            "number": 6,
+            "x": 493,
+            "y": 1673
+          },
+          {
+            "row": 1,
+            "col": 1,
+            "terrain": "forest",
+            "number": 3,
+            "x": 602,
+            "y": 1503
+          },
+          {
+            "row": 1,
+            "col": 2,
+            "terrain": "forest",
+            "number": 9,
+            "x": 512,
+            "y": 1319
+          },
+          {
+            "row": 1,
+            "col": 3,
+            "terrain": "fields",
+            "number": 8,
+            "x": 395,
+            "y": 1131
+          },
+          {
+            "row": 2,
+            "col": 0,
+            "terrain": "hills",
+            "number": 4,
+            "x": 685,
+            "y": 1687
+          },
+          {
+            "row": 2,
+            "col": 1,
+            "terrain": "fields",
+            "number": 6,
+            "x": 728,
+            "y": 1343
+          },
+          {
+            "row": 2,
+            "col": 2,
+            "terrain": "hills",
+            "number": 2,
+            "x": 612,
+            "y": 1106
+          },
+          {
+            "row": 2,
+            "col": 3,
+            "terrain": "desert",
+            "number": 0,
+            "x": 520,
+            "y": 935
+          },
+          {
+            "row": 2,
+            "col": 4,
+            "terrain": "forest",
+            "number": 5,
+            "x": 308,
+            "y": 945
+          },
+          {
+            "row": 3,
+            "col": 0,
+            "terrain": "hills",
+            "number": 8,
+            "x": 925,
+            "y": 1700
+          },
+          {
+            "row": 3,
+            "col": 1,
+            "terrain": "mountains",
+            "number": 4,
+            "x": 845,
+            "y": 1500
+          },
+          {
+            "row": 3,
+            "col": 2,
+            "terrain": "hills",
+            "number": 9,
+            "x": 910,
+            "y": 1298
+          },
+          {
+            "row": 3,
+            "col": 3,
+            "terrain": "pasture",
+            "number": 11,
+            "x": 836,
+            "y": 1140
+          },
+          {
+            "row": 3,
+            "col": 4,
+            "terrain": "mountains",
+            "number": 9,
+            "x": 755,
+            "y": 965
+          },
+          {
+            "row": 3,
+            "col": 5,
+            "terrain": "pasture",
+            "number": 9,
+            "x": 645,
+            "y": 740
+          },
+          {
+            "row": 4,
+            "col": 0,
+            "terrain": "pasture",
+            "number": 11,
+            "x": 1060,
+            "y": 1525
+          },
+          {
+            "row": 4,
+            "col": 1,
+            "terrain": "forest",
+            "number": 3,
+            "x": 1147,
+            "y": 1335
+          },
+          {
+            "row": 4,
+            "col": 2,
+            "terrain": "pasture",
+            "number": 8,
+            "x": 1015,
+            "y": 1173
+          },
+          {
+            "row": 4,
+            "col": 3,
+            "terrain": "forest",
+            "number": 5,
+            "x": 938,
+            "y": 950
+          },
+          {
+            "row": 4,
+            "col": 4,
+            "terrain": "fields",
+            "number": 10,
+            "x": 878,
+            "y": 770
+          },
+          {
+            "row": 4,
+            "col": 5,
+            "terrain": "forest",
+            "number": 10,
+            "x": 435,
+            "y": 758
+          },
+          {
+            "row": 5,
+            "col": 0,
+            "terrain": "mountains",
+            "number": 12,
+            "x": 1247,
+            "y": 1170
+          },
+          {
+            "row": 5,
+            "col": 1,
+            "terrain": "fields",
+            "number": 10,
+            "x": 1128,
+            "y": 950
+          },
+          {
+            "row": 5,
+            "col": 2,
+            "terrain": "fields",
+            "number": 12,
+            "x": 1085,
+            "y": 837
+          },
+          {
+            "row": 5,
+            "col": 3,
+            "terrain": "pasture",
+            "number": 3,
+            "x": 755,
+            "y": 582
+          },
+          {
+            "row": 6,
+            "col": 0,
+            "terrain": "fields",
+            "number": 0,
+            "x": 960,
+            "y": 590
+          },
+          {
+            "row": 6,
+            "col": 1,
+            "terrain": "hills",
+            "number": 5,
+            "x": 530,
+            "y": 580
+          },
+          {
+            "row": 6,
+            "col": 2,
+            "terrain": "desert",
+            "number": 0,
+            "x": 960,
+            "y": 590
+          }
+        ],
+        "robber": {
+          "row": 1,
+          "col": 3
+        },
+        "harbours": [
+          {
+            "kind": "generic",
+            "x": 185,
+            "y": 930
+          },
+          {
+            "kind": "generic",
+            "x": 175,
+            "y": 1310
+          },
+          {
+            "kind": "generic",
+            "x": 300,
+            "y": 1610
+          },
+          {
+            "kind": "generic",
+            "x": 650,
+            "y": 1810
+          },
+          {
+            "kind": "lumber",
+            "x": 1010,
+            "y": 1790
+          },
+          {
+            "kind": "wool",
+            "x": 1160,
+            "y": 1500
+          },
+          {
+            "kind": "wool",
+            "x": 1355,
+            "y": 1150
+          },
+          {
+            "kind": "wool",
+            "x": 1175,
+            "y": 790
+          },
+          {
+            "kind": "ore",
+            "x": 1020,
+            "y": 485
+          },
+          {
+            "kind": "generic",
+            "x": 580,
+            "y": 455
+          },
+          {
+            "kind": "grain",
+            "x": 370,
+            "y": 630
+          }
+        ],
+        "notes": "Row 6 approximated; tile at top-center is fields without visible number, possibly desert-like; estimates."
+      }
+    },
+    {
+      "file": "1.jpg",
+      "model": "claude-opus-5-5",
+      "ms": 14239,
+      "usage": {
+        "input_tokens": 4802,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 913,
+        "service_tier": "standard",
+        "inference_geo": "global",
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        }
+      },
+      "stop": "end_turn",
+      "output": {
+        "buildings": [
+          {
+            "color": "red",
+            "kind": "settlement",
+            "city_likelihood": 0.1,
+            "x": 982,
+            "y": 775
+          },
+          {
+            "color": "green",
+            "kind": "settlement",
+            "city_likelihood": 0.1,
+            "x": 466,
+            "y": 1030
+          },
+          {
+            "color": "green",
+            "kind": "settlement",
+            "city_likelihood": 0.1,
+            "x": 810,
+            "y": 1075
+          },
+          {
+            "color": "red",
+            "kind": "settlement",
+            "city_likelihood": 0.15,
+            "x": 1170,
+            "y": 1288
+          },
+          {
+            "color": "green",
+            "kind": "settlement",
+            "city_likelihood": 0.1,
+            "x": 651,
+            "y": 1357
+          },
+          {
+            "color": "blue",
+            "kind": "settlement",
+            "city_likelihood": 0.1,
+            "x": 322,
+            "y": 1335
+          },
+          {
+            "color": "blue",
+            "kind": "settlement",
+            "city_likelihood": 0.15,
+            "x": 447,
+            "y": 1650
+          },
+          {
+            "color": "green",
+            "kind": "settlement",
+            "city_likelihood": 0.1,
+            "x": 803,
+            "y": 1970
+          },
+          {
+            "color": "blue",
+            "kind": "settlement",
+            "city_likelihood": 0.1,
+            "x": 270,
+            "y": 2235
+          },
+          {
+            "color": "blue",
+            "kind": "settlement",
+            "city_likelihood": 0.15,
+            "x": 622,
+            "y": 2255
+          },
+          {
+            "color": "red",
+            "kind": "settlement",
+            "city_likelihood": 0.1,
+            "x": 955,
+            "y": 2250
+          },
+          {
+            "color": "red",
+            "kind": "settlement",
+            "city_likelihood": 0.1,
+            "x": 428,
+            "y": 2290
+          },
+          {
+            "color": "red",
+            "kind": "settlement",
+            "city_likelihood": 0.1,
+            "x": 805,
+            "y": 2290
+          }
+        ],
+        "roads": [
+          {
+            "color": "red",
+            "x": 995,
+            "y": 910
+          },
+          {
+            "color": "red",
+            "x": 1078,
+            "y": 1030
+          },
+          {
+            "color": "red",
+            "x": 1147,
+            "y": 1170
+          },
+          {
+            "color": "green",
+            "x": 565,
+            "y": 998
+          },
+          {
+            "color": "green",
+            "x": 712,
+            "y": 1000
+          },
+          {
+            "color": "green",
+            "x": 455,
+            "y": 1162
+          },
+          {
+            "color": "green",
+            "x": 808,
+            "y": 1162
+          },
+          {
+            "color": "green",
+            "x": 708,
+            "y": 1305
+          },
+          {
+            "color": "green",
+            "x": 615,
+            "y": 1480
+          },
+          {
+            "color": "green",
+            "x": 730,
+            "y": 1600
+          },
+          {
+            "color": "green",
+            "x": 928,
+            "y": 1592
+          },
+          {
+            "color": "green",
+            "x": 1068,
+            "y": 1610
+          },
+          {
+            "color": "green",
+            "x": 1197,
+            "y": 1620
+          },
+          {
+            "color": "blue",
+            "x": 295,
+            "y": 1455
+          },
+          {
+            "color": "blue",
+            "x": 345,
+            "y": 1595
+          },
+          {
+            "color": "blue",
+            "x": 450,
+            "y": 1820
+          },
+          {
+            "color": "blue",
+            "x": 350,
+            "y": 2020
+          },
+          {
+            "color": "blue",
+            "x": 530,
+            "y": 2020
+          },
+          {
+            "color": "red",
+            "x": 1048,
+            "y": 2108
+          },
+          {
+            "color": "red",
+            "x": 960,
+            "y": 2420
+          },
+          {
+            "color": "red",
+            "x": 675,
+            "y": 2490
+          },
+          {
+            "color": "red",
+            "x": 530,
+            "y": 2485
+          },
+          {
+            "color": "red",
+            "x": 890,
+            "y": 2505
+          }
+        ],
+        "notes": "Approximate positions."
+      }
+    },
+    {
+      "file": "2.jpg",
+      "model": "claude-opus-5-5",
+      "ms": 11778,
+      "usage": {
+        "input_tokens": 4802,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 721,
+        "service_tier": "standard",
+        "inference_geo": "global",
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        }
+      },
+      "stop": "end_turn",
+      "output": {
+        "buildings": [
+          {
+            "color": "red",
+            "kind": "settlement",
+            "city_likelihood": 0.1,
+            "x": 35,
+            "y": 775
+          },
+          {
+            "color": "red",
+            "kind": "settlement",
+            "city_likelihood": 0.2,
+            "x": 222,
+            "y": 1285
+          },
+          {
+            "color": "white",
+            "kind": "settlement",
+            "city_likelihood": 0.2,
+            "x": 1004,
+            "y": 1600
+          },
+          {
+            "color": "white",
+            "kind": "settlement",
+            "city_likelihood": 0.2,
+            "x": 1153,
+            "y": 1900
+          },
+          {
+            "color": "white",
+            "kind": "settlement",
+            "city_likelihood": 0.2,
+            "x": 662,
+            "y": 1960
+          },
+          {
+            "color": "white",
+            "kind": "settlement",
+            "city_likelihood": 0.2,
+            "x": 355,
+            "y": 2160
+          },
+          {
+            "color": "white",
+            "kind": "settlement",
+            "city_likelihood": 0.2,
+            "x": 828,
+            "y": 2270
+          }
+        ],
+        "roads": [
+          {
+            "color": "red",
+            "x": 45,
+            "y": 910
+          },
+          {
+            "color": "red",
+            "x": 132,
+            "y": 1030
+          },
+          {
+            "color": "red",
+            "x": 200,
+            "y": 1170
+          },
+          {
+            "color": "red",
+            "x": 105,
+            "y": 1910
+          },
+          {
+            "color": "red",
+            "x": 20,
+            "y": 1950
+          },
+          {
+            "color": "red",
+            "x": 15,
+            "y": 2080
+          },
+          {
+            "color": "orange",
+            "x": 555,
+            "y": 1290
+          },
+          {
+            "color": "orange",
+            "x": 648,
+            "y": 1360
+          },
+          {
+            "color": "orange",
+            "x": 800,
+            "y": 1357
+          },
+          {
+            "color": "orange",
+            "x": 692,
+            "y": 1465
+          },
+          {
+            "color": "orange",
+            "x": 690,
+            "y": 1595
+          },
+          {
+            "color": "green",
+            "x": 125,
+            "y": 1610
+          },
+          {
+            "color": "green",
+            "x": 255,
+            "y": 1620
+          },
+          {
+            "color": "green",
+            "x": 365,
+            "y": 1575
+          },
+          {
+            "color": "green",
+            "x": 438,
+            "y": 1640
+          },
+          {
+            "color": "green",
+            "x": 8,
+            "y": 1570
+          },
+          {
+            "color": "white",
+            "x": 990,
+            "y": 1505
+          },
+          {
+            "color": "white",
+            "x": 1085,
+            "y": 1660
+          },
+          {
+            "color": "white",
+            "x": 1145,
+            "y": 1770
+          },
+          {
+            "color": "white",
+            "x": 1060,
+            "y": 1930
+          },
+          {
+            "color": "white",
+            "x": 912,
+            "y": 1920
+          },
+          {
+            "color": "white",
+            "x": 760,
+            "y": 1915
+          },
+          {
+            "color": "white",
+            "x": 660,
+            "y": 2100
+          },
+          {
+            "color": "white",
+            "x": 235,
+            "y": 2230
+          },
+          {
+            "color": "white",
+            "x": 740,
+            "y": 2235
+          }
+        ],
+        "notes": "Approximate positions."
+      }
+    },
+    {
+      "file": "3.jpg",
+      "model": "claude-opus-5-5",
+      "ms": 8881,
+      "usage": {
+        "input_tokens": 4802,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 575,
+        "service_tier": "standard",
+        "inference_geo": "global",
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        }
+      },
+      "stop": "end_turn",
+      "output": {
+        "buildings": [
+          {
+            "color": "blue",
+            "kind": "settlement",
+            "city_likelihood": 0.1,
+            "x": 268,
+            "y": 256
+          },
+          {
+            "color": "blue",
+            "kind": "settlement",
+            "city_likelihood": 0.15,
+            "x": 623,
+            "y": 270
+          },
+          {
+            "color": "red",
+            "kind": "settlement",
+            "city_likelihood": 0.15,
+            "x": 952,
+            "y": 276
+          },
+          {
+            "color": "red",
+            "kind": "settlement",
+            "city_likelihood": 0.1,
+            "x": 428,
+            "y": 551
+          },
+          {
+            "color": "red",
+            "kind": "settlement",
+            "city_likelihood": 0.1,
+            "x": 801,
+            "y": 566
+          },
+          {
+            "color": "blue",
+            "kind": "settlement",
+            "city_likelihood": 0.1,
+            "x": 599,
+            "y": 871
+          },
+          {
+            "color": "blue",
+            "kind": "settlement",
+            "city_likelihood": 0.2,
+            "x": 953,
+            "y": 861
+          },
+          {
+            "color": "orange",
+            "kind": "settlement",
+            "city_likelihood": 0.1,
+            "x": 1107,
+            "y": 1154
+          },
+          {
+            "color": "orange",
+            "kind": "settlement",
+            "city_likelihood": 0.15,
+            "x": 1280,
+            "y": 818
+          }
+        ],
+        "roads": [
+          {
+            "color": "blue",
+            "x": 449,
+            "y": 82
+          },
+          {
+            "color": "blue",
+            "x": 366,
+            "y": 197
+          },
+          {
+            "color": "blue",
+            "x": 528,
+            "y": 218
+          },
+          {
+            "color": "red",
+            "x": 1048,
+            "y": 233
+          },
+          {
+            "color": "red",
+            "x": 965,
+            "y": 388
+          },
+          {
+            "color": "red",
+            "x": 540,
+            "y": 518
+          },
+          {
+            "color": "red",
+            "x": 672,
+            "y": 508
+          },
+          {
+            "color": "red",
+            "x": 876,
+            "y": 520
+          },
+          {
+            "color": "blue",
+            "x": 698,
+            "y": 806
+          },
+          {
+            "color": "blue",
+            "x": 838,
+            "y": 805
+          },
+          {
+            "color": "orange",
+            "x": 1278,
+            "y": 975
+          },
+          {
+            "color": "orange",
+            "x": 1203,
+            "y": 1124
+          },
+          {
+            "color": "white",
+            "x": 1182,
+            "y": 522
+          }
+        ],
+        "notes": ""
+      }
+    },
+    {
+      "file": "4.jpg",
+      "model": "claude-opus-5-5",
+      "ms": 10129,
+      "usage": {
+        "input_tokens": 4802,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 537,
+        "service_tier": "standard",
+        "inference_geo": "global",
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        }
+      },
+      "stop": "end_turn",
+      "output": {
+        "buildings": [
+          {
+            "color": "white",
+            "kind": "settlement",
+            "city_likelihood": 0.1,
+            "x": 663,
+            "y": 288
+          },
+          {
+            "color": "white",
+            "kind": "settlement",
+            "city_likelihood": 0.1,
+            "x": 352,
+            "y": 478
+          },
+          {
+            "color": "white",
+            "kind": "settlement",
+            "city_likelihood": 0.1,
+            "x": 1153,
+            "y": 222
+          },
+          {
+            "color": "white",
+            "kind": "settlement",
+            "city_likelihood": 0.1,
+            "x": 828,
+            "y": 593
+          },
+          {
+            "color": "orange",
+            "kind": "settlement",
+            "city_likelihood": 0.15,
+            "x": 330,
+            "y": 830
+          },
+          {
+            "color": "orange",
+            "kind": "settlement",
+            "city_likelihood": 0.1,
+            "x": 682,
+            "y": 853
+          },
+          {
+            "color": "orange",
+            "kind": "settlement",
+            "city_likelihood": 0.1,
+            "x": 158,
+            "y": 1150
+          },
+          {
+            "color": "blue",
+            "kind": "settlement",
+            "city_likelihood": 0.2,
+            "x": 12,
+            "y": 850
+          }
+        ],
+        "roads": [
+          {
+            "color": "red",
+            "x": 105,
+            "y": 235
+          },
+          {
+            "color": "red",
+            "x": 20,
+            "y": 270
+          },
+          {
+            "color": "red",
+            "x": 12,
+            "y": 380
+          },
+          {
+            "color": "white",
+            "x": 235,
+            "y": 525
+          },
+          {
+            "color": "white",
+            "x": 660,
+            "y": 420
+          },
+          {
+            "color": "white",
+            "x": 745,
+            "y": 540
+          },
+          {
+            "color": "white",
+            "x": 760,
+            "y": 230
+          },
+          {
+            "color": "white",
+            "x": 980,
+            "y": 245
+          },
+          {
+            "color": "white",
+            "x": 1140,
+            "y": 100
+          },
+          {
+            "color": "orange",
+            "x": 420,
+            "y": 830
+          },
+          {
+            "color": "orange",
+            "x": 565,
+            "y": 800
+          },
+          {
+            "color": "orange",
+            "x": 333,
+            "y": 975
+          },
+          {
+            "color": "orange",
+            "x": 258,
+            "y": 1122
+          }
+        ],
+        "notes": "Approximate positions."
+      }
+    }
+  ]
+}

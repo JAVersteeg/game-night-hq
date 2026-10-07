@@ -1,0 +1,2090 @@
+{
+  "wall": 35155,
+  "results": [
+    {
+      "file": "0.jpg",
+      "model": "claude-opus-5-5",
+      "ms": 35155,
+      "usage": {
+        "input_tokens": 6048,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 3422,
+        "service_tier": "standard",
+        "inference_geo": "global",
+        "output_tokens_details": {
+          "thinking_tokens": 1989
+        }
+      },
+      "stop": "end_turn",
+      "output": {
+        "orientation": "Photo used as-is: hexes are pointy-topped with horizontal rows (row 0 at top of photo, 3 hexes; row 3 is the 6-hex row).",
+        "hexes": [
+          {
+            "row": 0,
+            "col": 0,
+            "terrain": "hills",
+            "number": 5,
+            "x": 530,
+            "y": 580
+          },
+          {
+            "row": 0,
+            "col": 1,
+            "terrain": "pasture",
+            "number": 3,
+            "x": 755,
+            "y": 580
+          },
+          {
+            "row": 0,
+            "col": 2,
+            "terrain": "desert",
+            "number": 0,
+            "x": 960,
+            "y": 590
+          },
+          {
+            "row": 1,
+            "col": 0,
+            "terrain": "forest",
+            "number": 10,
+            "x": 435,
+            "y": 757
+          },
+          {
+            "row": 1,
+            "col": 1,
+            "terrain": "pasture",
+            "number": 9,
+            "x": 645,
+            "y": 740
+          },
+          {
+            "row": 1,
+            "col": 2,
+            "terrain": "fields",
+            "number": 10,
+            "x": 880,
+            "y": 770
+          },
+          {
+            "row": 1,
+            "col": 3,
+            "terrain": "fields",
+            "number": 12,
+            "x": 1085,
+            "y": 840
+          },
+          {
+            "row": 2,
+            "col": 0,
+            "terrain": "forest",
+            "number": 5,
+            "x": 305,
+            "y": 945
+          },
+          {
+            "row": 2,
+            "col": 1,
+            "terrain": "desert",
+            "number": 0,
+            "x": 510,
+            "y": 920
+          },
+          {
+            "row": 2,
+            "col": 2,
+            "terrain": "mountains",
+            "number": 6,
+            "x": 755,
+            "y": 965
+          },
+          {
+            "row": 2,
+            "col": 3,
+            "terrain": "forest",
+            "number": 5,
+            "x": 935,
+            "y": 950
+          },
+          {
+            "row": 2,
+            "col": 4,
+            "terrain": "fields",
+            "number": 10,
+            "x": 1130,
+            "y": 945
+          },
+          {
+            "row": 3,
+            "col": 0,
+            "terrain": "mountains",
+            "number": 2,
+            "x": 180,
+            "y": 1095
+          },
+          {
+            "row": 3,
+            "col": 1,
+            "terrain": "fields",
+            "number": 8,
+            "x": 395,
+            "y": 1130
+          },
+          {
+            "row": 3,
+            "col": 2,
+            "terrain": "hills",
+            "number": 2,
+            "x": 610,
+            "y": 1105
+          },
+          {
+            "row": 3,
+            "col": 3,
+            "terrain": "pasture",
+            "number": 11,
+            "x": 835,
+            "y": 1140
+          },
+          {
+            "row": 3,
+            "col": 4,
+            "terrain": "pasture",
+            "number": 8,
+            "x": 1015,
+            "y": 1175
+          },
+          {
+            "row": 3,
+            "col": 5,
+            "terrain": "mountains",
+            "number": 12,
+            "x": 1245,
+            "y": 1170
+          },
+          {
+            "row": 4,
+            "col": 0,
+            "terrain": "mountains",
+            "number": 4,
+            "x": 305,
+            "y": 1330
+          },
+          {
+            "row": 4,
+            "col": 1,
+            "terrain": "forest",
+            "number": 9,
+            "x": 510,
+            "y": 1320
+          },
+          {
+            "row": 4,
+            "col": 2,
+            "terrain": "fields",
+            "number": 6,
+            "x": 730,
+            "y": 1345
+          },
+          {
+            "row": 4,
+            "col": 3,
+            "terrain": "hills",
+            "number": 9,
+            "x": 910,
+            "y": 1300
+          },
+          {
+            "row": 4,
+            "col": 4,
+            "terrain": "forest",
+            "number": 3,
+            "x": 1145,
+            "y": 1335
+          },
+          {
+            "row": 5,
+            "col": 0,
+            "terrain": "fields",
+            "number": 11,
+            "x": 385,
+            "y": 1485
+          },
+          {
+            "row": 5,
+            "col": 1,
+            "terrain": "forest",
+            "number": 3,
+            "x": 605,
+            "y": 1500
+          },
+          {
+            "row": 5,
+            "col": 2,
+            "terrain": "mountains",
+            "number": 4,
+            "x": 845,
+            "y": 1500
+          },
+          {
+            "row": 5,
+            "col": 3,
+            "terrain": "pasture",
+            "number": 11,
+            "x": 1060,
+            "y": 1525
+          },
+          {
+            "row": 6,
+            "col": 0,
+            "terrain": "pasture",
+            "number": 6,
+            "x": 495,
+            "y": 1675
+          },
+          {
+            "row": 6,
+            "col": 1,
+            "terrain": "hills",
+            "number": 4,
+            "x": 685,
+            "y": 1685
+          },
+          {
+            "row": 6,
+            "col": 2,
+            "terrain": "hills",
+            "number": 8,
+            "x": 925,
+            "y": 1700
+          }
+        ],
+        "robber": {
+          "x": 383,
+          "y": 1052
+        },
+        "harbours": [
+          {
+            "kind": "generic",
+            "x": 590,
+            "y": 450
+          },
+          {
+            "kind": "ore",
+            "x": 1020,
+            "y": 490
+          },
+          {
+            "kind": "grain",
+            "x": 360,
+            "y": 625
+          },
+          {
+            "kind": "wool",
+            "x": 1165,
+            "y": 800
+          },
+          {
+            "kind": "generic",
+            "x": 190,
+            "y": 920
+          },
+          {
+            "kind": "brick",
+            "x": 1350,
+            "y": 1165
+          },
+          {
+            "kind": "generic",
+            "x": 170,
+            "y": 1320
+          },
+          {
+            "kind": "wool",
+            "x": 1145,
+            "y": 1510
+          },
+          {
+            "kind": "generic",
+            "x": 320,
+            "y": 1610
+          },
+          {
+            "kind": "generic",
+            "x": 650,
+            "y": 1815
+          },
+          {
+            "kind": "lumber",
+            "x": 985,
+            "y": 1810
+          }
+        ],
+        "notes": "Two deserts (5-6 player board). Red tokens that look like 9 are 6s. The right-side 2:1 harbour icon is cut off; inferred as brick since it is the only missing 2:1 type."
+      }
+    },
+    {
+      "file": "1.jpg",
+      "model": "claude-opus-5-5",
+      "ms": 15700,
+      "usage": {
+        "input_tokens": 5031,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 1363,
+        "service_tier": "standard",
+        "inference_geo": "global",
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        }
+      },
+      "stop": "end_turn",
+      "output": {
+        "buildings": [
+          {
+            "color": "red",
+            "kind": "settlement",
+            "city_likelihood": 0.1,
+            "x": 982,
+            "y": 778,
+            "end1_x": 958,
+            "end1_y": 790,
+            "end2_x": 1008,
+            "end2_y": 765
+          },
+          {
+            "color": "green",
+            "kind": "settlement",
+            "city_likelihood": 0.15,
+            "x": 467,
+            "y": 1030,
+            "end1_x": 445,
+            "end1_y": 1045,
+            "end2_x": 490,
+            "end2_y": 1015
+          },
+          {
+            "color": "green",
+            "kind": "settlement",
+            "city_likelihood": 0.15,
+            "x": 810,
+            "y": 1075,
+            "end1_x": 810,
+            "end1_y": 1045,
+            "end2_x": 810,
+            "end2_y": 1105
+          },
+          {
+            "color": "red",
+            "kind": "settlement",
+            "city_likelihood": 0.2,
+            "x": 1170,
+            "y": 1288,
+            "end1_x": 1135,
+            "end1_y": 1300,
+            "end2_x": 1205,
+            "end2_y": 1275
+          },
+          {
+            "color": "blue",
+            "kind": "settlement",
+            "city_likelihood": 0.15,
+            "x": 322,
+            "y": 1335,
+            "end1_x": 292,
+            "end1_y": 1335,
+            "end2_x": 355,
+            "end2_y": 1335
+          },
+          {
+            "color": "green",
+            "kind": "settlement",
+            "city_likelihood": 0.15,
+            "x": 650,
+            "y": 1355,
+            "end1_x": 630,
+            "end1_y": 1330,
+            "end2_x": 672,
+            "end2_y": 1380
+          },
+          {
+            "color": "blue",
+            "kind": "settlement",
+            "city_likelihood": 0.2,
+            "x": 447,
+            "y": 1648,
+            "end1_x": 447,
+            "end1_y": 1610,
+            "end2_x": 447,
+            "end2_y": 1685
+          },
+          {
+            "color": "green",
+            "kind": "settlement",
+            "city_likelihood": 0.15,
+            "x": 805,
+            "y": 1670,
+            "end1_x": 785,
+            "end1_y": 1690,
+            "end2_x": 825,
+            "end2_y": 1645
+          },
+          {
+            "color": "blue",
+            "kind": "settlement",
+            "city_likelihood": 0.15,
+            "x": 270,
+            "y": 1935,
+            "end1_x": 250,
+            "end1_y": 1910,
+            "end2_x": 290,
+            "end2_y": 1960
+          },
+          {
+            "color": "blue",
+            "kind": "settlement",
+            "city_likelihood": 0.2,
+            "x": 622,
+            "y": 1950,
+            "end1_x": 622,
+            "end1_y": 1912,
+            "end2_x": 622,
+            "end2_y": 1988
+          },
+          {
+            "color": "red",
+            "kind": "settlement",
+            "city_likelihood": 0.15,
+            "x": 955,
+            "y": 1955,
+            "end1_x": 930,
+            "end1_y": 1975,
+            "end2_x": 980,
+            "end2_y": 1935
+          },
+          {
+            "color": "red",
+            "kind": "settlement",
+            "city_likelihood": 0.2,
+            "x": 428,
+            "y": 2235,
+            "end1_x": 405,
+            "end1_y": 2210,
+            "end2_x": 450,
+            "end2_y": 2265
+          },
+          {
+            "color": "red",
+            "kind": "settlement",
+            "city_likelihood": 0.15,
+            "x": 800,
+            "y": 2255,
+            "end1_x": 780,
+            "end1_y": 2230,
+            "end2_x": 820,
+            "end2_y": 2280
+          }
+        ],
+        "roads": [
+          {
+            "color": "red",
+            "x": 995,
+            "y": 910
+          },
+          {
+            "color": "red",
+            "x": 1078,
+            "y": 1032
+          },
+          {
+            "color": "red",
+            "x": 1145,
+            "y": 1168
+          },
+          {
+            "color": "green",
+            "x": 565,
+            "y": 998
+          },
+          {
+            "color": "green",
+            "x": 712,
+            "y": 998
+          },
+          {
+            "color": "green",
+            "x": 457,
+            "y": 1160
+          },
+          {
+            "color": "green",
+            "x": 808,
+            "y": 1180
+          },
+          {
+            "color": "green",
+            "x": 708,
+            "y": 1305
+          },
+          {
+            "color": "green",
+            "x": 618,
+            "y": 1485
+          },
+          {
+            "color": "green",
+            "x": 733,
+            "y": 1600
+          },
+          {
+            "color": "green",
+            "x": 928,
+            "y": 1600
+          },
+          {
+            "color": "green",
+            "x": 1070,
+            "y": 1610
+          },
+          {
+            "color": "green",
+            "x": 1200,
+            "y": 1620
+          },
+          {
+            "color": "blue",
+            "x": 295,
+            "y": 1415
+          },
+          {
+            "color": "blue",
+            "x": 340,
+            "y": 1575
+          },
+          {
+            "color": "blue",
+            "x": 450,
+            "y": 1765
+          },
+          {
+            "color": "blue",
+            "x": 368,
+            "y": 1878
+          },
+          {
+            "color": "blue",
+            "x": 520,
+            "y": 1898
+          },
+          {
+            "color": "red",
+            "x": 1045,
+            "y": 1915
+          },
+          {
+            "color": "red",
+            "x": 960,
+            "y": 2075
+          },
+          {
+            "color": "red",
+            "x": 675,
+            "y": 2210
+          },
+          {
+            "color": "red",
+            "x": 540,
+            "y": 2220
+          },
+          {
+            "color": "red",
+            "x": 875,
+            "y": 2220
+          }
+        ],
+        "notes": "Estimated positions; no clear cities identified."
+      }
+    },
+    {
+      "file": "2.jpg",
+      "model": "claude-opus-5-5",
+      "ms": 11526,
+      "usage": {
+        "input_tokens": 5031,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 968,
+        "service_tier": "standard",
+        "inference_geo": "global",
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        }
+      },
+      "stop": "end_turn",
+      "output": {
+        "buildings": [
+          {
+            "color": "red",
+            "kind": "settlement",
+            "city_likelihood": 0.2,
+            "x": 32,
+            "y": 775,
+            "end1_x": 8,
+            "end1_y": 770,
+            "end2_x": 60,
+            "end2_y": 782
+          },
+          {
+            "color": "red",
+            "kind": "city",
+            "city_likelihood": 0.6,
+            "x": 225,
+            "y": 1285,
+            "end1_x": 185,
+            "end1_y": 1290,
+            "end2_x": 265,
+            "end2_y": 1278
+          },
+          {
+            "color": "white",
+            "kind": "settlement",
+            "city_likelihood": 0.2,
+            "x": 1003,
+            "y": 1605,
+            "end1_x": 975,
+            "end1_y": 1600,
+            "end2_x": 1035,
+            "end2_y": 1612
+          },
+          {
+            "color": "white",
+            "kind": "settlement",
+            "city_likelihood": 0.3,
+            "x": 1153,
+            "y": 1897,
+            "end1_x": 1125,
+            "end1_y": 1890,
+            "end2_x": 1185,
+            "end2_y": 1905
+          },
+          {
+            "color": "white",
+            "kind": "city",
+            "city_likelihood": 0.6,
+            "x": 663,
+            "y": 1960,
+            "end1_x": 635,
+            "end1_y": 1930,
+            "end2_x": 690,
+            "end2_y": 2000
+          },
+          {
+            "color": "white",
+            "kind": "settlement",
+            "city_likelihood": 0.3,
+            "x": 353,
+            "y": 2185,
+            "end1_x": 330,
+            "end1_y": 2165,
+            "end2_x": 380,
+            "end2_y": 2210
+          },
+          {
+            "color": "white",
+            "kind": "settlement",
+            "city_likelihood": 0.2,
+            "x": 830,
+            "y": 2280,
+            "end1_x": 810,
+            "end1_y": 2255,
+            "end2_x": 855,
+            "end2_y": 2305
+          }
+        ],
+        "roads": [
+          {
+            "color": "red",
+            "x": 45,
+            "y": 910
+          },
+          {
+            "color": "red",
+            "x": 130,
+            "y": 1033
+          },
+          {
+            "color": "red",
+            "x": 200,
+            "y": 1170
+          },
+          {
+            "color": "red",
+            "x": 105,
+            "y": 1915
+          },
+          {
+            "color": "red",
+            "x": 20,
+            "y": 1955
+          },
+          {
+            "color": "red",
+            "x": 15,
+            "y": 2085
+          },
+          {
+            "color": "orange",
+            "x": 555,
+            "y": 1290
+          },
+          {
+            "color": "orange",
+            "x": 648,
+            "y": 1365
+          },
+          {
+            "color": "orange",
+            "x": 800,
+            "y": 1360
+          },
+          {
+            "color": "orange",
+            "x": 693,
+            "y": 1465
+          },
+          {
+            "color": "orange",
+            "x": 690,
+            "y": 1595
+          },
+          {
+            "color": "green",
+            "x": 125,
+            "y": 1610
+          },
+          {
+            "color": "green",
+            "x": 255,
+            "y": 1620
+          },
+          {
+            "color": "green",
+            "x": 365,
+            "y": 1575
+          },
+          {
+            "color": "green",
+            "x": 440,
+            "y": 1640
+          },
+          {
+            "color": "green",
+            "x": 8,
+            "y": 1570
+          },
+          {
+            "color": "white",
+            "x": 990,
+            "y": 1510
+          },
+          {
+            "color": "white",
+            "x": 1085,
+            "y": 1665
+          },
+          {
+            "color": "white",
+            "x": 1145,
+            "y": 1770
+          },
+          {
+            "color": "white",
+            "x": 915,
+            "y": 1925
+          },
+          {
+            "color": "white",
+            "x": 1065,
+            "y": 1940
+          },
+          {
+            "color": "white",
+            "x": 760,
+            "y": 1910
+          },
+          {
+            "color": "white",
+            "x": 660,
+            "y": 2100
+          },
+          {
+            "color": "white",
+            "x": 740,
+            "y": 2245
+          },
+          {
+            "color": "white",
+            "x": 235,
+            "y": 2240
+          }
+        ],
+        "notes": "Approximate positions; some pieces near edges partially visible."
+      }
+    },
+    {
+      "file": "3.jpg",
+      "model": "claude-opus-5-5",
+      "ms": 11089,
+      "usage": {
+        "input_tokens": 5031,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 883,
+        "service_tier": "standard",
+        "inference_geo": "global",
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        }
+      },
+      "stop": "end_turn",
+      "output": {
+        "buildings": [
+          {
+            "color": "blue",
+            "kind": "settlement",
+            "city_likelihood": 0.1,
+            "x": 268,
+            "y": 257,
+            "end1_x": 250,
+            "end1_y": 240,
+            "end2_x": 290,
+            "end2_y": 275
+          },
+          {
+            "color": "blue",
+            "kind": "settlement",
+            "city_likelihood": 0.2,
+            "x": 624,
+            "y": 270,
+            "end1_x": 605,
+            "end1_y": 240,
+            "end2_x": 645,
+            "end2_y": 300
+          },
+          {
+            "color": "red",
+            "kind": "settlement",
+            "city_likelihood": 0.2,
+            "x": 955,
+            "y": 275,
+            "end1_x": 930,
+            "end1_y": 250,
+            "end2_x": 980,
+            "end2_y": 300
+          },
+          {
+            "color": "red",
+            "kind": "settlement",
+            "city_likelihood": 0.2,
+            "x": 428,
+            "y": 550,
+            "end1_x": 405,
+            "end1_y": 520,
+            "end2_x": 455,
+            "end2_y": 580
+          },
+          {
+            "color": "red",
+            "kind": "settlement",
+            "city_likelihood": 0.2,
+            "x": 800,
+            "y": 567,
+            "end1_x": 780,
+            "end1_y": 540,
+            "end2_x": 825,
+            "end2_y": 595
+          },
+          {
+            "color": "blue",
+            "kind": "settlement",
+            "city_likelihood": 0.2,
+            "x": 598,
+            "y": 870,
+            "end1_x": 580,
+            "end1_y": 845,
+            "end2_x": 620,
+            "end2_y": 900
+          },
+          {
+            "color": "blue",
+            "kind": "city",
+            "city_likelihood": 0.6,
+            "x": 952,
+            "y": 860,
+            "end1_x": 925,
+            "end1_y": 815,
+            "end2_x": 985,
+            "end2_y": 905
+          },
+          {
+            "color": "orange",
+            "kind": "settlement",
+            "city_likelihood": 0.2,
+            "x": 1108,
+            "y": 1153,
+            "end1_x": 1085,
+            "end1_y": 1125,
+            "end2_x": 1135,
+            "end2_y": 1185
+          },
+          {
+            "color": "orange",
+            "kind": "settlement",
+            "city_likelihood": 0.3,
+            "x": 1282,
+            "y": 820,
+            "end1_x": 1255,
+            "end1_y": 790,
+            "end2_x": 1306,
+            "end2_y": 850
+          }
+        ],
+        "roads": [
+          {
+            "color": "blue",
+            "x": 450,
+            "y": 82
+          },
+          {
+            "color": "blue",
+            "x": 367,
+            "y": 195
+          },
+          {
+            "color": "blue",
+            "x": 530,
+            "y": 218
+          },
+          {
+            "color": "red",
+            "x": 1050,
+            "y": 233
+          },
+          {
+            "color": "red",
+            "x": 960,
+            "y": 385
+          },
+          {
+            "color": "red",
+            "x": 540,
+            "y": 518
+          },
+          {
+            "color": "red",
+            "x": 672,
+            "y": 508
+          },
+          {
+            "color": "red",
+            "x": 888,
+            "y": 520
+          },
+          {
+            "color": "white",
+            "x": 1180,
+            "y": 522
+          },
+          {
+            "color": "blue",
+            "x": 698,
+            "y": 805
+          },
+          {
+            "color": "blue",
+            "x": 838,
+            "y": 805
+          },
+          {
+            "color": "orange",
+            "x": 1278,
+            "y": 975
+          },
+          {
+            "color": "orange",
+            "x": 1205,
+            "y": 1123
+          }
+        ],
+        "notes": "Partial board; buildings near edges uncertain."
+      }
+    },
+    {
+      "file": "4.jpg",
+      "model": "claude-opus-5-5",
+      "ms": 11007,
+      "usage": {
+        "input_tokens": 5031,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 813,
+        "service_tier": "standard",
+        "inference_geo": "global",
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        }
+      },
+      "stop": "end_turn",
+      "output": {
+        "buildings": [
+          {
+            "color": "white",
+            "kind": "settlement",
+            "city_likelihood": 0.2,
+            "x": 665,
+            "y": 290,
+            "end1_x": 645,
+            "end1_y": 260,
+            "end2_x": 685,
+            "end2_y": 320
+          },
+          {
+            "color": "white",
+            "kind": "settlement",
+            "city_likelihood": 0.2,
+            "x": 355,
+            "y": 478,
+            "end1_x": 335,
+            "end1_y": 445,
+            "end2_x": 375,
+            "end2_y": 510
+          },
+          {
+            "color": "white",
+            "kind": "settlement",
+            "city_likelihood": 0.2,
+            "x": 1155,
+            "y": 220,
+            "end1_x": 1130,
+            "end1_y": 200,
+            "end2_x": 1180,
+            "end2_y": 245
+          },
+          {
+            "color": "white",
+            "kind": "settlement",
+            "city_likelihood": 0.2,
+            "x": 828,
+            "y": 593,
+            "end1_x": 810,
+            "end1_y": 570,
+            "end2_x": 848,
+            "end2_y": 618
+          },
+          {
+            "color": "orange",
+            "kind": "city",
+            "city_likelihood": 0.7,
+            "x": 335,
+            "y": 830,
+            "end1_x": 305,
+            "end1_y": 790,
+            "end2_x": 370,
+            "end2_y": 875
+          },
+          {
+            "color": "orange",
+            "kind": "settlement",
+            "city_likelihood": 0.2,
+            "x": 682,
+            "y": 853,
+            "end1_x": 662,
+            "end1_y": 828,
+            "end2_x": 705,
+            "end2_y": 880
+          },
+          {
+            "color": "orange",
+            "kind": "settlement",
+            "city_likelihood": 0.3,
+            "x": 160,
+            "y": 1153,
+            "end1_x": 132,
+            "end1_y": 1125,
+            "end2_x": 190,
+            "end2_y": 1185
+          },
+          {
+            "color": "blue",
+            "kind": "settlement",
+            "city_likelihood": 0.3,
+            "x": 12,
+            "y": 855,
+            "end1_x": 0,
+            "end1_y": 815,
+            "end2_x": 30,
+            "end2_y": 895
+          }
+        ],
+        "roads": [
+          {
+            "color": "white",
+            "x": 1138,
+            "y": 113
+          },
+          {
+            "color": "white",
+            "x": 769,
+            "y": 233
+          },
+          {
+            "color": "white",
+            "x": 992,
+            "y": 245
+          },
+          {
+            "color": "white",
+            "x": 660,
+            "y": 423
+          },
+          {
+            "color": "white",
+            "x": 236,
+            "y": 525
+          },
+          {
+            "color": "white",
+            "x": 745,
+            "y": 540
+          },
+          {
+            "color": "orange",
+            "x": 420,
+            "y": 828
+          },
+          {
+            "color": "orange",
+            "x": 565,
+            "y": 803
+          },
+          {
+            "color": "orange",
+            "x": 333,
+            "y": 985
+          },
+          {
+            "color": "orange",
+            "x": 257,
+            "y": 1123
+          },
+          {
+            "color": "red",
+            "x": 105,
+            "y": 233
+          },
+          {
+            "color": "red",
+            "x": 20,
+            "y": 275
+          },
+          {
+            "color": "red",
+            "x": 12,
+            "y": 385
+          }
+        ],
+        "notes": "Partial board view; blue pieces at bottom right are off-board and ignored."
+      }
+    },
+    {
+      "file": "1.jpg",
+      "model": "claude-sonnet-5-5",
+      "ms": 14677,
+      "usage": {
+        "input_tokens": 5031,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 1376,
+        "service_tier": "standard",
+        "inference_geo": "global",
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        }
+      },
+      "stop": "end_turn",
+      "output": {
+        "buildings": [
+          {
+            "color": "red",
+            "kind": "settlement",
+            "city_likelihood": 0.2,
+            "x": 982,
+            "y": 775,
+            "end1_x": 963,
+            "end1_y": 790,
+            "end2_x": 1003,
+            "end2_y": 758
+          },
+          {
+            "color": "red",
+            "kind": "city",
+            "city_likelihood": 0.8,
+            "x": 1170,
+            "y": 1286,
+            "end1_x": 1137,
+            "end1_y": 1290,
+            "end2_x": 1208,
+            "end2_y": 1282
+          },
+          {
+            "color": "green",
+            "kind": "settlement",
+            "city_likelihood": 0.2,
+            "x": 467,
+            "y": 1027,
+            "end1_x": 450,
+            "end1_y": 1045,
+            "end2_x": 485,
+            "end2_y": 1008
+          },
+          {
+            "color": "green",
+            "kind": "settlement",
+            "city_likelihood": 0.2,
+            "x": 811,
+            "y": 1075,
+            "end1_x": 797,
+            "end1_y": 1100,
+            "end2_x": 825,
+            "end2_y": 1050
+          },
+          {
+            "color": "green",
+            "kind": "settlement",
+            "city_likelihood": 0.2,
+            "x": 652,
+            "y": 1358,
+            "end1_x": 635,
+            "end1_y": 1370,
+            "end2_x": 670,
+            "end2_y": 1340
+          },
+          {
+            "color": "green",
+            "kind": "settlement",
+            "city_likelihood": 0.2,
+            "x": 803,
+            "y": 1667,
+            "end1_x": 785,
+            "end1_y": 1680,
+            "end2_x": 821,
+            "end2_y": 1652
+          },
+          {
+            "color": "blue",
+            "kind": "settlement",
+            "city_likelihood": 0.2,
+            "x": 322,
+            "y": 1334,
+            "end1_x": 298,
+            "end1_y": 1330,
+            "end2_x": 351,
+            "end2_y": 1338
+          },
+          {
+            "color": "blue",
+            "kind": "city",
+            "city_likelihood": 0.75,
+            "x": 446,
+            "y": 1640,
+            "end1_x": 432,
+            "end1_y": 1610,
+            "end2_x": 465,
+            "end2_y": 1685
+          },
+          {
+            "color": "blue",
+            "kind": "settlement",
+            "city_likelihood": 0.2,
+            "x": 272,
+            "y": 1937,
+            "end1_x": 250,
+            "end1_y": 1925,
+            "end2_x": 295,
+            "end2_y": 1950
+          },
+          {
+            "color": "blue",
+            "kind": "city",
+            "city_likelihood": 0.7,
+            "x": 623,
+            "y": 1948,
+            "end1_x": 600,
+            "end1_y": 1925,
+            "end2_x": 645,
+            "end2_y": 1975
+          },
+          {
+            "color": "red",
+            "kind": "settlement",
+            "city_likelihood": 0.25,
+            "x": 952,
+            "y": 1953,
+            "end1_x": 930,
+            "end1_y": 1965,
+            "end2_x": 975,
+            "end2_y": 1935
+          },
+          {
+            "color": "red",
+            "kind": "settlement",
+            "city_likelihood": 0.25,
+            "x": 430,
+            "y": 2228,
+            "end1_x": 410,
+            "end1_y": 2240,
+            "end2_x": 450,
+            "end2_y": 2210
+          },
+          {
+            "color": "red",
+            "kind": "settlement",
+            "city_likelihood": 0.25,
+            "x": 802,
+            "y": 2245,
+            "end1_x": 780,
+            "end1_y": 2255,
+            "end2_x": 825,
+            "end2_y": 2232
+          }
+        ],
+        "roads": [
+          {
+            "color": "red",
+            "x": 994,
+            "y": 922
+          },
+          {
+            "color": "red",
+            "x": 1078,
+            "y": 1029
+          },
+          {
+            "color": "red",
+            "x": 1146,
+            "y": 1171
+          },
+          {
+            "color": "green",
+            "x": 565,
+            "y": 997
+          },
+          {
+            "color": "green",
+            "x": 712,
+            "y": 996
+          },
+          {
+            "color": "green",
+            "x": 456,
+            "y": 1161
+          },
+          {
+            "color": "green",
+            "x": 808,
+            "y": 1137
+          },
+          {
+            "color": "green",
+            "x": 704,
+            "y": 1303
+          },
+          {
+            "color": "green",
+            "x": 618,
+            "y": 1527
+          },
+          {
+            "color": "green",
+            "x": 733,
+            "y": 1597
+          },
+          {
+            "color": "green",
+            "x": 929,
+            "y": 1599
+          },
+          {
+            "color": "green",
+            "x": 1070,
+            "y": 1622
+          },
+          {
+            "color": "green",
+            "x": 1198,
+            "y": 1620
+          },
+          {
+            "color": "blue",
+            "x": 293,
+            "y": 1403
+          },
+          {
+            "color": "blue",
+            "x": 345,
+            "y": 1568
+          },
+          {
+            "color": "blue",
+            "x": 450,
+            "y": 1735
+          },
+          {
+            "color": "blue",
+            "x": 366,
+            "y": 1877
+          },
+          {
+            "color": "blue",
+            "x": 529,
+            "y": 1900
+          },
+          {
+            "color": "red",
+            "x": 1047,
+            "y": 1915
+          },
+          {
+            "color": "red",
+            "x": 960,
+            "y": 2037
+          },
+          {
+            "color": "red",
+            "x": 514,
+            "y": 2215
+          },
+          {
+            "color": "red",
+            "x": 672,
+            "y": 2186
+          },
+          {
+            "color": "red",
+            "x": 888,
+            "y": 2216
+          },
+          {
+            "color": "white",
+            "x": 1189,
+            "y": 2194
+          }
+        ],
+        "notes": "Partial board; some pieces estimated from the image."
+      }
+    },
+    {
+      "file": "2.jpg",
+      "model": "claude-sonnet-5-5",
+      "ms": 8733,
+      "usage": {
+        "input_tokens": 5031,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 821,
+        "service_tier": "standard",
+        "inference_geo": "global",
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        }
+      },
+      "stop": "end_turn",
+      "output": {
+        "buildings": [
+          {
+            "color": "red",
+            "kind": "settlement",
+            "city_likelihood": 0.2,
+            "x": 33,
+            "y": 774,
+            "end1_x": 8,
+            "end1_y": 790,
+            "end2_x": 62,
+            "end2_y": 752
+          },
+          {
+            "color": "red",
+            "kind": "city",
+            "city_likelihood": 0.7,
+            "x": 225,
+            "y": 1286,
+            "end1_x": 190,
+            "end1_y": 1296,
+            "end2_x": 265,
+            "end2_y": 1272
+          },
+          {
+            "color": "white",
+            "kind": "city",
+            "city_likelihood": 0.6,
+            "x": 663,
+            "y": 1925,
+            "end1_x": 643,
+            "end1_y": 1900,
+            "end2_x": 688,
+            "end2_y": 1962
+          },
+          {
+            "color": "white",
+            "kind": "settlement",
+            "city_likelihood": 0.3,
+            "x": 1155,
+            "y": 1907,
+            "end1_x": 1128,
+            "end1_y": 1915,
+            "end2_x": 1185,
+            "end2_y": 1892
+          },
+          {
+            "color": "white",
+            "kind": "settlement",
+            "city_likelihood": 0.3,
+            "x": 356,
+            "y": 2148,
+            "end1_x": 330,
+            "end1_y": 2160,
+            "end2_x": 385,
+            "end2_y": 2130
+          }
+        ],
+        "roads": [
+          {
+            "color": "red",
+            "x": 47,
+            "y": 910
+          },
+          {
+            "color": "red",
+            "x": 132,
+            "y": 1030
+          },
+          {
+            "color": "red",
+            "x": 201,
+            "y": 1170
+          },
+          {
+            "color": "red",
+            "x": 93,
+            "y": 1908
+          },
+          {
+            "color": "red",
+            "x": 14,
+            "y": 2025
+          },
+          {
+            "color": "orange",
+            "x": 555,
+            "y": 1290
+          },
+          {
+            "color": "orange",
+            "x": 649,
+            "y": 1367
+          },
+          {
+            "color": "orange",
+            "x": 693,
+            "y": 1450
+          },
+          {
+            "color": "orange",
+            "x": 802,
+            "y": 1362
+          },
+          {
+            "color": "orange",
+            "x": 690,
+            "y": 1598
+          },
+          {
+            "color": "green",
+            "x": 127,
+            "y": 1612
+          },
+          {
+            "color": "green",
+            "x": 252,
+            "y": 1620
+          },
+          {
+            "color": "green",
+            "x": 365,
+            "y": 1572
+          },
+          {
+            "color": "green",
+            "x": 440,
+            "y": 1640
+          },
+          {
+            "color": "white",
+            "x": 990,
+            "y": 1527
+          },
+          {
+            "color": "white",
+            "x": 1005,
+            "y": 1597
+          },
+          {
+            "color": "white",
+            "x": 1083,
+            "y": 1650
+          },
+          {
+            "color": "white",
+            "x": 1145,
+            "y": 1768
+          },
+          {
+            "color": "white",
+            "x": 920,
+            "y": 1920
+          },
+          {
+            "color": "white",
+            "x": 760,
+            "y": 1912
+          },
+          {
+            "color": "white",
+            "x": 664,
+            "y": 2065
+          },
+          {
+            "color": "white",
+            "x": 225,
+            "y": 2190
+          },
+          {
+            "color": "white",
+            "x": 750,
+            "y": 2210
+          },
+          {
+            "color": "white",
+            "x": 830,
+            "y": 2270
+          }
+        ],
+        "notes": "Partial board; estimated positions. Left-edge pieces partially cut off are skipped or approximate."
+      }
+    },
+    {
+      "file": "3.jpg",
+      "model": "claude-sonnet-5-5",
+      "ms": 9706,
+      "usage": {
+        "input_tokens": 5031,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 966,
+        "service_tier": "standard",
+        "inference_geo": "global",
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        }
+      },
+      "stop": "end_turn",
+      "output": {
+        "buildings": [
+          {
+            "color": "blue",
+            "kind": "settlement",
+            "city_likelihood": 0.2,
+            "x": 270,
+            "y": 258,
+            "end1_x": 253,
+            "end1_y": 274,
+            "end2_x": 288,
+            "end2_y": 242
+          },
+          {
+            "color": "blue",
+            "kind": "city",
+            "city_likelihood": 0.6,
+            "x": 623,
+            "y": 270,
+            "end1_x": 603,
+            "end1_y": 290,
+            "end2_x": 643,
+            "end2_y": 250
+          },
+          {
+            "color": "red",
+            "kind": "settlement",
+            "city_likelihood": 0.25,
+            "x": 430,
+            "y": 550,
+            "end1_x": 414,
+            "end1_y": 568,
+            "end2_x": 447,
+            "end2_y": 532
+          },
+          {
+            "color": "red",
+            "kind": "settlement",
+            "city_likelihood": 0.25,
+            "x": 805,
+            "y": 566,
+            "end1_x": 788,
+            "end1_y": 582,
+            "end2_x": 822,
+            "end2_y": 548
+          },
+          {
+            "color": "red",
+            "kind": "city",
+            "city_likelihood": 0.6,
+            "x": 962,
+            "y": 277,
+            "end1_x": 942,
+            "end1_y": 298,
+            "end2_x": 983,
+            "end2_y": 256
+          },
+          {
+            "color": "blue",
+            "kind": "settlement",
+            "city_likelihood": 0.25,
+            "x": 601,
+            "y": 869,
+            "end1_x": 585,
+            "end1_y": 885,
+            "end2_x": 617,
+            "end2_y": 853
+          },
+          {
+            "color": "blue",
+            "kind": "city",
+            "city_likelihood": 0.6,
+            "x": 953,
+            "y": 861,
+            "end1_x": 930,
+            "end1_y": 888,
+            "end2_x": 977,
+            "end2_y": 834
+          },
+          {
+            "color": "orange",
+            "kind": "settlement",
+            "city_likelihood": 0.3,
+            "x": 1108,
+            "y": 1152,
+            "end1_x": 1088,
+            "end1_y": 1170,
+            "end2_x": 1130,
+            "end2_y": 1132
+          },
+          {
+            "color": "orange",
+            "kind": "city",
+            "city_likelihood": 0.6,
+            "x": 1285,
+            "y": 820,
+            "end1_x": 1262,
+            "end1_y": 796,
+            "end2_x": 1304,
+            "end2_y": 850
+          },
+          {
+            "color": "white",
+            "kind": "settlement",
+            "city_likelihood": 0.3,
+            "x": 1296,
+            "y": 450,
+            "end1_x": 1288,
+            "end1_y": 432,
+            "end2_x": 1300,
+            "end2_y": 472
+          }
+        ],
+        "roads": [
+          {
+            "color": "blue",
+            "x": 455,
+            "y": 55
+          },
+          {
+            "color": "blue",
+            "x": 366,
+            "y": 197
+          },
+          {
+            "color": "blue",
+            "x": 529,
+            "y": 218
+          },
+          {
+            "color": "red",
+            "x": 1049,
+            "y": 235
+          },
+          {
+            "color": "red",
+            "x": 959,
+            "y": 386
+          },
+          {
+            "color": "red",
+            "x": 541,
+            "y": 519
+          },
+          {
+            "color": "red",
+            "x": 673,
+            "y": 508
+          },
+          {
+            "color": "red",
+            "x": 888,
+            "y": 519
+          },
+          {
+            "color": "blue",
+            "x": 698,
+            "y": 805
+          },
+          {
+            "color": "blue",
+            "x": 838,
+            "y": 806
+          },
+          {
+            "color": "orange",
+            "x": 1203,
+            "y": 1121
+          },
+          {
+            "color": "orange",
+            "x": 1279,
+            "y": 989
+          },
+          {
+            "color": "white",
+            "x": 1183,
+            "y": 523
+          }
+        ],
+        "notes": "Estimated from a partial photo; pieces at the right edge are cut off and kind classification is uncertain."
+      }
+    },
+    {
+      "file": "4.jpg",
+      "model": "claude-sonnet-5-5",
+      "ms": 10469,
+      "usage": {
+        "input_tokens": 5031,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 784,
+        "service_tier": "standard",
+        "inference_geo": "global",
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        }
+      },
+      "stop": "end_turn",
+      "output": {
+        "buildings": [
+          {
+            "color": "white",
+            "kind": "settlement",
+            "city_likelihood": 0.2,
+            "x": 662,
+            "y": 285,
+            "end1_x": 643,
+            "end1_y": 262,
+            "end2_x": 685,
+            "end2_y": 312
+          },
+          {
+            "color": "white",
+            "kind": "settlement",
+            "city_likelihood": 0.2,
+            "x": 353,
+            "y": 468,
+            "end1_x": 332,
+            "end1_y": 440,
+            "end2_x": 372,
+            "end2_y": 503
+          },
+          {
+            "color": "white",
+            "kind": "settlement",
+            "city_likelihood": 0.2,
+            "x": 830,
+            "y": 590,
+            "end1_x": 812,
+            "end1_y": 570,
+            "end2_x": 850,
+            "end2_y": 612
+          },
+          {
+            "color": "white",
+            "kind": "settlement",
+            "city_likelihood": 0.25,
+            "x": 1153,
+            "y": 220,
+            "end1_x": 1128,
+            "end1_y": 205,
+            "end2_x": 1182,
+            "end2_y": 240
+          },
+          {
+            "color": "orange",
+            "kind": "city",
+            "city_likelihood": 0.8,
+            "x": 345,
+            "y": 832,
+            "end1_x": 305,
+            "end1_y": 795,
+            "end2_x": 375,
+            "end2_y": 875
+          },
+          {
+            "color": "orange",
+            "kind": "settlement",
+            "city_likelihood": 0.2,
+            "x": 682,
+            "y": 853,
+            "end1_x": 665,
+            "end1_y": 830,
+            "end2_x": 700,
+            "end2_y": 885
+          },
+          {
+            "color": "orange",
+            "kind": "settlement",
+            "city_likelihood": 0.2,
+            "x": 160,
+            "y": 1152,
+            "end1_x": 135,
+            "end1_y": 1130,
+            "end2_x": 188,
+            "end2_y": 1188
+          },
+          {
+            "color": "blue",
+            "kind": "settlement",
+            "city_likelihood": 0.2,
+            "x": 15,
+            "y": 845,
+            "end1_x": 0,
+            "end1_y": 815,
+            "end2_x": 30,
+            "end2_y": 880
+          }
+        ],
+        "roads": [
+          {
+            "color": "white",
+            "x": 1145,
+            "y": 95
+          },
+          {
+            "color": "white",
+            "x": 988,
+            "y": 237
+          },
+          {
+            "color": "white",
+            "x": 660,
+            "y": 420
+          },
+          {
+            "color": "white",
+            "x": 218,
+            "y": 522
+          },
+          {
+            "color": "white",
+            "x": 745,
+            "y": 540
+          },
+          {
+            "color": "orange",
+            "x": 420,
+            "y": 830
+          },
+          {
+            "color": "orange",
+            "x": 565,
+            "y": 800
+          },
+          {
+            "color": "orange",
+            "x": 334,
+            "y": 975
+          },
+          {
+            "color": "orange",
+            "x": 257,
+            "y": 1122
+          },
+          {
+            "color": "red",
+            "x": 105,
+            "y": 235
+          },
+          {
+            "color": "red",
+            "x": 18,
+            "y": 380
+          }
+        ],
+        "notes": "Estimates; partial pieces at edges. Blue pieces on the table are excluded."
+      }
+    }
+  ]
+}

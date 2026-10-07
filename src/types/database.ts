@@ -10,6 +10,68 @@ export type Database = {
   };
   public: {
     Tables: {
+      board_scans: {
+        Row: {
+          attempts: number;
+          color_players: Json;
+          created_at: string;
+          created_by: string | null;
+          detected_state: Json | null;
+          error: string | null;
+          image_paths: string[];
+          layout: string;
+          model: string | null;
+          session_id: string;
+          state: Json | null;
+          status: string;
+          updated_at: string;
+          updated_by: string | null;
+          usage: Json | null;
+        };
+        Insert: {
+          attempts?: number;
+          color_players?: Json;
+          created_at?: string;
+          created_by?: string | null;
+          detected_state?: Json | null;
+          error?: string | null;
+          image_paths: string[];
+          layout: string;
+          model?: string | null;
+          session_id: string;
+          state?: Json | null;
+          status?: string;
+          updated_at?: string;
+          updated_by?: string | null;
+          usage?: Json | null;
+        };
+        Update: {
+          attempts?: number;
+          color_players?: Json;
+          created_at?: string;
+          created_by?: string | null;
+          detected_state?: Json | null;
+          error?: string | null;
+          image_paths?: string[];
+          layout?: string;
+          model?: string | null;
+          session_id?: string;
+          state?: Json | null;
+          status?: string;
+          updated_at?: string;
+          updated_by?: string | null;
+          usage?: Json | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'board_scans_session_id_fkey';
+            columns: ['session_id'];
+            isOneToOne: true;
+            referencedRelation: 'sessions';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       bonus_rules: {
         Row: {
           created_at: string;

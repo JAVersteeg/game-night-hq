@@ -9,6 +9,7 @@ import { GroupListScreen } from '@/features/groups/screens/GroupListScreen';
 import { GroupSettingsScreen } from '@/features/groups/screens/GroupSettingsScreen';
 import { JoinGroupScreen } from '@/features/groups/screens/JoinGroupScreen';
 import { ProfileScreen } from '@/features/profile/screens/ProfileScreen';
+import { BoardScanScreen } from '@/features/boardScan/screens/BoardScanScreen';
 import { SessionScreen } from '@/features/sessions/screens/SessionScreen';
 import { StartSessionScreen } from '@/features/sessions/screens/StartSessionScreen';
 import { theme } from '@/lib/theme';
@@ -76,6 +77,11 @@ export function AppStack() {
       />
       {/* Title is set by the screen itself once it knows the game's name. */}
       <Stack.Screen name="Session" component={SessionScreen} options={HEADER_OPTIONS} />
+      <Stack.Screen
+        name="BoardScan"
+        component={BoardScanScreen}
+        options={{ ...HEADER_OPTIONS, title: 'Bord' }}
+      />
       <Stack.Screen
         name="Profile"
         component={ProfileScreen}

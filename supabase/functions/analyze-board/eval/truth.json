@@ -1,0 +1,125 @@
+{
+  "hexes": [
+    ["hills 5", "pasture 3", "desert"],
+    ["forest 10", "pasture 9", "fields 10", "fields 12"],
+    ["forest 5", "desert", "mountains 6", "forest 5", "fields 10"],
+    ["mountains 2", "fields 8", "hills 2", "pasture 11", "pasture 8", "mountains 12"],
+    ["mountains 4", "forest 9", "fields 6", "hills 9", "forest 3"],
+    ["fields 11", "forest 3", "mountains 4", "pasture 11"],
+    ["pasture 6", "hills 4", "hills 8"]
+  ],
+  "robber": [3, 1],
+  "harbours": [
+    [0, 0, "NE", "3:1", ""],
+    [0, 2, "NE", "ore", "icon small, read as ore"],
+    [1, 0, "NW", "grain", ""],
+    [1, 3, "E", "wool", ""],
+    [2, 0, "W", "3:1", ""],
+    [3, 5, "E", "brick", "icon outside photo, inferred by elimination"],
+    [4, 0, "W", "3:1", ""],
+    [5, 3, "E", "wool", ""],
+    [5, 0, "SW", "3:1", ""],
+    [6, 1, "SW", "3:1", ""],
+    [6, 2, "SE", "lumber", ""]
+  ],
+  "players": {
+    "green": {
+      "buildings": [
+        [1, 0, "NW", "settlement", 0],
+        [1, 0, "NE", "settlement", 0],
+        [1, 0, "S", "settlement", 0],
+        [2, 1, "S", "settlement", 0],
+        [2, 2, "SE", "settlement", 0]
+      ],
+      "roads": [
+        [1, 0, "W"],
+        [1, 0, "NW"],
+        [1, 0, "NE"],
+        [1, 0, "E"],
+        [1, 0, "SE"],
+        [2, 0, "E"],
+        [2, 1, "SW"],
+        [2, 1, "SE"],
+        [2, 2, "SW"],
+        [2, 2, "SE"],
+        [2, 3, "SW"]
+      ]
+    },
+    "red": {
+      "buildings": [
+        [0, 0, "NE", "settlement", 0],
+        [1, 1, "SE", "city", 0],
+        [4, 1, "NE", "city", 0],
+        [5, 0, "NW", "city", 0],
+        [5, 0, "NE", "settlement", 0]
+      ],
+      "roads": [
+        [0, 0, "E"],
+        [0, 1, "SW"],
+        [1, 1, "E"],
+        [4, 2, "NW"],
+        [4, 1, "E"],
+        [5, 1, "NW"],
+        [5, 0, "NW"],
+        [5, 0, "NE"]
+      ]
+    },
+    "blue": {
+      "buildings": [
+        [2, 0, "NW", "settlement", 0],
+        [2, 0, "S", "city", 0],
+        [3, 0, "S", "settlement", 0],
+        [4, 0, "NE", "city", 0],
+        [6, 0, "NW", "settlement", 0],
+        [6, 0, "NE", "city", 0]
+      ],
+      "roads": [
+        [2, 0, "W"],
+        [2, 0, "SW"],
+        [3, 0, "E"],
+        [3, 0, "SE"],
+        [4, 0, "NE"],
+        [6, 0, "NW"],
+        [6, 0, "NE"]
+      ]
+    },
+    "orange": {
+      "buildings": [
+        [2, 3, "N", "settlement", 0],
+        [2, 3, "SE", "settlement", 0],
+        [6, 2, "NW", "city", 0],
+        [6, 2, "NE", "settlement", 0],
+        [6, 1, "S", "settlement", 0]
+      ],
+      "roads": [
+        [2, 3, "NE"],
+        [1, 3, "SE"],
+        [2, 3, "E"],
+        [6, 2, "NW"],
+        [6, 2, "NE"],
+        [6, 1, "E"],
+        [6, 1, "SE"]
+      ]
+    },
+    "white": {
+      "buildings": [
+        [2, 4, "SE", "settlement", 0],
+        [3, 5, "SE", "city", 0],
+        [4, 4, "NW", "city", 0],
+        [5, 2, "N", "settlement", 0],
+        [4, 4, "S", "settlement", 0]
+      ],
+      "roads": [
+        [2, 4, "E"],
+        [3, 5, "NE"],
+        [3, 5, "E"],
+        [3, 5, "SE"],
+        [3, 5, "SW"],
+        [4, 4, "NW"],
+        [4, 4, "W"],
+        [5, 2, "NW"],
+        [4, 4, "SW"]
+      ]
+    }
+  }
+}

@@ -68,6 +68,9 @@ import {
 } from '@/features/sessions/hooks/useSessionNotes';
 import { useSessionPhotos } from '@/features/sessions/hooks/useSessionPhotos';
 import { SessionPhotosSection } from '@/features/sessions/components/SessionPhotosSection';
+import { BoardScanSection } from '@/features/boardScan/components/BoardScanSection';
+import { CATAN_POINT_COLUMNS } from '@/features/boardScan/components/ScoreIcons';
+import { gameKeyForTemplate } from '@/features/games/presets';
 import {
   useSessionParticipants,
   useSessionTeamByUser,
@@ -954,7 +957,7 @@ function DeleteSessionConfirmModal({
             <Text className="text-xl font-bold text-ink">Potje verwijderen?</Text>
             <Text className="mt-1 text-sm text-ink-muted">
               {isCompleted
-                ? "Dit kun je niet ongedaan maken"
+                ? 'Dit kun je niet ongedaan maken'
                 : 'Het potje en alle scores tot nu toe worden verwijderd. Dit kun je niet ongedaan maken.'}
             </Text>
             {hasFailed ? (
@@ -1862,6 +1865,7 @@ export function SessionScreen() {
             template?.bonus_rules ?? [],
             displayedScoresByUser[member.userId] ?? {},
           ),
+          values: displayedScoresByUser[member.userId] ?? {},
         };
       })
       // The winner always leads: on a tied top total the scorekeeper's pick would otherwise sit
@@ -2027,10 +2031,22 @@ export function SessionScreen() {
                 </View>
               ) : (
                 <Card className="mt-2">
-                  <ScoreBars rows={orderedRows} />
+                  {/* Catan shows where its points came from as columns, like the board screen. */}
+                  <ScoreBars
+                    rows={orderedRows}
+                    columns={
+                      gameKeyForTemplate(coverKey, gameName) === 'catan'
+                        ? CATAN_POINT_COLUMNS
+                        : undefined
+                    }
+                  />
                 </Card>
               )}
             </View>
+
+            {gameKeyForTemplate(coverKey, gameName) === 'catan' ? (
+              <BoardScanSection sessionId={sessionId} />
+            ) : null}
 
             <SessionNotesSection
               notes={notes ?? []}

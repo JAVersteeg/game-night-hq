@@ -24,5 +24,7 @@ export type AppStackParamList = {
    * session progresses.
    */
   Session: { sessionId: string };
+  /** The digital Catan board of a session, read from a photo. */
+  BoardScan: { sessionId: string };
   Profile: undefined;
 };

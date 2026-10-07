@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useEffect, useId } from 'react';
 
 import { profileKeys } from '@/features/auth/hooks/useProfile';
 import { gameKeys } from '@/features/games/hooks/useGameTemplates';
@@ -77,12 +77,16 @@ export function useCreateSession(groupId: string) {
 export function useSession(sessionId: string) {
   const queryClient = useQueryClient();
   const queryKey = sessionKeys.detail(sessionId);
+  // The session screen and the screens stacked on top of it (board scan) watch the same session at
+  // once — each needs its own topic, or the second would reuse the first's already-subscribed
+  // channel and fail to add its handler.
+  const channelId = useId().replace(/:/g, '');
 
   // Keyed on `sessionId`, not `queryKey`: the key is a fresh array every render, so depending on it
   // tore the channel down and resubscribed on every render, stacking handlers under the same topic.
   useEffect(() => {
     const channel = supabase
-      .channel(`session-${sessionId}`)
+      .channel(`session-${sessionId}-${channelId}`)
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'sessions', filter: `id=eq.${sessionId}` },
@@ -91,7 +95,7 @@ export function useSession(sessionId: string) {
       .subscribe();
 
     return () => void supabase.removeChannel(channel);
-  }, [sessionId, queryClient]);
+  }, [sessionId, channelId, queryClient]);
 
   return useQuery({
     queryKey,

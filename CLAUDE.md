@@ -58,6 +58,14 @@ Computed from session history per group, at minimum:
 - Score trends over time per player, per game (for charting)
 - Head-to-head record between any two specific group members, per game and overall
 
+**Board scan (Catan only)**
+- A finished Catan session can get a digital version of its final board, read from a photo by Claude Opus (`analyze-board` edge function). The API key lives only in the function's `ANTHROPIC_API_KEY` secret (and, for local accuracy tests, the gitignored `supabase/functions/.env.local`).
+- **Analysis approach — decided by measurement, see `supabase/functions/analyze-board/eval/README.md`:** the model only *points* (what is where, in pixels) in five parallel calls (board overview + 2×2 full-resolution crops); code fits the board geometry, snaps pieces to corners/edges and applies the rules (~35 s, ~$0.25). The function answers at once and reads the board in the background (`EdgeRuntime.waitUntil`); the app follows the row over Realtime. Not the Message Batches API (the test request sat in the queue for over 1.5 h) and not one big call (~140 s, at the free plan's 150 s edge-function limit). Check prompt or geometry changes against the test board with the eval kit before deploying.
+- Board photos must be full resolution: taken or picked from the gallery in the board screen, never the 1600px session-photo copy. Images go up at Opus' 2576px maximum (overview) and native resolution (crops), in the private `board-scans` bucket at `{session_id}/{scan_uuid}/{n}.jpg`.
+- One `board_scans` row per session; analysing again replaces it, at most 3 times per session (enforced in `begin_board_scan`, callable only by the function; a reading that fails gives its attempt back, and one stuck in `analyzing` for 5 minutes may be restarted). Only participants may start or correct a scan or label colours; any group member can view it. `detected_state` keeps Claude's raw reading; `state` is the corrected board, so corrections double as an accuracy measure.
+- Board size follows the participant count: ≤ 4 the standard board, 5–6 the extended one. Expansions are out of scope.
+- Rule checks, longest road and the score check against `nederzettingen` / `langste_handelsroute` are derived client-side (`src/features/boardScan/catan.ts`), never stored. Settlement vs city is the weakest part of the reading (~70% on its own), so once the colours are labelled the recorded `nederzettingen` decide how many cities each colour has and the most city-like pieces get them; pieces decided that way are shown dotted, and a human correction always wins.
+
 **Profile**
 - The signed-in user's own account page, reached from an avatar button in the top-right corner of the group list.
 - Shows their display name and an avatar, and is where they change their name.
@@ -89,6 +97,7 @@ session_participants (session_id, user_id, team)
 session_scores       (session_id, user_id, field_key, value)
 session_notes        (id, session_id, author_id, body, created_at)
 session_photos       (id, session_id, uploader_id, storage_path, created_at)
+board_scans          (session_id, created_by, status, layout, image_paths, attempts, batch_id, detected_state, state, color_players, model, usage, error, updated_by)
 ```
 
 Use Row Level Security everywhere: a row is only readable/writable by members of the group it belongs to, and `session_scores` writes are additionally restricted to the session's current `scorekeeper_id` while `status = 'in_progress'`.

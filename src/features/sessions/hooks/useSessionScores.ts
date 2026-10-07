@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useEffect, useId } from 'react';
 
 import { logError } from '@/lib/logError';
 import { supabase } from '@/lib/supabase';
@@ -28,10 +28,13 @@ function groupByUser(rows: Tables<'session_scores'>[]): ScoresByUser {
 export function useSessionScores(sessionId: string) {
   const queryClient = useQueryClient();
   const queryKey = sessionScoreKeys.detail(sessionId);
+  // One topic per hook instance: the session screen and the board scan screen stacked on it both
+  // watch the same session's scores.
+  const channelId = useId().replace(/:/g, '');
 
   useEffect(() => {
     const channel = supabase
-      .channel(`session-scores-${sessionId}`)
+      .channel(`session-scores-${sessionId}-${channelId}`)
       .on(
         'postgres_changes',
         {
@@ -58,7 +61,7 @@ export function useSessionScores(sessionId: string) {
 
     return () => void supabase.removeChannel(channel);
     // Not `queryKey`: it's a fresh array every render and would resubscribe on each one.
-  }, [sessionId, queryClient]);
+  }, [sessionId, channelId, queryClient]);
 
   return useQuery({
     queryKey,
